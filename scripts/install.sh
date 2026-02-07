@@ -87,37 +87,49 @@ if ! command -v direnv &>/dev/null; then
   esac
 fi
 
-# ── Hook direnv into the user's shell ─────────────────────────
-hook_direnv() {
+# ── Hook nix + direnv into the user's shell ───────────────────
+add_line() {
   local rc_file="$1"
-  local hook_line="$2"
+  local marker="$2"
+  local line="$3"
 
-  if [ -f "$rc_file" ] && grep -qF "direnv" "$rc_file"; then
+  if [ -f "$rc_file" ] && grep -qF "$marker" "$rc_file"; then
     return 0
   fi
 
-  if [ -f "$rc_file" ] || [ "$rc_file" = "$HOME/.bashrc" ]; then
-    echo "" >> "$rc_file"
-    echo "# direnv (added by EMS_Game installer)" >> "$rc_file"
-    echo "$hook_line" >> "$rc_file"
-    echo "    Added direnv hook to $rc_file"
-  fi
+  echo "" >> "$rc_file"
+  echo "$line" >> "$rc_file"
+  echo "    Added '$marker' to $rc_file"
 }
+
+NIX_SOURCE='# nix (added by EMS_Game installer)
+if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+  . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+fi'
 
 SHELL_NAME=$(basename "${SHELL:-/bin/bash}")
 case "$SHELL_NAME" in
   zsh)
-    hook_direnv "$HOME/.zshrc" 'eval "$(direnv hook zsh)"'
+    add_line "$HOME/.zshrc" "nix-daemon.sh" "$NIX_SOURCE"
+    add_line "$HOME/.zshrc" "direnv hook" '# direnv (added by EMS_Game installer)
+eval "$(direnv hook zsh)"'
     ;;
   bash)
-    hook_direnv "$HOME/.bashrc" 'eval "$(direnv hook bash)"'
+    add_line "$HOME/.bashrc" "nix-daemon.sh" "$NIX_SOURCE"
+    add_line "$HOME/.bashrc" "direnv hook" '# direnv (added by EMS_Game installer)
+eval "$(direnv hook bash)"'
     ;;
   fish)
     mkdir -p "$HOME/.config/fish/conf.d"
-    hook_direnv "$HOME/.config/fish/conf.d/direnv.fish" 'direnv hook fish | source'
+    add_line "$HOME/.config/fish/conf.d/nix.fish" "nix-daemon" '# nix (added by EMS_Game installer)
+if test -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish
+  . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish
+end'
+    add_line "$HOME/.config/fish/conf.d/direnv.fish" "direnv hook" '# direnv (added by EMS_Game installer)
+direnv hook fish | source'
     ;;
   *)
-    echo "WARNING: Could not auto-hook direnv for shell '$SHELL_NAME'."
+    echo "WARNING: Could not auto-hook nix/direnv for shell '$SHELL_NAME'."
     echo "         See https://direnv.net/docs/hook.html"
     ;;
 esac

@@ -6,4 +6,5 @@ server/public/
 
 # Nix / direnv
 result
+flake.lock
 .direnv/
