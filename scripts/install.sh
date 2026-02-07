@@ -147,14 +147,19 @@ fi
 cd "$DIR"
 direnv allow .
 
-# ── Reload shell to pick up nix + direnv ──────────────────────
+# ── Done ───────────────────────────────────────────────────────
+RC_FILE="$HOME/.bashrc"
+[ "$SHELL_NAME" = "zsh" ] && RC_FILE="$HOME/.zshrc"
+
 echo ""
-echo "==> Done! Reloading shell..."
+echo "============================================"
+echo "  Install complete! Run this to get started:"
 echo ""
-echo "    cd $DIR"
+echo "    Reload terminal or run:"
+echo "    source $RC_FILE && cd $DIR"
+echo ""
+echo "  Then:"
 echo "    just edit     # open Godot editor"
 echo "    just build    # build for web"
+echo "============================================"
 echo ""
-echo "    The nix dev environment loads automatically via direnv."
-echo ""
-exec "$SHELL" -l
