@@ -1,0 +1,9 @@
+# Godot
+godot/.godot/
+
+# Web export output
+server/public/
+
+# Nix / direnv
+result
+.direnv/
