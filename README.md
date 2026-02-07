@@ -3,15 +3,15 @@
 ## Setup
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/install.sh | bash
 ```
 
 This single command will:
 - Install **git**, **curl**, **Nix**, and **direnv** if missing (supports WSL, Arch, Ubuntu)
 - Clone the repo
-- Hook direnv into your shell so `nix develop` loads automatically on `cd`
+- Reload your shell so the nix dev environment loads automatically on `cd`
 
-Once installed, open a new terminal and:
+Then:
 
 ```bash
 cd EMS_Game

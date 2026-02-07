@@ -147,9 +147,9 @@ fi
 cd "$DIR"
 direnv allow .
 
-# ── Done ───────────────────────────────────────────────────────
+# ── Reload shell to pick up nix + direnv ──────────────────────
 echo ""
-echo "==> Done! Open a new terminal, then:"
+echo "==> Done! Reloading shell..."
 echo ""
 echo "    cd $DIR"
 echo "    just edit     # open Godot editor"
@@ -157,3 +157,4 @@ echo "    just build    # build for web"
 echo ""
 echo "    The nix dev environment loads automatically via direnv."
 echo ""
+exec "$SHELL" -l
