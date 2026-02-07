@@ -18,12 +18,15 @@
             just           # The Command Runner
             wget           # For downloading templates
             unzip          # For extracting templates
-            python3        # For 'just serve' local webserver
+            docker         # For serving web builds
           ];
 
           shellHook = ''
+            if ! systemctl is-active --quiet docker 2>/dev/null; then
+              echo "Starting Docker daemon..."
+              sudo systemctl start docker
+            fi
             echo "🎮 EMS Game Dev Environment Loaded"
-            echo "Run 'just setup' to ensure export templates are installed."
           '';
         };
       }
