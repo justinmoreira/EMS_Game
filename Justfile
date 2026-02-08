@@ -56,10 +56,8 @@ edit:
             echo "   👉 Please set GODOT_WIN in your .env file."; \
             exit 1; \
         fi; \
-        WIN_PATH=$$(wslpath -w "{{godot_win}}"); \
-        PROJECT_PATH=$$(wslpath -w "{{project_path}}"); \
-        echo "   [Executable]:  $$WIN_PATH"; \
-        cmd.exe /c "$$WIN_PATH" -e --path "$$PROJECT_PATH" & \
+        echo "   [Executable]:  {{godot_win}}"; \
+        cmd.exe /c "$(wslpath -w "{{godot_win}}")" -e --path "$(wslpath -w "{{project_path}}")" & \
     else \
         echo "   [Environment]: Native Linux detected"; \
         {{godot_linux}} -e --path {{project_path}} & \
