@@ -146,6 +146,10 @@ if ! command -v direnv &>/dev/null; then
 fi
 
 SHELL_NAME=$(basename "${SHELL:-/bin/bash}")
+
+# Activate direnv in current shell
+eval "$(direnv hook $SHELL_NAME)"
+
 RC_FILE="~/.${SHELL_NAME}rc"
 
 # ── Hook nix + direnv into the user's shell ───────────────────
@@ -215,7 +219,6 @@ direnv allow .
 echo ""
 echo "============================================"
 echo "  Install complete!"
-echo ""
-echo "  Manually run 'cd $DIR && exec newgrp docker"
+echo "  Reload terminal and cd into $DIR"
 echo "============================================"
 echo ""

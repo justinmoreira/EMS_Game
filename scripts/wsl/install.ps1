@@ -141,6 +141,7 @@ wsl -d $newDistroName bash -c "curl -sSL $projectInstallUrl | bash"
 # 8. Configure GODOT_WIN path in project
 Write-Host "`nConfiguring Godot path for WSL..."
 wsl -d $newDistroName bash -c @"
+touch ~/EMS_Game/.env
 if [ -f ~/EMS_Game/.env ]; then
     if ! grep -q 'GODOT_WIN' ~/EMS_Game/.env; then
         echo 'GODOT_WIN=\"$wslGodotPath\"' >> ~/EMS_Game/.env
