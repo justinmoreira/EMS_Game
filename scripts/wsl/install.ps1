@@ -5,6 +5,7 @@ $tarballUrl = "https://cloud-images.ubuntu.com/wsl/releases/noble/current/ubuntu
 $tarballPath = "$env:TEMP\ubuntu-2404-rootfs.tar.gz"
 # TODO: Update when merged to main
 $postInstallUrl = "https://raw.githubusercontent.com/justinmoreira/EMS_Game/dev_setup/scripts/wsl/post_install.sh"
+$projectInstallUrl = "https://raw.githubusercontent.com/justinmoreira/EMS_Game/dev_setup/scripts/install.sh"
 
 # 2. Download the RootFS (approx 70-100MB)
 Write-Host "Downloading Ubuntu 24.04 RootFS..."
@@ -27,6 +28,6 @@ Write-Host "`nRestarting WSL instance to apply changes..."
 wsl --terminate $newDistroName
 Start-Sleep -Seconds 2
 
-# 7. Launch
+# 7. Install Project
 Write-Host "Done! Launching $newDistroName..."
-wsl -d $newDistroName
+wsl -d $newDistroName bash -c "curl -sSL $projectInstallUrl | bash"
