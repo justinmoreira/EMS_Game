@@ -23,6 +23,38 @@ detect_platform() {
 PLATFORM=$(detect_platform)
 echo "    Platform: $PLATFORM"
 
+# systemd for
+ensure_systemd() {
+  # Only necessary for WSL; native Ubuntu usually has it.
+  if [ "$PLATFORM" = "wsl" ]; then
+    if ! pidof systemd >/dev/null; then
+      echo "==> ❌ Systemd is NOT running."
+      echo "    The Nix daemon requires systemd to function correctly."
+
+      # Check if we already tried to enable it
+      if ! grep -q "systemd=true" /etc/wsl.conf 2>/dev/null; then
+         echo "    Attempting to enable systemd in /etc/wsl.conf..."
+         # We use tee -a to append safely with sudo
+         echo -e "\n[boot]\nsystemd=true" | sudo tee -a /etc/wsl.conf >/dev/null
+         echo "    ✓ configuration added."
+      else
+         echo "    Configuration exists, but WSL hasn't been restarted."
+      fi
+
+      echo ""
+      echo "❗ ACTION REQUIRED ❗"
+      echo "You must restart this WSL instance for systemd to start."
+      echo "  1. Exit this shell."
+      echo "  2. In PowerShell, run: wsl --terminate <YourDistroName>"
+      echo "  3. Re-open WSL and run this script again."
+      echo ""
+      exit 1
+    fi
+    echo "==> ✓ Systemd is running."
+  fi
+}
+ensure_systemd
+
 # ── Helper: install a package if missing ──────────────────────
 ensure_pkg() {
   local cmd="$1"

@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			".direnv/": true,
+			".git/": true,
+			// "EMS_Game.code-workspace": true,
+			"flake.lock": true,
+			".envrc": true,
+			"**/.godot": true
+		}
+	}
+}

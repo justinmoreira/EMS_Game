@@ -22,6 +22,9 @@
           ];
 
           shellHook = ''
+            # Setup web compilation template
+            just _init_godot
+
             if ! systemctl is-active --quiet docker 2>/dev/null; then
               echo "Starting Docker daemon..."
               sudo systemctl start docker
