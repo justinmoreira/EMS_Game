@@ -46,18 +46,20 @@ _init_godot:
     fi
 
 # [Edit] Open the Godot Editor (GUI)
-# Logic: If WSL -> Launch Windows Exe (prevent crash). If Arch -> Launch Linux Bin.
+# Logic: If WSL -> Launch Windows Exe via cmd.exe. If Arch -> Launch Linux Bin.
 edit:
     @echo "🚀 Launching Editor..."
     @if [ "{{is_wsl}}" = "true" ]; then \
         echo "   [Environment]: WSL detected via /proc/version"; \
         if [ ! -f "{{godot_win}}" ]; then \
             echo "   ❌ Error: Windows Godot executable not found at: {{godot_win}}"; \
-            echo "   👉 Please set GODOT_WIN in your .envrc or .env file."; \
+            echo "   👉 Please set GODOT_WIN in your .env file."; \
             exit 1; \
         fi; \
-        echo "   [Executable]:  {{godot_win}}"; \
-        "{{godot_win}}" -e --path "$(wslpath -w {{project_path}})" & \
+        WIN_PATH=$$(wslpath -w "{{godot_win}}"); \
+        PROJECT_PATH=$$(wslpath -w "{{project_path}}"); \
+        echo "   [Executable]:  $$WIN_PATH"; \
+        cmd.exe /c "$$WIN_PATH" -e --path "$$PROJECT_PATH" & \
     else \
         echo "   [Environment]: Native Linux detected"; \
         {{godot_linux}} -e --path {{project_path}} & \
