@@ -42,7 +42,7 @@ if ($godotCmd) {
 # If not found, ask user for manual path or install
 if (-not $godotExePath) {
     Write-Host "Godot not found in standard locations."
-    $userChoice = Read-Host "Do you have Godot installed elsewhere? [Y/n] (default: no, install)"
+    $userChoice = Read-Host "Do you have Godot installed elsewhere? [y/N] (default: no, install)"
     
     if ($userChoice -eq "Y" -or $userChoice -eq "y") {
         $customPath = Read-Host "Enter the full path to your Godot installation directory"
