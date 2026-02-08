@@ -205,6 +205,10 @@ fi
 
 # ── Allow direnv for this project ─────────────────────────────
 cd "$DIR"
+# TODO: Remove when merged to main
+if [ ! -f .envrc ]; then
+  git checkout dev_setup
+fi
 direnv allow .
 
 # ── Done ───────────────────────────────────────────────────────

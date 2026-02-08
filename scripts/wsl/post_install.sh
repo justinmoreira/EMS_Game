@@ -15,10 +15,5 @@ usermod -aG sudo dev
 echo -e "[user]\ndefault=dev" > /etc/wsl.conf 
 echo -e "\n[boot]\nsystemd=true" | sudo tee -a /etc/wsl.conf >/dev/null
 
-echo ""
-echo "Back in powershell, reload the instance to apply changes"
-echo "wsl --terminate ems-wsl"
-echo "wsl -d ems-wsl"
-
 # Exit to apply changes 
 exit 

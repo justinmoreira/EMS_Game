@@ -5,10 +5,13 @@
 ### WSL
 
 Setup clean distro:
-`irm https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/wsl/new_instance.ps1 | iex`
+`irm https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/wsl/install.ps1 | iex`
 
 Launch:
 `wsl -d ems-wsl`
+
+Stop:
+`wsl --terminate ems-wsl`
 
 Uninstall distro with:
 `irm https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/wsl/uninstall.ps1 | iex`
