@@ -219,6 +219,12 @@ else
   git clone "$REPO" "$DIR"
 fi
 
+# Fix ownership (especially important in WSL)
+if [ -d "$DIR" ]; then
+  echo "==> Fixing directory ownership..."
+  sudo chown -R "$USER:$USER" "$DIR"
+fi
+
 # ── Allow direnv for this project ─────────────────────────────
 cd "$DIR"
 # TODO: Remove when merged to main
