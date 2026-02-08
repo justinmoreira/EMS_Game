@@ -1,6 +1,6 @@
 # 1. Set Variables
-$newDistroName = "Ubuntu-Clean"
-$installDir = "C:\WSL\Ubuntu-Clean" 
+$newDistroName = "ems-wsl"
+$installDir = "C:\WSL\ems-wsl" 
 $tarballUrl = "https://cloud-images.ubuntu.com/wsl/releases/noble/current/ubuntu-noble-wsl-amd64-24.04lts.rootfs.tar.gz"
 $tarballPath = "$env:TEMP\ubuntu-2404-rootfs.tar.gz"
 

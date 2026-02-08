@@ -203,18 +203,19 @@ fi
 
 # ── Allow direnv for this project ─────────────────────────────
 cd "$DIR"
+# TODO: Remove when merged to main
+if [ ! -f .envrc ]; then
+  git checkout dev_setup
+fi
 direnv allow .
 
-# ── Done ───────────────────────────────────────────────────────
-RC_FILE="$HOME/.bashrc"
-[ "$SHELL_NAME" = "zsh" ] && RC_FILE="$HOME/.zshrc"
 
+echo "Starting new shell in $DIR with docker group..."
+exec newgrp docker && exec $SHELL -l
+
+# ── Done ───────────────────────────────────────────────────────
 echo ""
 echo "============================================"
 echo "  Install complete!"
 echo "============================================"
 echo ""
-
-echo "Starting new shell in $DIR with docker group..."
-cd "$DIR"
-exec newgrp docker
