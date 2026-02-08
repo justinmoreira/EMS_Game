@@ -17,8 +17,20 @@ find_project_dir() {
     fi
     current_dir="$(dirname "$current_dir")"
   done
-  # Not found in parent directories, use EMS_Game in current location
-  echo "${PWD}/EMS_Game"
+  
+  # Not found in parent directories
+  # If in WSL, use Windows user directory for Godot access
+  if grep -qi microsoft /proc/version 2>/dev/null; then
+    # Get Windows username from environment or path
+    local win_user=$(powershell.exe -c '$env:USERNAME' 2>/dev/null | tr -d '\r')
+    if [ -n "$win_user" ]; then
+      echo "/mnt/c/Users/${win_user}/EMS_Game"
+    else
+      echo "$HOME/EMS_Game"
+    fi
+  else
+    echo "$HOME/EMS_Game"
+  fi
 }
 
 DIR=$(find_project_dir)
