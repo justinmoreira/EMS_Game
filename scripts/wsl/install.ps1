@@ -141,7 +141,7 @@ wsl -d $newDistroName bash -c "curl -sSL $projectInstallUrl | bash"
 # 8. Configure GODOT_WIN path in project
 Write-Host "`nConfiguring Godot path for WSL..."
 $winUsername = $env:USERNAME
-wsl -d $newDistroName bash -c "PROJECT_DIR=/mnt/c/Users/$winUsername/EMS_Game; if [ -f `"`$PROJECT_DIR/.env`" ]; then if ! grep -q 'GODOT_WIN' `"`$PROJECT_DIR/.env`"; then echo 'GODOT_WIN=`"$wslGodotPath`"' >> `"`$PROJECT_DIR/.env`"; fi; else echo 'GODOT_WIN=`"$wslGodotPath`"' > `"`$PROJECT_DIR/.env`"; fi"
+wsl -d $newDistroName bash -c "mkdir -p /mnt/c/Users/$winUsername/EMS_Game && echo 'GODOT_WIN=$wslGodotPath' > /mnt/c/Users/$winUsername/EMS_Game/.env && chmod 644 /mnt/c/Users/$winUsername/EMS_Game/.env"
 
 Write-Host "`n===================================="
 Write-Host "Installation Complete!"
@@ -152,3 +152,4 @@ Write-Host "Project location: C:\Users\$winUsername\EMS_Game"
 Write-Host "`nTo get started:"
 Write-Host "  wsl -d $newDistroName"
 Write-Host "  cd /mnt/c/Users/$winUsername/EMS_Game"
+Write-Host "  direnv allow"
