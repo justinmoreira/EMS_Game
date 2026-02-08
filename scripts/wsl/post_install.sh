@@ -13,7 +13,7 @@ usermod -aG sudo dev
 
 # Set this user as the default login for this instance 
 echo -e "[user]\ndefault=dev" > /etc/wsl.conf 
-echo -e "\n[boot]\nsystemd=true" | sudo tee -a /etc/wsl.conf >/dev/null
+echo -e "\n[boot]\nsystemd=true" >> /etc/wsl.conf
 
 # Exit to apply changes 
 exit 

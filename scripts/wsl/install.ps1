@@ -98,7 +98,7 @@ Remove-Item $tarballPath
 
 # 5. Run post-install configuration
 Write-Host "`nRunning post-install setup..."
-wsl -d $newDistroName bash -c "curl -sSL $postInstallUrl | bash"
+wsl -d $newDistroName bash -c "curl -sSL $postInstallUrl | sudo bash"
 
 # 6. Restart to apply changes
 Write-Host "`nRestarting WSL instance to apply changes..."
