@@ -4,7 +4,7 @@
 useradd -m -s /bin/bash dev 
 
 # Prompt for password and read from the actual terminal, not stdin
-read -p "Enter password for dev user: " -s password < /dev/tty
+read -p "Create password for dev user: " -s password < /dev/tty
 echo ""
 echo "dev:$password" | chpasswd
 
