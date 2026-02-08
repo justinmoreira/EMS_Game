@@ -46,7 +46,7 @@ _init_godot:
     fi
 
 # [Edit] Open the Godot Editor (GUI)
-# Logic: If WSL -> Launch Windows Exe via cmd.exe. If Arch -> Launch Linux Bin.
+# Logic: If WSL -> Launch Windows Exe directly. If Arch -> Launch Linux Bin.
 edit:
     @echo "🚀 Launching Editor..."
     @if [ "{{is_wsl}}" = "true" ]; then \
@@ -57,7 +57,7 @@ edit:
             exit 1; \
         fi; \
         echo "   [Executable]:  {{godot_win}}"; \
-        cmd.exe /c "$(wslpath -w "{{godot_win}}")" -e --path "$(wslpath -w "{{project_path}}")" & \
+        "{{godot_win}}" -e --path "$(wslpath -w "{{project_path}}")" > /dev/null 2>&1 & \
     else \
         echo "   [Environment]: Native Linux detected"; \
         {{godot_linux}} -e --path {{project_path}} & \
