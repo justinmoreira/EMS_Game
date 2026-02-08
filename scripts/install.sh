@@ -75,15 +75,16 @@ ensure_systemd
 # ── Helper: install a package if missing ──────────────────────
 ensure_pkg() {
   local cmd="$1"
+  local pkg="${2:-$cmd}"  # Optional package name (defaults to cmd)
   if command -v "$cmd" &>/dev/null; then return 0; fi
 
   echo "==> $cmd not found, installing..."
   case "$PLATFORM" in
     arch)
-      sudo pacman -S --noconfirm "$cmd"
+      sudo pacman -S --noconfirm "$pkg"
       ;;
     ubuntu|wsl)
-      sudo apt-get update -qq && sudo apt-get install -y -qq "$cmd"
+      sudo apt-get update -qq && sudo apt-get install -y -qq "$pkg"
       ;;
     *)
       echo "ERROR: $cmd is not installed and platform not recognized."
@@ -96,6 +97,7 @@ ensure_pkg() {
 # ── Core dependencies ─────────────────────────────────────────
 ensure_pkg git
 ensure_pkg curl
+ensure_pkg docker docker.io  # docker.io on Ubuntu/Debian, docker on Arch
 
 # ── Install Nix if missing ────────────────────────────────────
 if ! command -v nix &>/dev/null; then
@@ -212,3 +214,5 @@ echo "    just edit     # open Godot editor"
 echo "    just build    # build for web"
 echo "============================================"
 echo ""
+
+source "$RC_FILE"
