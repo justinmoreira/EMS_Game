@@ -7,8 +7,21 @@ echo "==> EMS Game Installer"
 echo ""
 
 # ── Determine project directory ───────────────────────────────
-# Check if we're already inside EMS_Game or a subdirectory of it
 find_project_dir() {
+  # If in WSL, always use Windows user directory for Godot access
+  if grep -qi microsoft /proc/version 2>/dev/null; then
+    # Use WIN_USER if provided, otherwise try to detect it
+    local win_user="${WIN_USER:-}"
+    if [ -z "$win_user" ]; then
+      win_user=$(powershell.exe -c '$env:USERNAME' 2>/dev/null | tr -d '\r')
+    fi
+    if [ -n "$win_user" ]; then
+      echo "/mnt/c/Users/${win_user}/EMS_Game"
+      return 0
+    fi
+  fi
+  
+  # For non-WSL: Check if we're already inside EMS_Game or a subdirectory of it
   local current_dir="$PWD"
   while [ "$current_dir" != "/" ]; do
     if [ "$(basename "$current_dir")" = "EMS_Game" ]; then
@@ -18,22 +31,8 @@ find_project_dir() {
     current_dir="$(dirname "$current_dir")"
   done
   
-  # Not found in parent directories
-  # If in WSL, use Windows user directory for Godot access
-  if grep -qi microsoft /proc/version 2>/dev/null; then
-    # Use WIN_USER if provided, otherwise try to detect it
-    local win_user="${WIN_USER:-}"
-    if [ -z "$win_user" ]; then
-      win_user=$(powershell.exe -c '$env:USERNAME' 2>/dev/null | tr -d '\r')
-    fi
-    if [ -n "$win_user" ]; then
-      echo "/mnt/c/Users/${win_user}/EMS_Game"
-    else
-      echo "$HOME/EMS_Game"
-    fi
-  else
-    echo "$HOME/EMS_Game"
-  fi
+  # Default to home directory
+  echo "$HOME/EMS_Game"
 }
 
 DIR=$(find_project_dir)
@@ -234,6 +233,14 @@ cd "$DIR"
 if [ ! -f .envrc ]; then
   git checkout dev_setup
 fi
+
+# ── Create .env file with GODOT_WIN if provided ───────────────
+if [ -n "${GODOT_WIN:-}" ]; then
+  echo "==> Configuring GODOT_WIN path..."
+  echo "GODOT_WIN=$GODOT_WIN" > .env
+  echo "    ✓ Created .env with GODOT_WIN=$GODOT_WIN"
+fi
+
 direnv allow .
 
 # Actually load the environment
