@@ -227,6 +227,10 @@ if [ ! -f .envrc ]; then
 fi
 direnv allow .
 
+# Actually load the environment
+echo "==> Loading Nix environment..."
+eval "$(direnv export $SHELL_NAME)"
+
 # ── Done ───────────────────────────────────────────────────────
 echo ""
 echo "============================================"
