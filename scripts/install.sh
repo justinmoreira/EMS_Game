@@ -21,8 +21,11 @@ find_project_dir() {
   # Not found in parent directories
   # If in WSL, use Windows user directory for Godot access
   if grep -qi microsoft /proc/version 2>/dev/null; then
-    # Get Windows username from environment or path
-    local win_user=$(powershell.exe -c '$env:USERNAME' 2>/dev/null | tr -d '\r')
+    # Use WIN_USER if provided, otherwise try to detect it
+    local win_user="${WIN_USER:-}"
+    if [ -z "$win_user" ]; then
+      win_user=$(powershell.exe -c '$env:USERNAME' 2>/dev/null | tr -d '\r')
+    fi
     if [ -n "$win_user" ]; then
       echo "/mnt/c/Users/${win_user}/EMS_Game"
     else

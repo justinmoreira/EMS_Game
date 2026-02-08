@@ -136,7 +136,8 @@ Start-Sleep -Seconds 2
 
 # 7. Install Project
 Write-Host "`nInstalling EMS Game project..."
-wsl -d $newDistroName bash -c "curl -sSL $projectInstallUrl | bash"
+$winUsername = $env:USERNAME
+wsl -d $newDistroName bash -c "WIN_USER='$winUsername' curl -sSL $projectInstallUrl | bash"
 
 # 8. Configure GODOT_WIN path in project
 Write-Host "`nConfiguring Godot path for WSL..."
