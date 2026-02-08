@@ -46,11 +46,20 @@ echo "    Project directory: $DIR"
 # ── Ensure parent directory is writable (WSL-specific) ────────
 if grep -qi microsoft /proc/version 2>/dev/null; then
   PARENT_DIR=$(dirname "$DIR")
+  if [ ! -d "$PARENT_DIR" ]; then
+    echo "==> Creating $PARENT_DIR..."
+    if ! mkdir -p "$PARENT_DIR" 2>/dev/null; then
+      echo "ERROR: Cannot create $PARENT_DIR"
+      echo "       Try creating it from Windows first: New-Item -ItemType Directory -Force -Path 'C:\\Users\\${WIN_USER}'"
+      exit 1
+    fi
+  fi
+  
   if [ ! -w "$PARENT_DIR" ]; then
-    echo "==> Creating and fixing permissions for $PARENT_DIR..."
-    sudo mkdir -p "$PARENT_DIR" 2>/dev/null || true
-    sudo chown -R "$USER:$USER" "$PARENT_DIR" 2>/dev/null || true
-    sudo chmod -R u+rwX "$PARENT_DIR" 2>/dev/null || true
+    echo "ERROR: $PARENT_DIR is not writable by user '$USER'"
+    echo "       This is likely a Windows filesystem permissions issue."
+    echo "       From PowerShell, run: icacls 'C:\\Users\\${WIN_USER}' /grant ${USER}:F"
+    exit 1
   fi
 fi
 
