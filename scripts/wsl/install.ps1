@@ -134,6 +134,18 @@ Write-Host "`nRestarting WSL instance to apply changes..."
 wsl --terminate $newDistroName
 Start-Sleep -Seconds 2
 
+# 6.5. Grant WSL user permissions to Windows user directory
+Write-Host "`nConfiguring Windows filesystem permissions..."
+$winUsername = $env:USERNAME
+$userDir = "C:\Users\$winUsername"
+Write-Host "Granting 'dev' user access to $userDir..."
+icacls $userDir /grant "dev:F" /T 2>&1 | Out-Null
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "    ✓ Permissions configured successfully"
+} else {
+    Write-Host "    ⚠ Warning: Could not set permissions automatically. You may need to run as Administrator."
+}
+
 # 7. Install Project
 Write-Host "`nInstalling EMS Game project..."
 $winUsername = $env:USERNAME
