@@ -99,6 +99,13 @@ ensure_pkg git
 ensure_pkg curl
 ensure_pkg docker docker.io  # docker.io on Ubuntu/Debian, docker on Arch
 
+# ── Setup Docker permissions ──────────────────────────────────
+if ! groups "$USER" | grep -q docker; then
+  echo "==> Adding $USER to docker group..."
+  sudo usermod -aG docker "$USER"
+  echo "    ✓ User added to docker group"
+fi
+
 # ── Install Nix if missing ────────────────────────────────────
 if ! command -v nix &>/dev/null; then
   echo "==> Nix not found, installing via Determinate Systems installer..."
@@ -204,15 +211,10 @@ RC_FILE="$HOME/.bashrc"
 
 echo ""
 echo "============================================"
-echo "  Install complete! Run this to get started:"
-echo ""
-echo "    Reload terminal or run:"
-echo "    source $RC_FILE && cd $DIR"
-echo ""
-echo "  Then:"
-echo "    just edit     # open Godot editor"
-echo "    just build    # build for web"
+echo "  Install complete!"
 echo "============================================"
 echo ""
 
-source "$RC_FILE"
+echo "Starting new shell in $DIR with docker group..."
+cd "$DIR"
+exec newgrp docker
