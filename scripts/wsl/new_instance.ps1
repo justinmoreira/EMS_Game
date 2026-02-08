@@ -8,7 +8,8 @@ $tarballUrl = "https://cloud-images.ubuntu.com/wsl/noble/current/ubuntu-noble-ws
 $tarballPath = "$env:TEMP\ubuntu-2404-rootfs.tar.gz"
 
 # 2. Download the RootFS (approx 70-100MB)
-Write-Host "Downloading Ubuntu 24.04 RootFS..." Invoke-WebRequest -Uri $tarballUrl -OutFile $tarballPath -UseBasicParsing
+Write-Host "Downloading Ubuntu 24.04 RootFS..."
+Invoke-WebRequest -Uri $tarballUrl -OutFile $tarballPath -UseBasicParsing
 
 # 3. Create Directory and Import
 Write-Host "Importing into $installDir..."
