@@ -1,2 +1,2 @@
-wsl --unregister Ubuntu-Clean
-Remove-Item -Recurse -Force C:\WSL\Ubuntu-Clean
+wsl --unregister ems-wsl
+Remove-Item -Recurse -Force C:\WSL\ems-wsl
