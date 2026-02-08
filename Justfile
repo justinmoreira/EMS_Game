@@ -1,4 +1,5 @@
 set shell := ["bash", "-c"]
+set dotenv-load
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 godot_version := "4.6.stable"

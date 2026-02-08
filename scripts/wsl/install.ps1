@@ -6,6 +6,65 @@ $tarballPath = "$env:TEMP\ubuntu-2404-rootfs.tar.gz"
 # TODO: Update when merged to main
 $postInstallUrl = "https://raw.githubusercontent.com/justinmoreira/EMS_Game/dev_setup/scripts/wsl/post_install.sh"
 $projectInstallUrl = "https://raw.githubusercontent.com/justinmoreira/EMS_Game/dev_setup/scripts/install.sh"
+$godotVersion = "4.6-stable"
+$godotDownloadUrl = "https://github.com/godotengine/godot/releases/download/${godotVersion}/Godot_v${godotVersion}_win64.exe.zip"
+
+# 1.5. Search for existing Godot installation
+Write-Host "`n==> Checking for Godot..."
+$godotExePath = $null
+
+# First check PATH using Get-Command
+$godotCmd = Get-Command "Godot*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($godotCmd) {
+    $godotExePath = $godotCmd.Source
+    Write-Host "Found Godot in PATH: $godotExePath"
+} else {
+    # Fall back to searching common directories
+    $searchPaths = @(
+        "$env:ProgramFiles\Godot",
+        "${env:ProgramFiles(x86)}\Godot",
+        "$env:LOCALAPPDATA\Godot",
+        "$env:APPDATA\Godot"
+    )
+
+    foreach ($path in $searchPaths) {
+        if (Test-Path $path) {
+            $found = Get-ChildItem -Path $path -Filter "Godot*.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) {
+                $godotExePath = $found.FullName
+                Write-Host "Found Godot at: $godotExePath"
+                break
+            }
+        }
+    }
+}
+
+# If not found, prompt for installation
+if (-not $godotExePath) {
+    Write-Host "Godot not found. Installing..."
+    $defaultGodotDir = "$env:LOCALAPPDATA\Godot"
+    $godotInstallDir = Read-Host "Install Godot to (press Enter for default: $defaultGodotDir)"
+    if ([string]::IsNullOrWhiteSpace($godotInstallDir)) {
+        $godotInstallDir = $defaultGodotDir
+    }
+    
+    Write-Host "Downloading Godot ${godotVersion} for Windows..."
+    $godotZipPath = "$env:TEMP\godot.zip"
+    Invoke-WebRequest -Uri $godotDownloadUrl -OutFile $godotZipPath -UseBasicParsing
+    
+    Write-Host "Installing to $godotInstallDir..."
+    New-Item -ItemType Directory -Force -Path $godotInstallDir | Out-Null
+    Expand-Archive -Path $godotZipPath -DestinationPath $godotInstallDir -Force
+    Remove-Item $godotZipPath
+    
+    $godotExePath = "$godotInstallDir\Godot_v${godotVersion}_win64.exe"
+    Write-Host "Godot installed successfully!"
+}
+
+# Convert Windows path to WSL path format
+$wslGodotPath = $godotExePath -replace '\\', '/' -replace '^([A-Z]):', '/mnt/$1' -replace '/mnt/([A-Z])', { "/mnt/$($_.Groups[1].Value.ToLower())" }
+
+Write-Host "WSL Path: $wslGodotPath"
 
 # 2. Download the RootFS (approx 70-100MB)
 Write-Host "Downloading Ubuntu 24.04 RootFS..."
@@ -29,5 +88,23 @@ wsl --terminate $newDistroName
 Start-Sleep -Seconds 2
 
 # 7. Install Project
-Write-Host "Done! Launching $newDistroName..."
+Write-Host "`nInstalling EMS Game project..."
 wsl -d $newDistroName bash -c "curl -sSL $projectInstallUrl | bash"
+
+# 8. Configure GODOT_WIN path in project
+Write-Host "`nConfiguring Godot path for WSL..."
+wsl -d $newDistroName bash -c @"
+if [ -f ~/EMS_Game/.env ]; then
+    if ! grep -q 'GODOT_WIN' ~/EMS_Game/.env; then
+        echo 'GODOT_WIN=\"$wslGodotPath\"' >> ~/EMS_Game/.env
+    fi
+else
+    echo 'GODOT_WIN=\"$wslGodotPath\"' > ~/EMS_Game/.env
+fi
+"@
+
+Write-Host "`n===================================="
+Write-Host "Installation Complete!"
+Write-Host "===================================="
+Write-Host "Godot installed at: $godotExePath"
+Write-Host "WSL path configured: $wslGodotPath"
