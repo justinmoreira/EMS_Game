@@ -2,10 +2,27 @@
 set -euo pipefail
 
 REPO="https://github.com/justinmoreira/EMS_Game.git"
-DIR="EMS_Game"
 
 echo "==> EMS Game Installer"
 echo ""
+
+# ── Determine project directory ───────────────────────────────
+# Check if we're already inside EMS_Game or a subdirectory of it
+find_project_dir() {
+  local current_dir="$PWD"
+  while [ "$current_dir" != "/" ]; do
+    if [ "$(basename "$current_dir")" = "EMS_Game" ]; then
+      echo "$current_dir"
+      return 0
+    fi
+    current_dir="$(dirname "$current_dir")"
+  done
+  # Not found in parent directories, use EMS_Game in current location
+  echo "${PWD}/EMS_Game"
+}
+
+DIR=$(find_project_dir)
+echo "    Project directory: $DIR"
 
 # ── Detect platform ───────────────────────────────────────────
 detect_platform() {
