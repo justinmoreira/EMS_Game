@@ -134,16 +134,15 @@ Write-Host "`nRestarting WSL instance to apply changes..."
 wsl --terminate $newDistroName
 Start-Sleep -Seconds 2
 
-# 6.5. Grant WSL user permissions to Windows user directory
-Write-Host "`nConfiguring Windows filesystem permissions..."
+# 6.5. Create project directory from WSL as dev user
+Write-Host "`nPreparing project directory..."
 $winUsername = $env:USERNAME
-$userDir = "C:\Users\$winUsername"
-Write-Host "Granting 'dev' user access to $userDir..."
-icacls $userDir /grant "dev:F" /T 2>&1 | Out-Null
+$createDirCmd = "mkdir -p /mnt/c/Users/$winUsername/EMS_Game && echo 'Directory ready'"
+$result = wsl -d $newDistroName -u dev bash -c $createDirCmd
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "    ✓ Permissions configured successfully"
+    Write-Host "    ✓ $result"
 } else {
-    Write-Host "    ⚠ Warning: Could not set permissions automatically. You may need to run as Administrator."
+    Write-Host "    ⚠ Warning: Could not create directory from WSL. Will try during installation..."
 }
 
 # 7. Install Project
