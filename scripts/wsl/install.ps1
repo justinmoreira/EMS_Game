@@ -55,7 +55,7 @@ if (-not $godotExePath) {
         }
     }
     
-    Write-Host "Downloading Godot ${godotVersion} for Windows..."
+    Write-Host "Downloading Godot ${godotVersion} for Windows to $godotInstallDir..."
     $godotZipPath = "$env:TEMP\godot.zip"
     Invoke-WebRequest -Uri $godotDownloadUrl -OutFile $godotZipPath -UseBasicParsing
     
