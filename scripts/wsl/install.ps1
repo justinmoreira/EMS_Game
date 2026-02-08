@@ -58,7 +58,18 @@ if (-not $godotExePath) {
     Remove-Item $godotZipPath
     
     $godotExePath = "$godotInstallDir\Godot_v${godotVersion}_win64.exe"
+    
+    # Create Start Menu shortcut
+    $startMenuPath = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs"
+    $shortcutPath = "$startMenuPath\Godot ${godotVersion}.lnk"
+    $WScriptShell = New-Object -ComObject WScript.Shell
+    $shortcut = $WScriptShell.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath = $godotExePath
+    $shortcut.WorkingDirectory = $godotInstallDir
+    $shortcut.Save()
+    
     Write-Host "Godot installed successfully!"
+    Write-Host "Start Menu shortcut created"
 }
 
 # Convert Windows path to WSL path format
