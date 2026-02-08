@@ -17,5 +17,4 @@ wsl --import $newDistroName $installDir $tarballPath
 Remove-Item $tarballPath
 
 # 5. Launch
-Write-Host "Done! Launching..."
-wsl -d $newDistroName
+Write-Host "Done! Launch with `wsl -d $newDistroName`"

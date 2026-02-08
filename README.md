@@ -2,7 +2,20 @@
 
 ## Setup
 
-# This command will clone the repo for you
+### WSL
+
+Setup clean distro:
+`irm https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/wsl/new_instance.ps1 | iex`
+
+Launch:
+`wsl -d ems-wsl`
+
+Uninstall distro with:
+`irm https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/wsl/uninstall.ps1 | iex`
+
+### Project
+
+*This command will clone the repo for you*
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/install.sh | bash
