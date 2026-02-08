@@ -39,9 +39,30 @@ if ($godotCmd) {
     }
 }
 
-# If not found, prompt for installation
+# If not found, ask user for manual path or install
 if (-not $godotExePath) {
-    Write-Host "Godot not found. Installing..."
+    Write-Host "Godot not found in standard locations."
+    $userChoice = Read-Host "Do you have Godot installed elsewhere? [Y/n] (default: no, install)"
+    
+    if ($userChoice -eq "Y" -or $userChoice -eq "y") {
+        $customPath = Read-Host "Enter the full path to your Godot installation directory"
+        if (Test-Path $customPath) {
+            $found = Get-ChildItem -Path $customPath -Filter "Godot*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) {
+                $godotExePath = $found.FullName
+                Write-Host "Found Godot at: $godotExePath"
+            } else {
+                Write-Host "No Godot executable found in $customPath. Will install instead."
+            }
+        } else {
+            Write-Host "Path not found: $customPath. Will install instead."
+        }
+    }
+}
+
+# If still not found, install Godot
+if (-not $godotExePath) {
+    Write-Host "Installing Godot..."
     $defaultGodotDir = "$env:LOCALAPPDATA\Godot"
     $baseDir = Read-Host "Install Godot to (press Enter for default: $defaultGodotDir)"
     if ([string]::IsNullOrWhiteSpace($baseDir)) {
@@ -65,6 +86,14 @@ if (-not $godotExePath) {
     Remove-Item $godotZipPath
     
     $godotExePath = "$godotInstallDir\Godot_v${godotVersion}_win64.exe"
+    
+    # Add Godot directory to PATH
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    if ($userPath -notlike "*$godotInstallDir*") {
+        Write-Host "Adding $godotInstallDir to PATH..."
+        [Environment]::SetEnvironmentVariable("Path", "$userPath;$godotInstallDir", "User")
+        $env:Path += ";$godotInstallDir"
+    }
     
     # Create Start Menu shortcut
     $startMenuPath = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs"
