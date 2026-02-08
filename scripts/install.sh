@@ -43,6 +43,17 @@ find_project_dir() {
 DIR=$(find_project_dir)
 echo "    Project directory: $DIR"
 
+# ── Ensure parent directory is writable (WSL-specific) ────────
+if grep -qi microsoft /proc/version 2>/dev/null; then
+  PARENT_DIR=$(dirname "$DIR")
+  if [ ! -w "$PARENT_DIR" ]; then
+    echo "==> Creating and fixing permissions for $PARENT_DIR..."
+    sudo mkdir -p "$PARENT_DIR" 2>/dev/null || true
+    sudo chown -R "$USER:$USER" "$PARENT_DIR" 2>/dev/null || true
+    sudo chmod -R u+rwX "$PARENT_DIR" 2>/dev/null || true
+  fi
+fi
+
 # ── Detect platform ───────────────────────────────────────────
 detect_platform() {
   if grep -qi microsoft /proc/version 2>/dev/null; then
