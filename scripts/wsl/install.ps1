@@ -62,7 +62,7 @@ if (-not $godotExePath) {
 }
 
 # Convert Windows path to WSL path format
-$wslGodotPath = $godotExePath -replace '\\', '/' -replace '^([A-Z]):', '/mnt/$1' -replace '/mnt/([A-Z])', { "/mnt/$($_.Groups[1].Value.ToLower())" }
+$wslGodotPath = wsl wslpath -u "'$godotExePath'"
 
 Write-Host "WSL Path: $wslGodotPath"
 
