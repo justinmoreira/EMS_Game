@@ -62,7 +62,7 @@ ensure_systemd() {
       echo "❗ ACTION REQUIRED ❗"
       echo "You must restart this WSL instance for systemd to start."
       echo "  1. Exit this shell."
-      echo "  2. In PowerShell, run: wsl --terminate <YourDistroName>"
+      echo "  2. In PowerShell, run: wsl --terminate ems-wsl"
       echo "  3. Re-open WSL and run this script again."
       echo ""
       exit 1
@@ -145,6 +145,9 @@ if ! command -v direnv &>/dev/null; then
   esac
 fi
 
+SHELL_NAME=$(basename "${SHELL:-/bin/bash}")
+RC_FILE="~/.${SHELL_NAME}rc"
+
 # ── Hook nix + direnv into the user's shell ───────────────────
 add_line() {
   local rc_file="$1"
@@ -165,7 +168,6 @@ if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
   . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 fi'
 
-SHELL_NAME=$(basename "${SHELL:-/bin/bash}")
 case "$SHELL_NAME" in
   zsh)
     add_line "$HOME/.zshrc" "nix-daemon.sh" "$NIX_SOURCE"
@@ -203,19 +205,13 @@ fi
 
 # ── Allow direnv for this project ─────────────────────────────
 cd "$DIR"
-# TODO: Remove when merged to main
-if [ ! -f .envrc ]; then
-  git checkout dev_setup
-fi
 direnv allow .
-
-
-echo "Starting new shell in $DIR with docker group..."
-exec newgrp docker && exec $SHELL -l
 
 # ── Done ───────────────────────────────────────────────────────
 echo ""
 echo "============================================"
 echo "  Install complete!"
+echo ""
+echo "  Manually run 'cd $DIR && exec newgrp docker"
 echo "============================================"
 echo ""
