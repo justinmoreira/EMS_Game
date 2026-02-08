@@ -43,9 +43,16 @@ if ($godotCmd) {
 if (-not $godotExePath) {
     Write-Host "Godot not found. Installing..."
     $defaultGodotDir = "$env:LOCALAPPDATA\Godot"
-    $godotInstallDir = Read-Host "Install Godot to (press Enter for default: $defaultGodotDir)"
-    if ([string]::IsNullOrWhiteSpace($godotInstallDir)) {
+    $baseDir = Read-Host "Install Godot to (press Enter for default: $defaultGodotDir)"
+    if ([string]::IsNullOrWhiteSpace($baseDir)) {
         $godotInstallDir = $defaultGodotDir
+    } else {
+        # Append \Godot if not already there
+        if ($baseDir -notlike "*\Godot") {
+            $godotInstallDir = Join-Path $baseDir "Godot"
+        } else {
+            $godotInstallDir = $baseDir
+        }
     }
     
     Write-Host "Downloading Godot ${godotVersion} for Windows..."
