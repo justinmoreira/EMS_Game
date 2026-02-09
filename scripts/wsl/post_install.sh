@@ -21,10 +21,12 @@ cat >> /etc/wsl.conf << 'EOF'
 
 [automount]
 enabled=true
-options = "metadata,uid=1001,gid=1002,umask=022,fmask=11,case=off"
+options="uid=1000,gid=1000,umask=022,fmask=111"
 
-# Ensure interop is enabled (required for .exe execution)
-echo -e "\n[interop]\nenabled=true\nappendWindowsPath=true" >> /etc/wsl.conf
+[interop]
+enabled=true
+appendWindowsPath=true
+EOF
 
 # Exit to apply changes 
 exit 
