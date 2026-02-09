@@ -21,7 +21,7 @@ cat >> /etc/wsl.conf << 'EOF'
 
 [automount]
 enabled=true
-options="uid=1000,gid=1000,umask=022,fmask=111"
+options="metadata,uid=1000,gid=1000,umask=000,fmask=000"
 
 [interop]
 enabled=true
