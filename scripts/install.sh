@@ -238,7 +238,7 @@ direnv hook fish | source'
 esac
 
 # ── Clone ──────────────────────────────────────────────────────
-if [ -d "$DIR" ]; then
+if [ -d "$DIR/.git" ]; then
   echo "==> Directory '$DIR' already exists, pulling latest..."
   git -C "$DIR" pull --ff-only
 else
