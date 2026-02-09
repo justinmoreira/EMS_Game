@@ -16,7 +16,12 @@ echo -e "[user]\ndefault=dev" > /etc/wsl.conf
 echo -e "\n[boot]\nsystemd=true" >> /etc/wsl.conf
 
 # Configure automount for better Windows filesystem permissions
-echo -e "\n[automount]\nenabled=true\noptions=\"metadata,uid=1000,gid=1000,umask=022,fmask=11,dmask=000\"" >> /etc/wsl.conf
+# Use simple drvfs without metadata for better compatibility
+cat >> /etc/wsl.conf << 'EOF'
+
+[automount]
+enabled=true
+options = "metadata,uid=1001,gid=1002,umask=022,fmask=11,case=off"
 
 # Ensure interop is enabled (required for .exe execution)
 echo -e "\n[interop]\nenabled=true\nappendWindowsPath=true" >> /etc/wsl.conf
