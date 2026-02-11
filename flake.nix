@@ -20,6 +20,7 @@
             unzip          # For extracting templates
             docker         # For serving web builds
             fzf            # For just --choose
+            gh             # GitHub CLI
           ];
 
           shellHook = ''

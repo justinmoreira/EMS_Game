@@ -90,3 +90,8 @@ run:
 stop:
     docker rm -f ems-game-server 2>/dev/null
     @echo "🛑 Server stopped."
+
+# [Auth] Authenticate with GitHub CLI
+github-auth:
+    @echo "🔐 Authenticating with GitHub..."
+    @gh auth login
