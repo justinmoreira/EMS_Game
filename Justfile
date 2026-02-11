@@ -13,8 +13,9 @@ export_preset := "Web"
 is_wsl := shell("grep -qi microsoft /proc/version && echo 'true' || echo 'false'")
 
 # ── Executable Paths ──────────────────────────────────────────────────────────
-# [Linux Native]: The binary installed via Nix/Pacman
-godot_linux := "godot4"
+# [Linux Native]: Find system Godot (non-Nix) for GUI, use Nix for headless
+godot_linux_gui := shell("which -a godot 2>/dev/null | grep -v '/nix/store' | head -n1 || echo 'godot'")
+godot_linux_headless := "godot4"
 
 # [Windows Native]: Path to your Windows Executable (WSL Access Path)
 # You can override this in a .env file or by running `GODOT_WIN=... just edit`
@@ -60,7 +61,7 @@ edit:
         powershell.exe -Command "Start-Process '$(wslpath -w "{{godot_win}}")' -ArgumentList '-e','--path','$(wslpath -w "{{project_path}}")'"; \
     else \
         echo "   [Environment]: Native Linux detected"; \
-        {{godot_linux}} -e --path {{project_path}} & \
+        {{godot_linux_gui}} -e --path {{project_path}} &>/dev/null & \
     fi
 
 # [Build] Compile the game to Web (Headless)
@@ -68,7 +69,7 @@ edit:
 build:
     @echo "🔨 Building for Web (Headless)..."
     @mkdir -p {{export_path}}
-    {{godot_linux}} --headless --path {{project_path}} --export-release "{{export_preset}}" ../{{export_path}}/index.html
+    {{godot_linux_headless}} --headless --path {{project_path}} --export-release "{{export_preset}}" ../{{export_path}}/index.html
     @echo "✅ Build complete in {{export_path}}"
 
 # [Serve] Launch web build in a Docker container (http://localhost:8080)

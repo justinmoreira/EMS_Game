@@ -24,6 +24,7 @@ irm https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/wsl/in
 ```powershell
 wsl -d ems-wsl
 cd /mnt/c/Users/<you>/EMS_Game
+just code  # Open VSCode editor (If available)
 ```
 
 ### B) Linux / Existing WSL

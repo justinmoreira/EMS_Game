@@ -138,6 +138,12 @@ ensure_pkg git
 ensure_pkg curl
 ensure_pkg docker docker.io  # docker.io on Ubuntu/Debian, docker on Arch
 
+# ── Install Godot for GUI (native Linux only, skip on prod/staging) ───────
+DEPLOY_ENV="${DEPLOY_ENV:-development}"
+if [ "$PLATFORM" != "wsl" ] && [ "$DEPLOY_ENV" != "production" ] && [ "$DEPLOY_ENV" != "staging" ]; then
+  ensure_pkg godot
+fi
+
 # ── Setup Docker permissions ──────────────────────────────────
 if ! groups "$USER" | grep -q docker; then
   echo "==> Adding $USER to docker group..."
