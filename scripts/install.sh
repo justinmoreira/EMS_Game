@@ -186,8 +186,8 @@ fi
 
 SHELL_NAME=$(basename "${SHELL:-/bin/bash}")
 
-# Activate direnv in current shell
-eval "$(direnv hook $SHELL_NAME)"
+# Activate direnv in current shell (use bash hook since we're running in bash)
+eval "$(direnv hook bash)"
 
 RC_FILE="$HOME/.${SHELL_NAME}rc"
 
@@ -225,9 +225,7 @@ eval "$(direnv hook bash)"'
   fish)
     mkdir -p "$HOME/.config/fish/conf.d"
     add_line "$HOME/.config/fish/conf.d/nix.fish" "nix-daemon" '# nix (added by EMS_Game installer)
-if test -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish
-  . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish
-end'
+if test -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish; . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish; end'
     add_line "$HOME/.config/fish/conf.d/direnv.fish" "direnv hook" '# direnv (added by EMS_Game installer)
 direnv hook fish | source'
     ;;
