@@ -36,8 +36,8 @@ find_project_dir() {
     current_dir="$(dirname "$current_dir")"
   done
   
-  # Default to home directory
-  echo "$HOME/EMS_Game"
+  # Native Linux: Use current directory + /EMS_Game
+  echo "$PWD/EMS_Game"
 }
 
 DIR=$(find_project_dir)
@@ -189,7 +189,7 @@ SHELL_NAME=$(basename "${SHELL:-/bin/bash}")
 # Activate direnv in current shell
 eval "$(direnv hook $SHELL_NAME)"
 
-RC_FILE="~/.${SHELL_NAME}rc"
+RC_FILE="$HOME/.${SHELL_NAME}rc"
 
 # ── Hook nix + direnv into the user's shell ───────────────────
 add_line() {
