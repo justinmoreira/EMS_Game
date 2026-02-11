@@ -137,3 +137,6 @@ github-auth:
     
     echo ""
     echo "🎉 Authentication setup complete!"
+
+code:
+    code dev.code-workspace

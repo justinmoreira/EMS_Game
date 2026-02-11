@@ -11,7 +11,9 @@
 			// "EMS_Game.code-workspace": true,
 			"flake.lock": true,
 			".envrc": true,
-			"**/.godot": true
+			"**/.godot": true,
+			"dev.code-workspace": true,
+			".vscode/": true
 		}
 	}
 }

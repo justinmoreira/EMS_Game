@@ -1,6 +1,6 @@
 # EMS Game
 
-A Godot 4.6 game project with automated WSL/Linux development environment setup using Nix.
+A Godot 4.6 game project with automated WSL and Linux development environments.
 
 ## Quick Start
 
@@ -9,7 +9,7 @@ A Godot 4.6 game project with automated WSL/Linux development environment setup 
 This creates a clean Ubuntu 24.04 WSL distro with everything pre-configured:
 
 ```powershell
-irm https://raw.githubusercontent.com/justinmoreira/EMS_Game/dev_setup/scripts/wsl/install.ps1 | iex
+irm https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/wsl/install.ps1 | iex
 ```
 
 **What this does:**
@@ -29,7 +29,7 @@ cd /mnt/c/Users/<you>/EMS_Game
 ### B) Linux / Existing WSL
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/justinmoreira/EMS_Game/dev_setup/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/install.sh | bash
 ```
 
 Installs to `~/EMS_Game` with the same dependencies as above.
@@ -44,18 +44,24 @@ just github-auth  # Login to push changes
 The project uses [just](https://just.systems/) as a task runner. All commands work from WSL:
 
 ```bash
-just          # List all available commands
+just              # List all available commands
 just --choose # TUI choose commands
-just edit     # Open Godot editor (Windows GUI from WSL)
-just build    # Export game for web
-just run      # Build + serve on localhost:8080
-just stop     # Stop web server
+just github-auth  # Authenticate with GitHub for contribution
+just edit         # Open Godot editor (Windows GUI from WSL)
+just build        # Export game for web
+just run          # Build + serve on localhost:8080
+just stop         # Stop web server
+just code         # Open vscode workspace
 ```
+## Additional Considerations
 
-**How it works:**
-- **WSL**: Editor opens Windows Godot.exe via PowerShell, builds use Linux headless binary
-- **Native Linux**: Both editor and builds use the native Linux binary
-- Project files live in Windows filesystem (`/mnt/c/`) so Godot Windows can access them
+#### 1) VSCode
+   *Sharable Extensions*
+   - Consider installing recommended extensions
+   - Add any extensions you think would be useful for the team via Installed Extensions -> Extension Manager/Setting Icon -> `Add to Workspace Recommendations`
+
+#### 2) TODOs
+Along with JIRA, it would be useful to annotate further work needed in-line on our code as comment with `# TODO:` as many extensions support this feature
 
 ## Project Structure
 
@@ -95,3 +101,11 @@ wsl -d ems-wsl           # Specify if you have other distros
 wsl --terminate ems-wsl  # Stop distro
 wsl -l -v                # List all distros
 ```
+
+### Technologies
+- `nix flakes`: Replicable environments between dev and prod
+- `direnv`: auto-load environments on `cd`
+- `Just`: `Make` alternative for reusable recipes/commands
+- `Docker`: VM for isolated webserver
+- `nginx`: Router/Webserver
+- `godot`: GUI for game editing and binaries for compilation to web
