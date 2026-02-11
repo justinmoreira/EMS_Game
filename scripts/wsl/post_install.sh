@@ -28,5 +28,15 @@ enabled=true
 appendWindowsPath=true
 EOF
 
+# Install binfmt-support for better Windows executable interop
+apt-get update -qq
+apt-get install -y binfmt-support
+
+# Configure WSL interop for Windows executables
+mkdir -p /usr/lib/binfmt.d
+if ! grep -q "WSLInterop" /usr/lib/binfmt.d/WSLInterop.conf 2>/dev/null; then
+  sh -c 'echo :WSLInterop:M::MZ::/init:PF > /usr/lib/binfmt.d/WSLInterop.conf'
+fi
+
 # Exit to apply changes 
 exit 

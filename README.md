@@ -2,7 +2,9 @@
 
 ## Setup
 
-### WSL
+*These commands will clone the repo for you*
+
+### 1) New WSL Instance
 
 Setup clean distro:
 `irm https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/wsl/install.ps1 | iex`
@@ -16,9 +18,7 @@ Stop:
 Uninstall distro with:
 `irm https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/wsl/uninstall.ps1 | iex`
 
-### Project
-
-*This command will clone the repo for you*
+### 2) Pre-existing Linux (VM, Existing WSL, Linux Machine)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/install.sh | bash
@@ -29,7 +29,7 @@ This single command will:
 - Install all dependencies if missing (any Linux or wsl)
 - Reload your shell so the nix dev environment loads automatically on `cd`
 
-Then:
+### Project Commands
 
 ```bash
 just --chose  # Select action
