@@ -91,7 +91,49 @@ stop:
     docker rm -f ems-game-server 2>/dev/null
     @echo "🛑 Server stopped."
 
-# [Auth] Authenticate with GitHub CLI
+# [Auth] Authenticate with GitHub CLI and configure Git
 github-auth:
-    @echo "🔐 Authenticating with GitHub..."
-    @gh auth login
+    #!/usr/bin/env bash
+    echo "🔐 Checking GitHub authentication..."
+    
+    # Check if already authenticated
+    if gh auth status &>/dev/null; then
+        echo "✅ Already authenticated with GitHub"
+        gh auth status
+        echo ""
+        read -p "Do you want to logout and re-authenticate? [y/N]: " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            gh auth logout
+            gh auth login
+        fi
+    else
+        echo "🔑 Not authenticated. Starting login..."
+        gh auth login
+    fi
+    
+    echo ""
+    echo "🔧 Checking Git configuration..."
+    
+    # Check git user.name
+    if ! git config --global user.name &>/dev/null; then
+        echo "⚠️  Git user.name not set"
+        read -p "Enter your name for Git commits: " git_name
+        git config --global user.name "$git_name"
+        echo "✅ Set user.name to: $git_name"
+    else
+        echo "✅ user.name: $(git config --global user.name)"
+    fi
+    
+    # Check git user.email
+    if ! git config --global user.email &>/dev/null; then
+        echo "⚠️  Git user.email not set"
+        read -p "Enter your email for Git commits: " git_email
+        git config --global user.email "$git_email"
+        echo "✅ Set user.email to: $git_email"
+    else
+        echo "✅ user.email: $(git config --global user.email)"
+    fi
+    
+    echo ""
+    echo "🎉 Authentication setup complete!"
