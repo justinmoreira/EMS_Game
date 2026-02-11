@@ -33,7 +33,7 @@ just code  # Open VSCode editor (If available)
 curl -fsSL https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/install.sh | bash
 ```
 
-Installs to `~/EMS_Game` with the same dependencies as above.
+Installs to `./EMS_Game` (current directory) with the same dependencies as above.
 
 ## Github Login
 ```
@@ -90,7 +90,7 @@ GODOT_WIN=/mnt/c/path/to/Godot_v4.6-stable_win64.exe  # WSL only
 
 ```powershell
 # Remove WSL distro (keeps project files)
-irm https://raw.githubusercontent.com/justinmoreira/EMS_Game/dev_setup/scripts/wsl/uninstall.ps1 | iex
+irm https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/wsl/uninstall.ps1 | iex
 
 # Manually delete project
 rm -rf C:\Users\<you>\EMS_Game
