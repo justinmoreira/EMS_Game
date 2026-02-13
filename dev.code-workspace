@@ -12,8 +12,12 @@
 			"flake.lock": true,
 			".envrc": true,
 			"**/.godot": true,
-			"dev.code-workspace": true,
-			".vscode/": true
+			// "dev.code-workspace": true,
+			".vscode/": true,
+			"**/.astro/": true,
+			"**/node_modules/": true,
+			"**/*.lock": true,
+			".claude/": true
 		}
 	}
 }
