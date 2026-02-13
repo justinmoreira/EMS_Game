@@ -8,10 +8,11 @@ import NavBar from '../components/NavBar';
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
   </Fragment>
 
+
   <NavBar client:load />
 
   <!-- Game canvas -->
-  <canvas id="canvas" class="block w-screen h-screen touch-none outline-none"></canvas>
+  <canvas id="canvas" class="block w-screen h-[calc(100vh-3rem)] mt-12 touch-none outline-none"></canvas>
 
   <!-- Loading overlay -->
   <div id="status" class="fixed inset-0 bg-neutral-900 flex flex-col items-center justify-center">

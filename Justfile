@@ -163,3 +163,7 @@ github-auth:
 
 code:
     code dev.code-workspace
+
+# [Cat all files in a directory, respecting .gitignore, print filename before content]
+print-files dir:
+    @git -C {{dir}} ls-files | xargs -I{} sh -c 'echo "===== {{dir}}/{} ====="; cat "{{dir}}/{}" || true'
