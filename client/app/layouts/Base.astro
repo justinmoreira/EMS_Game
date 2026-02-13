@@ -20,5 +20,19 @@ const { title } = Astro.props;
   </head>
   <body class="bg-black text-white m-0 overflow-hidden">
     <slot />
+    <script is:inline>
+      if (location.hostname === "localhost") {
+        setInterval(() => {
+          fetch('/godot/index.pck', { cache: 'no-store' })
+            .then(res => res.headers.get('last-modified'))
+            .then(modified => {
+              if (window.lastGodotBuild && window.lastGodotBuild !== modified) {
+                location.reload();
+              }
+              window.lastGodotBuild = modified;
+            });
+        }, 2000);
+      }
+    </script>
   </body>
 </html>

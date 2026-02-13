@@ -90,8 +90,14 @@ build:
     @just build_game
     @just _build_client
 
-# [Dev] Start Astro dev server (run build_game first if needed)
+# [Watch] Rebuild Godot web export on file changes
+watch_godot:
+    find godot -type f | entr -r just build_game
+
+# [Dev] Start Astro dev server and watch for changes to git-tracked Godot files (auto rebuild)
 dev:
+    @echo "🔄 Watching git-tracked godot/ files for changes (auto rebuild)..."
+    (git ls-files | grep '^godot/' | entr -r just build_game &)
     cd {{client_path}} && bun run dev
 
 # [Serve] Launch web build in a Docker container (http://localhost:8080)

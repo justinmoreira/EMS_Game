@@ -22,6 +22,7 @@
             fzf            # For just --choose
             gh             # GitHub CLI
             bun            # For Astro web shell (build tool)
+            entr           # For watching file changes (optional)
           ];
 
           shellHook = ''
