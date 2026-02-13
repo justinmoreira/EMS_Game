@@ -45,14 +45,23 @@ just github-auth  # Login to push changes
 The project uses [just](https://just.systems/) as a task runner. All commands work from WSL:
 
 ```bash
-just              # List all available commands
-just --choose # TUI choose commands
-just github-auth  # Authenticate with GitHub for contribution
-just edit         # Open Godot editor (Windows GUI from WSL)
-just build        # Export game for web
-just run          # Build + serve on localhost:8080
-just stop         # Stop web server
-just code         # Open vscode workspace
+just                 # List all available recipes
+
+just --choose        # Interface to select from commands
+
+just edit            # Open the Godot editor (GUI; cross-platform)
+
+just dev             # THE MAIN COMMAND
+# Start Astro dev server & auto-rebuild Godot on git-tracked file changes
+
+just build           # Full production build pipeline: Godot → Astro → server/public/
+
+just run             # Build for Production and serve (Godot + Astro + Docker)
+just stop            # Stop the Production Docker web server
+just github-auth     # Authenticate with GitHub CLI and configure Git
+just code            # Open VS Code workspace
+
+# And other less important commands
 ```
 ## Additional Considerations
 
