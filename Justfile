@@ -5,7 +5,8 @@ set dotenv-load
 godot_version := "4.6.stable"
 godot_release_tag := "4.6-stable"
 project_path := "godot"
-export_path := "server/public"
+client_path := "client"
+export_path := "client/public/godot"
 export_preset := "Web"
 
 # ── Environment Detection ─────────────────────────────────────────────────────
@@ -64,13 +65,34 @@ edit:
         {{godot_linux_gui}} -e --path {{project_path}} &>/dev/null & \
     fi
 
-# [Build] Compile the game to Web (Headless)
-# Logic: Always use the Linux binary from Nix. It works headless perfectly on WSL.
-build:
-    @echo "🔨 Building for Web (Headless)..."
+_init_client:
+    #!/usr/bin/env bash
+    echo "📦 Installing client dependencies with bun..."
+    cd client
+    bun install
+    cd ..
+
+# [Build] Export Godot game to web artifacts
+build_game:
+    @echo "🔨 Exporting Godot for Web..."
     @mkdir -p {{export_path}}
     {{godot_linux_headless}} --headless --path {{project_path}} --export-release "{{export_preset}}" ../{{export_path}}/index.html
-    @echo "✅ Build complete in {{export_path}}"
+    @echo "✅ Godot export complete"
+
+# [Build] Build Astro site (outputs to server/public/)
+_build_client:
+    @echo "🔨 Building Astro site..."
+    cd {{client_path}} && bun run build
+    @echo "✅ Astro build complete"
+
+# [Build] Full pipeline: Godot → Astro → server/public/
+build:
+    @just build_game
+    @just _build_client
+
+# [Dev] Start Astro dev server (run build_game first if needed)
+dev:
+    cd {{client_path}} && bun run dev
 
 # [Serve] Launch web build in a Docker container (http://localhost:8080)
 _serve:
@@ -78,7 +100,7 @@ _serve:
     docker rm -f ems-game-server 2>/dev/null
     echo "🌐 Serving at http://localhost:8080"
     docker run -d --name ems-game-server -p 8080:80 \
-        -v "$(pwd)/{{export_path}}:/usr/share/nginx/html:ro" \
+        -v "$(pwd)/server/public:/usr/share/nginx/html:ro" \
         -v "$(pwd)/server/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
         --rm nginx:alpine
 

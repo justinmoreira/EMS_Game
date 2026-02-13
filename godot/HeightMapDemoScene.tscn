@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://bn4u0huoq8jcd"]
+
+[ext_resource type="Shader" uid="uid://caylm3dak62ug" path="res://shaders/HeightMap.gdshader" id="1_x2fym"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tj7hv"]
+shader = ExtResource("1_x2fym")
+shader_parameter/sensitivity = 1.0
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_yq8se"]
+noise_type = 3
+seed = -3
+frequency = 0.008
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_x2fym"]
+noise = SubResource("FastNoiseLite_yq8se")
+
+[node name="Node2D" type="Node2D" unique_id=1658932687]
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=109968464]
+material = SubResource("ShaderMaterial_tj7hv")
+texture = SubResource("NoiseTexture2D_x2fym")
