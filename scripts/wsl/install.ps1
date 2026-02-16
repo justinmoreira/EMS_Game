@@ -3,8 +3,24 @@ $newDistroName = "ems-wsl"
 $installDir = "C:\WSL\ems-wsl" 
 $tarballUrl = "https://cloud-images.ubuntu.com/wsl/releases/noble/current/ubuntu-noble-wsl-amd64-24.04lts.rootfs.tar.gz"
 $tarballPath = "$env:TEMP\ubuntu-2404-rootfs.tar.gz"
-# TODO: Update when merged to main
-$postInstallUrl = "https://raw.githubusercontent.com/justinmoreira/EMS_Game/dev_setup/scripts/wsl/post_install.sh"
+
+# Try to use 'main' branch, fallback to 'dev_setup' if not found
+$postInstallUrlMain = "https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/wsl/post_install.sh"
+$postInstallUrlDev = "https://raw.githubusercontent.com/justinmoreira/EMS_Game/dev_setup/scripts/wsl/post_install.sh"
+
+# Test if main branch script exists
+try {
+    $response = Invoke-WebRequest -Uri $postInstallUrlMain -Method Head -UseBasicParsing -ErrorAction Stop
+    if ($response.StatusCode -eq 200) {
+        $postInstallUrl = $postInstallUrlMain
+        Write-Host "Using post_install.sh from main branch."
+    } else {
+        throw "Not found"
+    }
+} catch {
+    $postInstallUrl = $postInstallUrlDev
+    Write-Host "Using post_install.sh from dev_setup branch (main not found)."
+}
 $projectInstallUrl = "https://raw.githubusercontent.com/justinmoreira/EMS_Game/dev_setup/scripts/install.sh"
 $godotVersion = "4.6-stable"
 $godotDownloadUrl = "https://github.com/godotengine/godot/releases/download/${godotVersion}/Godot_v${godotVersion}_win64.exe.zip"
