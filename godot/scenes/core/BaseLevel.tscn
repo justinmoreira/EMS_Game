@@ -1,0 +1,25 @@
+[gd_scene load_steps=3 format=3 uid="uid://baselevel_master"]
+
+[ext_resource type="Script" path="res://scenes/core/BaseLevel.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/HUD.tscn" id="2_hud"]
+
+[node name="BaseLevel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="BackgroundTexture" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 0
+
+[node name="HUD" parent="." instance=ExtResource("2_hud")]

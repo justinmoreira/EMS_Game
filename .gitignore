@@ -1,0 +1,19 @@
+# Godot
+godot/.godot/
+
+# Godot export artifacts (in Astro public dir)
+client/public/godot/
+
+# Astro build output (served by nginx)
+server/public/
+
+# direnv cache
+.direnv/
+
+# Secrets
+.env
+
+node_modules/
+**/bun.lock
+
+.astro/
