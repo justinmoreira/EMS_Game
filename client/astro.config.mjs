@@ -8,7 +8,12 @@ export default defineConfig({
   integrations: [preact()],
   vite: {
     plugins: [tailwindcss()],
-    server: {},
+    server: {
+      headers: {
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp",
+      }
+    }
   },
   outDir: '../server/public',
 });
