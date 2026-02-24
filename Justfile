@@ -96,9 +96,12 @@ watch_godot:
 
 # [Dev] Start Astro dev server and watch for changes to git-tracked Godot files (auto rebuild)
 dev:
-    @echo "🔄 Watching git-tracked godot/ files for changes (auto rebuild)..."
+    #!/usr/bin/env bash
+    echo "🔄 Watching git-tracked godot/ files for changes (auto rebuild)..."
     (git ls-files | grep '^godot/' | entr -r just build_game &)
-    cd {{client_path}} && bun run dev
+    PORT=$(python3 scripts/find_port.py)
+    echo "🌐 Starting dev server on port $PORT..."
+    cd {{client_path}} && bun run dev --port $PORT
 
 # [Serve] Launch web build in a Docker container (http://localhost:8080)
 _serve:
