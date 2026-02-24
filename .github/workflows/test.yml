@@ -1,0 +1,33 @@
+name: Godot Tests
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Godot Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Godot 4.6
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip
+          unzip -q Godot_v4.6-stable_linux.x86_64.zip
+          sudo mv Godot_v4.6-stable_linux.x86_64 /usr/local/bin/godot4
+          sudo chmod +x /usr/local/bin/godot4
+
+      - name: Import project assets
+        run: godot4 --headless --path godot --import
+
+      - name: Run tests
+        run: |
+          OUTPUT=$(godot4 --headless --path godot res://scenes/tests/TestRunner.tscn 2>&1)
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -q "\[FAIL\]"; then
+            echo "❌ Tests failed!"
+            exit 1
+          fi
+          echo "✅ All tests passed!"
