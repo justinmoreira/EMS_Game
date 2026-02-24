@@ -86,6 +86,17 @@ lint fix="" unsafe="":
         (cd {{client_path}} && bun run lint) || exit_code=$?
         echo "🔍 Linting GDScript (gdlint)..."
         find {{project_path}} -name "*.gd" | xargs gdlint || exit_code=$?
+        echo "🔍 Checking GDScript (Godot compiler)..."
+        gd_errors=0
+        while IFS= read -r gd_file; do
+            rel="res://${gd_file#{{project_path}}/}"
+            out=$({{godot_linux_headless}} --headless --path {{project_path}} --script "$rel" --check-only 2>&1 || true)
+            if echo "$out" | grep -q "SCRIPT ERROR: Parse Error:"; then
+                echo "$out" | grep -A1 "SCRIPT ERROR: Parse Error:" | grep -v "^--$"
+                gd_errors=1
+            fi
+        done < <(find {{project_path}} -name "*.gd")
+        [ $gd_errors -eq 0 ] || { echo "❌ GDScript compile errors found."; exit_code=1; }
         [ $exit_code -eq 0 ] && echo "✅ All lint checks passed!" || echo "❌ Lint errors found."
         exit $exit_code
     fi
