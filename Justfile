@@ -79,8 +79,6 @@ lint fix="" unsafe="":
         set -e
         echo "🔧 Fixing TypeScript/Astro (Biome)..."
         (cd {{client_path}} && bun run fix -- {{unsafe}})
-        echo "🔧 Formatting GDScript (gdformat)..."
-        find {{project_path}} -name "*.gd" | xargs gdformat
         echo "✅ All fixes applied!"
     else
         exit_code=0
