@@ -17,7 +17,6 @@
 			"source.organizeImports.biome": "explicit"
 		},
 		"godotTools.editorPath.godot4": "${workspaceFolder}/scripts/godot4",
-		"astro.language-server.ls-path": "${workspaceFolder}/scripts/astro-ls",
 		"[astro]": {
 			"editor.defaultFormatter": "astro-build.astro-vscode"
 		},

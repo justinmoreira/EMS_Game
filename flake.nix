@@ -40,12 +40,12 @@
             GODOT_SETTINGS="$HOME/.config/godot/editor_settings-4.tres"
             if [ ! -f "$GODOT_SETTINGS" ]; then
               mkdir -p "$(dirname "$GODOT_SETTINGS")"
-              printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\ntext_editor/indent/type = 1\ntext_editor/indent/size = 2\n' > "$GODOT_SETTINGS"
+              printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\ntext_editor/indent/type = 0\ntext_editor/indent/size = 4\n' > "$GODOT_SETTINGS"
             else
-              sed -i 's|text_editor/indent/type = .*|text_editor/indent/type = 1|' "$GODOT_SETTINGS"
-              sed -i 's|text_editor/indent/size = .*|text_editor/indent/size = 2|' "$GODOT_SETTINGS"
-              grep -q "text_editor/indent/type" "$GODOT_SETTINGS" || sed -i '/\[resource\]/a text_editor/indent/type = 1' "$GODOT_SETTINGS"
-              grep -q "text_editor/indent/size" "$GODOT_SETTINGS" || sed -i '/\[resource\]/a text_editor/indent/size = 2' "$GODOT_SETTINGS"
+              sed -i 's|text_editor/indent/type = .*|text_editor/indent/type = 0|' "$GODOT_SETTINGS"
+              sed -i 's|text_editor/indent/size = .*|text_editor/indent/size = 4|' "$GODOT_SETTINGS"
+              grep -q "text_editor/indent/type" "$GODOT_SETTINGS" || sed -i '/\[resource\]/a text_editor/indent/type = 0' "$GODOT_SETTINGS"
+              grep -q "text_editor/indent/size" "$GODOT_SETTINGS" || sed -i '/\[resource\]/a text_editor/indent/size = 4' "$GODOT_SETTINGS"
             fi
 
             if ! systemctl is-active --quiet docker 2>/dev/null; then
