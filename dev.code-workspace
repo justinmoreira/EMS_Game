@@ -11,11 +11,10 @@
 		"editor.insertSpaces": true,
 		"files.trimTrailingWhitespace": true,
 
-		"biome.lsp.bin": "./client/node_modules/@biomejs/cli-linux-x64/biome",
-		"biome.lsp.trace.server": "verbose",
+		"biome.lsp.bin": "/home/dev/.local/bin/biome",
 		"editor.codeActionsOnSave": {
-			"source.fixAll.biome": "explicit",
-			"source.organizeImports.biome": "explicit"
+			"source.fixAll.biome": "always",
+			"source.organizeImports.biome": "always"
 		},
 		"godotTools.editorPath.godot4": "${workspaceFolder}/scripts/godot4",
 		"[astro]": {

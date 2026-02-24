@@ -67,6 +67,14 @@
 
             cp ./client/biome.json ./biome.json
 
+            # Symlink Biome binary to a stable path for VSCode Server LSP (biome.lsp.bin)
+            # node_modules path changes with version bumps; this stays stable
+            BIOME_BIN=$(find "$HOME/.bun/install/cache/@biomejs/cli-linux-x64@"*/biome -type f 2>/dev/null | sort -V | tail -1)
+            if [ -n "$BIOME_BIN" ]; then
+              mkdir -p "$HOME/.local/bin"
+              ln -sfn "$BIOME_BIN" "$HOME/.local/bin/biome"
+            fi
+
             echo "🎮 EMS Game Dev Environment Loaded"
           '';
         };
