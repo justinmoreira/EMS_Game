@@ -1,5 +1,6 @@
 extends BaseLevel
 
+
 func update_shader():
     if background and background.material:
         var screen_size = get_viewport_rect().size

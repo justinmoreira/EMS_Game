@@ -72,6 +72,18 @@ _init_client:
     bun install
     cd ..
 
+# [Test] Run Godot unit tests headlessly
+test:
+    #!/usr/bin/env bash
+    echo "🧪 Running Godot unit tests..."
+    OUTPUT=$({{godot_linux_headless}} --headless --path {{project_path}} res://scenes/tests/TestRunner.tscn 2>&1)
+    echo "$OUTPUT"
+    if echo "$OUTPUT" | grep -q "\[FAIL\]"; then
+        echo "❌ Tests failed!"
+        exit 1
+    fi
+    echo "✅ All tests passed!"
+
 # [Build] Export Godot game to web artifacts
 build_game:
     @echo "🔨 Exporting Godot for Web..."
