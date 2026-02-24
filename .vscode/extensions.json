@@ -3,5 +3,9 @@
         "wayou.vscode-todo-highlight",
         "gruntfuggly.todo-tree",
         "astro-build.astro-vscode",
+        "bradlc.vscode-tailwindcss",
+        "stivo.tailwind-fold",
+        "biomejs.biome",
+        "geequlim.godot-tools",
     ]
 }

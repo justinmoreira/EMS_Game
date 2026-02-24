@@ -72,6 +72,26 @@ _init_client:
     bun install
     cd ..
 
+# [Lint] Run all linters. Pass --fix to auto-fix, --fix --unsafe to also apply unsafe fixes.
+lint fix="" unsafe="":
+    #!/usr/bin/env bash
+    if [ "{{fix}}" = "--fix" ]; then
+        set -e
+        echo "🔧 Fixing TypeScript/Astro (Biome)..."
+        (cd {{client_path}} && bun run fix -- {{unsafe}})
+        echo "🔧 Formatting GDScript (gdformat)..."
+        find {{project_path}} -name "*.gd" | xargs gdformat
+        echo "✅ All fixes applied!"
+    else
+        exit_code=0
+        echo "🔍 Linting TypeScript/Astro (Biome)..."
+        (cd {{client_path}} && bun run lint) || exit_code=$?
+        echo "🔍 Linting GDScript (gdlint)..."
+        find {{project_path}} -name "*.gd" | xargs gdlint || exit_code=$?
+        [ $exit_code -eq 0 ] && echo "✅ All lint checks passed!" || echo "❌ Lint errors found."
+        exit $exit_code
+    fi
+
 # [Test] Run Godot unit tests headlessly
 test:
     #!/usr/bin/env bash
