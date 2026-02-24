@@ -2,23 +2,38 @@
 import NavBar from "../components/NavBar";
 import Base from "../layouts/Base.astro";
 ---
+
 <Base title="EMS Sim">
   <Fragment slot="head">
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
   </Fragment>
 
-
   <NavBar client:load />
 
   <!-- Game canvas -->
-  <canvas id="canvas" class="block w-screen h-[calc(100vh-3rem)] mt-12 touch-none outline-none"></canvas>
+  <canvas
+    id="canvas"
+    class="block w-screen h-[calc(100vh-3rem)] mt-12 touch-none outline-none"
+  ></canvas>
 
   <!-- Loading overlay -->
-  <div id="status" class="fixed inset-0 bg-neutral-900 flex flex-col items-center justify-center">
-    <img id="status-splash" src="/godot/index.png" alt="" class="max-h-full max-w-full m-auto" />
+  <div
+    id="status"
+    class="fixed inset-0 bg-neutral-900 flex flex-col items-center justify-center"
+  >
+    <img
+      id="status-splash"
+      src="/godot/index.png"
+      alt=""
+      class="max-h-full max-w-full m-auto"
+    />
     <progress id="status-progress" class="w-1/2 hidden"></progress>
-    <div id="status-notice" class="hidden bg-red-900/80 border border-red-700 rounded-lg text-neutral-200 mx-8 p-4 text-center"></div>
+    <div
+      id="status-notice"
+      class="hidden bg-red-900/80 border border-red-700 rounded-lg text-neutral-200 mx-8 p-4 text-center"
+    >
+    </div>
   </div>
 
   <!-- Load Godot engine (sets window.Engine globally) -->
@@ -69,7 +84,12 @@ import Base from "../layouts/Base.astro";
 
       function displayFailureNotice(err) {
         console.error(err);
-        const msg = err instanceof Error ? err.message : typeof err === "string" ? err : "An unknown error occurred.";
+        const msg =
+          err instanceof Error
+            ? err.message
+            : typeof err === "string"
+              ? err
+              : "An unknown error occurred.";
         statusNotice.textContent = msg;
         statusNotice.style.display = "block";
         statusOverlay.style.visibility = "visible";
@@ -78,20 +98,24 @@ import Base from "../layouts/Base.astro";
 
       const missing = Engine.getMissingFeatures({ threads: false });
       if (missing.length !== 0) {
-        displayFailureNotice("Missing browser features:\n" + missing.join("\n"));
+        displayFailureNotice(
+          "Missing browser features:\n" + missing.join("\n"),
+        );
       } else {
         setStatusMode("progress");
-        engine.startGame({
-          onProgress: function (current, total) {
-            if (current > 0 && total > 0) {
-              statusProgress.value = current;
-              statusProgress.max = total;
-            } else {
-              statusProgress.removeAttribute("value");
-              statusProgress.removeAttribute("max");
-            }
-          },
-        }).then(() => setStatusMode("hidden"), displayFailureNotice);
+        engine
+          .startGame({
+            onProgress: function (current, total) {
+              if (current > 0 && total > 0) {
+                statusProgress.value = current;
+                statusProgress.max = total;
+              } else {
+                statusProgress.removeAttribute("value");
+                statusProgress.removeAttribute("max");
+              }
+            },
+          })
+          .then(() => setStatusMode("hidden"), displayFailureNotice);
       }
 
       // Register service worker for PWA (production only)
