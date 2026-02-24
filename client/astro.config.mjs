@@ -17,6 +17,7 @@ function crossOriginIsolation() {
 
 export default defineConfig({
   srcDir: './app',
+  base: process.env.BASE_URL ?? '/',
   server: { port: 8080 },
   integrations: [preact()],
   vite: {
