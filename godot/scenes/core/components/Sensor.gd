@@ -1,5 +1,5 @@
-extends Node
 class_name Sensor
+extends Node
 
 @export_group("Settings")
 @export_range(0, 10) var sensitivity: int = 3

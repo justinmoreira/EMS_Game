@@ -72,6 +72,18 @@ _init_client:
     bun install
     cd ..
 
+# [Test] Run Godot unit tests headlessly
+test:
+    #!/usr/bin/env bash
+    echo "🧪 Running Godot unit tests..."
+    OUTPUT=$({{godot_linux_headless}} --headless --path {{project_path}} res://scenes/tests/TestRunner.tscn 2>&1)
+    echo "$OUTPUT"
+    if echo "$OUTPUT" | grep -q "\[FAIL\]"; then
+        echo "❌ Tests failed!"
+        exit 1
+    fi
+    echo "✅ All tests passed!"
+
 # [Build] Export Godot game to web artifacts
 build_game:
     @echo "🔨 Exporting Godot for Web..."
@@ -96,9 +108,12 @@ watch_godot:
 
 # [Dev] Start Astro dev server and watch for changes to git-tracked Godot files (auto rebuild)
 dev:
-    @echo "🔄 Watching git-tracked godot/ files for changes (auto rebuild)..."
+    #!/usr/bin/env bash
+    echo "🔄 Watching git-tracked godot/ files for changes (auto rebuild)..."
     (git ls-files | grep '^godot/' | entr -r just build_game &)
-    cd {{client_path}} && bun run dev
+    PORT=$(python3 scripts/find_port.py)
+    echo "🌐 Starting dev server on port $PORT..."
+    cd {{client_path}} && bun run dev --port $PORT
 
 # [Serve] Launch web build in a Docker container (http://localhost:8080)
 _serve:

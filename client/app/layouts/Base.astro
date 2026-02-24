@@ -1,12 +1,13 @@
 ---
-import '../styles/global.css';
+import "../styles/global.css";
 
 interface Props {
   title: string;
 }
 const { title } = Astro.props;
 ---
-<!DOCTYPE html>
+
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -23,9 +24,9 @@ const { title } = Astro.props;
     <script is:inline>
       if (location.hostname === "localhost") {
         setInterval(() => {
-          fetch('/godot/index.pck', { cache: 'no-store' })
-            .then(res => res.headers.get('last-modified'))
-            .then(modified => {
+          fetch("/godot/index.pck", { cache: "no-store" })
+            .then((res) => res.headers.get("last-modified"))
+            .then((modified) => {
               if (window.lastGodotBuild && window.lastGodotBuild !== modified) {
                 location.reload();
               }

@@ -17,7 +17,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-PhysicsEngine="*uid://dl3rfiwfto5sp"
+PhysicsEngine="*res://scripts/PhysicsEngine.gd"
 
 [display]
 
