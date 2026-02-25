@@ -137,9 +137,12 @@ watch_godot:
 
 # [Dev] Start Astro dev server and watch for changes to git-tracked Godot files (auto rebuild)
 dev:
-    @echo "🔄 Watching git-tracked godot/ files for changes (auto rebuild)..."
+    #!/usr/bin/env bash
+    echo "🔄 Watching git-tracked godot/ files for changes (auto rebuild)..."
     (git ls-files | grep '^godot/' | entr -r just build_game &)
-    cd {{client_path}} && bun run dev
+    PORT=$(python3 scripts/find_port.py)
+    echo "🌐 Starting dev server on port $PORT..."
+    cd {{client_path}} && bun run dev --port $PORT
 
 # [Serve] Launch web build in a Docker container (http://localhost:8080)
 _serve:
@@ -165,7 +168,7 @@ stop:
 github-auth:
     #!/usr/bin/env bash
     echo "🔐 Checking GitHub authentication..."
-    
+
     # Check if already authenticated
     if gh auth status &>/dev/null; then
         echo "✅ Already authenticated with GitHub"
@@ -181,10 +184,10 @@ github-auth:
         echo "🔑 Not authenticated. Starting login..."
         gh auth login
     fi
-    
+
     echo ""
     echo "🔧 Checking Git configuration..."
-    
+
     # Check git user.name
     if ! git config --global user.name &>/dev/null; then
         echo "⚠️  Git user.name not set"
@@ -194,7 +197,7 @@ github-auth:
     else
         echo "✅ user.name: $(git config --global user.name)"
     fi
-    
+
     # Check git user.email
     if ! git config --global user.email &>/dev/null; then
         echo "⚠️  Git user.email not set"
@@ -204,7 +207,7 @@ github-auth:
     else
         echo "✅ user.email: $(git config --global user.email)"
     fi
-    
+
     echo ""
     echo "🎉 Authentication setup complete!"
 

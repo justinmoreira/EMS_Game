@@ -17,7 +17,8 @@ function crossOriginIsolation() {
 
 export default defineConfig({
   srcDir: './app',
-  server: { port: 8080 },
+  base: process.env.BASE_URL ?? '/',
+  server: { port: 8080, strictPort: false },
   integrations: [preact()],
   vite: {
     plugins: [tailwindcss(), crossOriginIsolation()],

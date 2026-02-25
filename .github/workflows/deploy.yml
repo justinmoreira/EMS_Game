@@ -1,0 +1,69 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Install Godot 4.6
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip
+          unzip -q Godot_v4.6-stable_linux.x86_64.zip
+          sudo mv Godot_v4.6-stable_linux.x86_64 /usr/local/bin/godot4
+          sudo chmod +x /usr/local/bin/godot4
+
+      - name: Install Godot export templates
+        run: |
+          TEMPLATE_DIR="$HOME/.local/share/godot/export_templates/4.6.stable"
+          mkdir -p "$TEMPLATE_DIR"
+          wget -q -O /tmp/templates.tpz https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_export_templates.tpz
+          unzip -q /tmp/templates.tpz -d /tmp/templates_extracted
+          mv /tmp/templates_extracted/templates/* "$TEMPLATE_DIR"
+
+      - name: Export Godot game
+        run: |
+          mkdir -p client/public/godot
+          godot4 --headless --path godot --import
+          godot4 --headless --path godot --export-release "Web" ../client/public/godot/index.html
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install client dependencies
+        run: cd client && bun install
+
+      - name: Build Astro site
+        run: cd client && bun run build
+        env:
+          BASE_URL: /EMS_Game
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: server/public
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

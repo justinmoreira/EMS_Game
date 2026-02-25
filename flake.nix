@@ -21,9 +21,9 @@
             docker         # For serving web builds
             fzf            # For just --choose
             gh             # GitHub CLI
-            bun                          # For Astro web shell (build tool)
-            entr                         # For watching file changes (optional)
-            gdtoolkit_4                  # GDScript linter/formatter (gdlint, gdformat)
+            bun            # For Astro web shell (build tool)
+            entr           # For watching file changes (optional)
+            python313      # For dev tooling scripts - eventual API
           ];
 
           shellHook = ''
