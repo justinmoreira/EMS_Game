@@ -1,6 +1,7 @@
 ---
 import NavBar from "@/components/NavBar";
 import Base from "@/layouts/Base.astro";
+import { BASE_URL } from "@/utils";
 ---
 
 <Base title="EMS Sim">
@@ -24,7 +25,7 @@ import Base from "@/layouts/Base.astro";
   >
     <img
       id="status-splash"
-      src="/godot/index.png"
+      src={`${BASE_URL}/godot/index.png`}
       alt=""
       class="max-h-full max-w-full m-auto"
     />
@@ -37,15 +38,15 @@ import Base from "@/layouts/Base.astro";
   </div>
 
   <!-- Load Godot engine (sets window.Engine globally) -->
-  <script is:inline src="/godot/index.js"></script>
+  <script is:inline src={`${BASE_URL}/godot/index.js`}></script>
 
   <!-- Bootstrap the game -->
-  <script is:inline>
+  <script is:inline define:vars={{ BASE_URL }}>
     const GODOT_CONFIG = {
       args: [],
       canvasResizePolicy: 2,
       ensureCrossOriginIsolationHeaders: true,
-      executable: "/godot/index",
+      executable: BASE_URL + "/godot/index",
       focusCanvas: true,
       gdextensionLibs: [],
     };
@@ -120,7 +121,7 @@ import Base from "@/layouts/Base.astro";
 
       // Register service worker for PWA (production only)
       if ("serviceWorker" in navigator && location.hostname !== "localhost") {
-        navigator.serviceWorker.register("/sw.js");
+        navigator.serviceWorker.register(BASE_URL + "/sw.js");
       }
     })();
   </script>
