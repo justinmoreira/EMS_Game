@@ -7,5 +7,6 @@
         "stivo.tailwind-fold",
         "biomejs.biome",
         "geequlim.godot-tools",
+        "nefrob.vscode-just-syntax",
     ]
 }
