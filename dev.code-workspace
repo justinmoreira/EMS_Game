@@ -29,17 +29,19 @@
 		"files.exclude": {
 			".direnv/": true,
 			".git/": true,
-			// "EMS_Game.code-workspace": true,
 			"flake.lock": true,
 			".envrc": true,
 			"**/.godot": true,
 			// "dev.code-workspace": true,
-			".vscode/": true,
+			// ".vscode/": true,
 			"**/.astro/": true,
 			"**/node_modules/": true,
 			"**/*.lock": true,
 			".claude/": true,
+			// Hidden copy of client/biome.json for vscode
 			"biome.json": true,
+			// hopefully never needs to be touched
+			".gdformatrc": true,
 		}
 	}
 }

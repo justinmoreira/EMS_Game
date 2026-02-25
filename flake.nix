@@ -54,8 +54,8 @@
             fi
 
             # Setup git hooks
-            git config core.hooksPath .githooks
-            chmod +x .githooks/pre-push 2>/dev/null || true
+            git config core.hooksPath .github/hooks
+            chmod +x .github/hooks/pre-push 2>/dev/null || true
 
             cp ./client/biome.json ./biome.json
 
