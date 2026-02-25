@@ -23,6 +23,7 @@
 		"[gdscript]": {
 			"editor.defaultFormatter": "geequlim.godot-tools"
 		},
+		"vscode-just.justPath": "./scripts/just",
 		"files.exclude": {
 			".direnv/": true,
 			".git/": true,
