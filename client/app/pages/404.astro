@@ -1,6 +1,7 @@
 ---
-import NavBar from "../components/NavBar";
-import Base from "../layouts/Base.astro";
+import NavBar from "@/components/NavBar";
+import Base from "@/layouts/Base.astro";
+import { BASE_URL } from "@/utils";
 ---
 
 <Base title="Page Not Found">
@@ -13,7 +14,7 @@ import Base from "../layouts/Base.astro";
       The page you requested does not exist.
     </p>
     <a
-      href="/"
+      href={`${BASE_URL}/`}
       class="mt-6 px-6 py-2 bg-emerald-500 text-black rounded-lg font-semibold"
       >Go Home</a
     >

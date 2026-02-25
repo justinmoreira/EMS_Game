@@ -1,11 +1,11 @@
 const CACHE_NAME = "ems-sim-v1";
 const PRECACHE = [
-  "/",
-  "/manifest.json",
-  "/godot/index.js",
-  "/godot/index.wasm",
-  "/godot/index.pck",
-  "/godot/index.audio.worklet.js",
+  "./",
+  "./manifest.json",
+  "./godot/index.js",
+  "./godot/index.wasm",
+  "./godot/index.pck",
+  "./godot/index.audio.worklet.js",
 ];
 
 self.addEventListener("install", (event) => {
