@@ -24,6 +24,7 @@
             bun            # For Astro web shell (build tool)
             entr           # For watching file changes (optional)
             python313      # For dev tooling scripts - eventual API
+            gdtoolkit_4    # GDScript linter & formatter
           ];
 
           shellHook = ''
