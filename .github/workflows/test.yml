@@ -20,6 +20,9 @@ jobs:
       - name: Lint TypeScript/Astro (Biome)
         run: cd client && bun run lint
 
+      - name: Type-check TypeScript (tsc)
+        run: cd client && bunx tsc --noEmit
+
       - name: Install gdlint
         run: pip install gdtoolkit
 
