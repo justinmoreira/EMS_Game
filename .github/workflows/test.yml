@@ -39,6 +39,9 @@ jobs:
       - name: Lint GDScript (gdlint)
         run: find godot -name "*.gd" | xargs gdlint
 
+      - name: Check GDScript format (gdformat)
+        run: find godot -name "*.gd" | xargs gdformat --diff --check
+
   check:
     name: Check
     runs-on: ubuntu-latest

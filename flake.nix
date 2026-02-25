@@ -37,19 +37,8 @@
               just _init_client
             fi
 
-            # Configure Godot editor to use 4-space indent (matches GDScript convention)
-            GODOT_SETTINGS="$HOME/.config/godot/editor_settings-4.tres"
-            if grep -q "text_editor/indent/size = 4" "$GODOT_SETTINGS" 2>/dev/null; then
-              : # already configured
-            elif [ -f "$GODOT_SETTINGS" ]; then
-              sed -i 's|text_editor/indent/type = .*|text_editor/indent/type = 0|' "$GODOT_SETTINGS"
-              sed -i 's|text_editor/indent/size = .*|text_editor/indent/size = 4|' "$GODOT_SETTINGS"
-              grep -q "text_editor/indent/type" "$GODOT_SETTINGS" || sed -i '/\[resource\]/a text_editor/indent/type = 0' "$GODOT_SETTINGS"
-              grep -q "text_editor/indent/size" "$GODOT_SETTINGS" || sed -i '/\[resource\]/a text_editor/indent/size = 4' "$GODOT_SETTINGS"
-            else
-              mkdir -p "$(dirname "$GODOT_SETTINGS")"
-              printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\ntext_editor/indent/type = 0\ntext_editor/indent/size = 4\n' > "$GODOT_SETTINGS"
-            fi
+            # Configure Godot editor to use tab size 4
+            bash scripts/set_godot_save_fmt.sh
 
             if ! systemctl is-active --quiet docker 2>/dev/null; then
               echo "Starting Docker daemon..."

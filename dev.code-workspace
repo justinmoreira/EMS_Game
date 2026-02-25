@@ -21,7 +21,9 @@
 			"editor.defaultFormatter": "astro-build.astro-vscode"
 		},
 		"[gdscript]": {
-			"editor.defaultFormatter": "geequlim.godot-tools"
+			"editor.defaultFormatter": "geequlim.godot-tools",
+			"editor.tabSize": 4,
+			"editor.insertSpaces": false
 		},
 		"vscode-just.justPath": "./scripts/just",
 		"files.exclude": {
