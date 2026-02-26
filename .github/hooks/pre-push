@@ -1,3 +1,14 @@
 #!/usr/bin/env bash
 echo "🔍 Running lint checks before push..."
-just lint
+if ! just lint; then
+    echo ""
+    echo "=========================================="
+    echo "  Push blocked by lint errors."
+    echo ""
+    echo "  Run:  just lint --fix"
+    echo ""
+    echo "  Still failing? Try:"
+    echo "        just lint --fix --unsafe"
+    echo "=========================================="
+    exit 1
+fi
