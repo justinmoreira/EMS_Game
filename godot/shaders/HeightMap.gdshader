@@ -7,7 +7,7 @@ uniform float aspect_ratio = 1.0;
 
 void fragment() {
     vec2 uv = UV - 0.5;
-    
+
     // CONTAIN LOGIC:
     // If Landscape (Wide): Scale X up to create side bars.
     // If Portrait (Tall): Scale Y up to create top/bottom bars.

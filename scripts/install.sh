@@ -25,7 +25,7 @@ find_project_dir() {
       echo "    WARNING: Could not determine Windows username" >&2
     fi
   fi
-  
+
   # For non-WSL: Check if we're already inside EMS_Game or a subdirectory of it
   local current_dir="$PWD"
   while [ "$current_dir" != "/" ]; do
@@ -35,7 +35,7 @@ find_project_dir() {
     fi
     current_dir="$(dirname "$current_dir")"
   done
-  
+
   # Native Linux: Use current directory + /EMS_Game
   echo "$PWD/EMS_Game"
 }
@@ -54,7 +54,7 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
       exit 1
     fi
   fi
-  
+
   if [ ! -w "$PARENT_DIR" ]; then
     echo "ERROR: $PARENT_DIR is not writable by user '$USER'"
     echo "       This is likely a Windows filesystem permissions issue."
