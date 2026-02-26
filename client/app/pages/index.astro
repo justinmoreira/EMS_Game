@@ -1,6 +1,7 @@
 ---
-import NavBar from "../components/NavBar";
-import Base from "../layouts/Base.astro";
+import NavBar from "@/components/NavBar";
+import Base from "@/layouts/Base.astro";
+import { BASE_URL } from "@/utils";
 ---
 
 <Base title="EMS Sim">
@@ -16,7 +17,7 @@ import Base from "../layouts/Base.astro";
       Gamifying Electro-Magnetic Spectrum
     </p>
     <a
-      href="/play"
+      href={`${BASE_URL}/play`}
       class="mt-4 px-8 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-lg transition-colors"
     >
       Play Now

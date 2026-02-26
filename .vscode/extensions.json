@@ -1,7 +1,19 @@
 {
     "recommendations": [
+        // todo highlighting
         "wayou.vscode-todo-highlight",
         "gruntfuggly.todo-tree",
+        // Tailwind minimize
+        "stivo.tailwind-fold",
+        // Language Linting and Formatting
+        "bradlc.vscode-tailwindcss",
         "astro-build.astro-vscode",
+        "biomejs.biome",
+        "geequlim.godot-tools",
+        // Run Recipes from VSCode
+        "nefrob.vscode-just-syntax",
+        // WSL Remote Development
+        "ms-vscode-remote.remote-wsl",
+        "ms-vscode-remote.vscode-remote-extensionpack",
     ]
 }
