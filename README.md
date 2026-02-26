@@ -124,4 +124,4 @@ wsl -l -v                # List all distros
 
 ### Contributing
 
-Want to contribute? Check out the [Contributing Guide](CONTRIBUTING.md?tab=readme-ov-file) for formatting, linting, and testing conventions.
+Want to contribute? Check out the [Contributing Guide](https://github.com/justinmoreira/EMS_Game?tab=contributing-ov-file) for formatting, linting, and testing conventions.
