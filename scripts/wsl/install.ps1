@@ -1,6 +1,6 @@
 # 1. Set Variables
 $newDistroName = "ems-wsl"
-$installDir = "C:\WSL\ems-wsl" 
+$installDir = "C:\WSL\ems-wsl"
 $tarballUrl = "https://cloud-images.ubuntu.com/wsl/releases/noble/current/ubuntu-noble-wsl-amd64-24.04lts.rootfs.tar.gz"
 $tarballPath = "$env:TEMP\ubuntu-2404-rootfs.tar.gz"
 
@@ -59,7 +59,7 @@ if ($godotCmd) {
 if (-not $godotExePath) {
     Write-Host "Godot not found in standard locations."
     $userChoice = Read-Host "Do you have Godot installed elsewhere? [y/N] (default: no, install)"
-    
+
     if ($userChoice -eq "Y" -or $userChoice -eq "y") {
         $customPath = Read-Host "Enter the full path to your Godot installation directory"
         if (Test-Path $customPath) {
@@ -91,18 +91,18 @@ if (-not $godotExePath) {
             $godotInstallDir = $baseDir
         }
     }
-    
+
     Write-Host "Downloading Godot ${godotVersion} for Windows to $godotInstallDir..."
     $godotZipPath = "$env:TEMP\godot.zip"
     Invoke-WebRequest -Uri $godotDownloadUrl -OutFile $godotZipPath -UseBasicParsing
-    
+
     Write-Host "Installing to $godotInstallDir..."
     New-Item -ItemType Directory -Force -Path $godotInstallDir | Out-Null
     Expand-Archive -Path $godotZipPath -DestinationPath $godotInstallDir -Force
     Remove-Item $godotZipPath
-    
+
     $godotExePath = "$godotInstallDir\Godot_v${godotVersion}_win64.exe"
-    
+
     # Add Godot directory to PATH
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     if ($userPath -notlike "*$godotInstallDir*") {
@@ -110,7 +110,7 @@ if (-not $godotExePath) {
         [Environment]::SetEnvironmentVariable("Path", "$userPath;$godotInstallDir", "User")
         $env:Path += ";$godotInstallDir"
     }
-    
+
     # Create Start Menu shortcut
     $startMenuPath = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs"
     $shortcutPath = "$startMenuPath\Godot ${godotVersion}.lnk"
@@ -119,7 +119,7 @@ if (-not $godotExePath) {
     $shortcut.TargetPath = $godotExePath
     $shortcut.WorkingDirectory = $godotInstallDir
     $shortcut.Save()
-    
+
     Write-Host "Godot installed successfully!"
     Write-Host "Start Menu shortcut created"
 }
