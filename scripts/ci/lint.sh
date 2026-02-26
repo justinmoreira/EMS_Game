@@ -10,6 +10,8 @@ if [ "${1:-}" = "--fix" ]; then
     (cd "$CLIENT_PATH" && bun run fix -- $unsafe)
     echo "🔧 Formatting GDScript (gdformat)..."
     find "$PROJECT_PATH" -name "*.gd" | xargs gdformat
+    echo "🔧 Removing trailing whitespace..."
+    git ls-files -z | xargs -0 sed -i 's/[[:space:]]*$//'
     echo "✅ All fixes applied!"
 else
     exit_code=0
