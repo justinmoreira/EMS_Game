@@ -119,3 +119,9 @@ wsl -l -v                # List all distros
 - `Docker`: VM for isolated webserver
 - `nginx`: Router/Webserver
 - `godot`: GUI for game editing and binaries for compilation to web
+
+---
+
+### Contributing
+
+Want to contribute? Check out the [Contributing Guide](CONTRIBUTING.md?tab=readme-ov-file) for formatting, linting, and testing conventions.
