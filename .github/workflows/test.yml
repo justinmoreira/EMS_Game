@@ -27,23 +27,17 @@ jobs:
       - name: Install client dependencies
         run: cd client && bun install
 
-      - name: Lint TypeScript/Astro (Biome)
-        run: cd client && bun run lint
-
       - name: Cache pip packages
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: pip-gdtoolkit
 
-      - name: Install gdlint
+      - name: Install gdtoolkit
         run: pip install gdtoolkit
 
-      - name: Lint GDScript (gdlint)
-        run: find godot -name "*.gd" | xargs gdlint
-
-      - name: Check GDScript format (gdformat)
-        run: find godot -name "*.gd" | xargs gdformat --diff --check
+      - name: Lint
+        run: ./scripts/ci/lint.sh
 
   check:
     name: Check
@@ -66,12 +60,6 @@ jobs:
       - name: Install client dependencies
         run: cd client && bun install
 
-      - name: Type-check TypeScript (tsc)
-        run: cd client && bunx tsc --noEmit
-
-      - name: Build Astro site
-        run: cd client && bun run build
-
       - name: Cache Godot binary
         id: cache-godot
         uses: actions/cache@v4
@@ -81,25 +69,10 @@ jobs:
 
       - name: Install Godot 4.6
         if: steps.cache-godot.outputs.cache-hit != 'true'
-        run: |
-          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip
-          unzip -q Godot_v4.6-stable_linux.x86_64.zip
-          sudo mv Godot_v4.6-stable_linux.x86_64 /usr/local/bin/godot4
-          sudo chmod +x /usr/local/bin/godot4
+        run: ./scripts/ci/install-godot.sh
 
-      - name: Check GDScript (Godot compiler)
-        run: |
-          godot4 --headless --path godot --import
-          exit_code=0
-          for gd_file in $(find godot -name "*.gd"); do
-            rel="res://${gd_file#godot/}"
-            out=$(godot4 --headless --path godot --script "$rel" --check-only 2>&1 || true)
-            if echo "$out" | grep -q "SCRIPT ERROR: Parse Error:"; then
-              echo "$out" | grep -A1 "SCRIPT ERROR: Parse Error:" | grep -v "^--$"
-              exit_code=1
-            fi
-          done
-          exit $exit_code
+      - name: Check
+        run: ./scripts/ci/check.sh
 
   test:
     name: Test
@@ -118,21 +91,10 @@ jobs:
 
       - name: Install Godot 4.6
         if: steps.cache-godot.outputs.cache-hit != 'true'
-        run: |
-          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip
-          unzip -q Godot_v4.6-stable_linux.x86_64.zip
-          sudo mv Godot_v4.6-stable_linux.x86_64 /usr/local/bin/godot4
-          sudo chmod +x /usr/local/bin/godot4
+        run: ./scripts/ci/install-godot.sh
 
       - name: Import project assets
         run: godot4 --headless --path godot --import
 
-      - name: Run tests
-        run: |
-          OUTPUT=$(godot4 --headless --path godot res://scenes/tests/TestRunner.tscn 2>&1)
-          echo "$OUTPUT"
-          if echo "$OUTPUT" | grep -q "\[FAIL\]"; then
-            echo "❌ Tests failed!"
-            exit 1
-          fi
-          echo "✅ All tests passed!"
+      - name: Test
+        run: ./scripts/ci/test.sh

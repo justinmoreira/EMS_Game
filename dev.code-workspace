@@ -16,7 +16,7 @@
 			"source.fixAll.biome": "always",
 			"source.organizeImports.biome": "always"
 		},
-		"godotTools.editorPath.godot4": "${workspaceFolder}/scripts/godot4",
+		"godotTools.editorPath.godot4": "${workspaceFolder}/scripts/bin/godot4",
 		"[astro]": {
 			"editor.defaultFormatter": "astro-build.astro-vscode"
 		},
@@ -25,7 +25,7 @@
 			"editor.tabSize": 4,
 			"editor.insertSpaces": false
 		},
-		"vscode-just.justPath": "./scripts/just",
+		"vscode-just.justPath": "./scripts/bin/just",
 		"files.exclude": {
 			".direnv/": true,
 			".git/": true,

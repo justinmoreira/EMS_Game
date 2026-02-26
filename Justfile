@@ -30,22 +30,8 @@ default:
 
 # [Setup] Download and install Godot Export Templates (Required for Web Export)
 _init_godot:
-    #!/usr/bin/env bash
     # Note: On WSL, we still want Linux templates because the HEADLESS builder is Linux.
-    TEMPLATE_DIR="$HOME/.local/share/godot/export_templates/{{godot_version}}"
-
-    if [ -f "$TEMPLATE_DIR/web_nothreads_release.zip" ]; then
-        echo "✅ Templates already installed."
-    else
-        echo "⬇️ Downloading Godot {{godot_release_tag}} templates..."
-        rm -rf "$TEMPLATE_DIR" /tmp/templates.tpz /tmp/templates
-        mkdir -p "$TEMPLATE_DIR"
-        wget -q --show-progress -O /tmp/templates.tpz https://github.com/godotengine/godot/releases/download/{{godot_release_tag}}/Godot_v{{godot_release_tag}}_export_templates.tpz
-        unzip -q /tmp/templates.tpz -d /tmp/
-        mv /tmp/templates/* "$TEMPLATE_DIR"
-        rm -rf /tmp/templates.tpz /tmp/templates
-        echo "✅ Templates installed."
-    fi
+    GODOT_RELEASE_TAG={{godot_release_tag}} GODOT_VERSION={{godot_version}} ./scripts/ci/install-templates.sh
 
 # [Edit] Open the Godot Editor (GUI)
 # Logic: If WSL -> Launch Windows Exe via PowerShell. If Arch -> Launch Linux Bin.
@@ -74,59 +60,15 @@ _init_client:
 
 # [Lint] Fast style/format checks. Pass --fix to auto-fix, --fix --unsafe to also apply unsafe fixes.
 lint fix="" unsafe="":
-    #!/usr/bin/env bash
-    if [ "{{fix}}" = "--fix" ]; then
-        set -e
-        echo "🔧 Fixing TypeScript/Astro (Biome)..."
-        (cd {{client_path}} && bun run fix -- {{unsafe}})
-        echo "🔧 Formatting GDScript (gdformat)..."
-        find {{project_path}} -name "*.gd" | xargs gdformat
-        echo "✅ All fixes applied!"
-    else
-        exit_code=0
-        echo "🔍 Linting TypeScript/Astro (Biome)..."
-        (cd {{client_path}} && bun run lint) || exit_code=$?
-        echo "🔍 Linting GDScript (gdlint)..."
-        find {{project_path}} -name "*.gd" | xargs gdlint || exit_code=$?
-        echo "🔍 Checking GDScript format (gdformat)..."
-        find {{project_path}} -name "*.gd" | xargs gdformat --diff --check || exit_code=$?
-        [ $exit_code -eq 0 ] && echo "✅ All lint checks passed!" || echo "❌ Lint errors found."
-        exit $exit_code
-    fi
+    CLIENT_PATH={{client_path}} PROJECT_PATH={{project_path}} ./scripts/ci/lint.sh {{fix}} {{unsafe}}
 
 # [Check] Compilation and build verification (tsc, GDScript compiler, Astro build).
 check:
-    #!/usr/bin/env bash
-    exit_code=0
-    echo "🔍 Type-checking TypeScript (tsc)..."
-    (cd {{client_path}} && bunx tsc --noEmit) || exit_code=$?
-    echo "🔍 Checking GDScript (Godot compiler)..."
-    gd_errors=0
-    while IFS= read -r gd_file; do
-        rel="res://${gd_file#{{project_path}}/}"
-        out=$({{godot_linux_headless}} --headless --path {{project_path}} --script "$rel" --check-only 2>&1 || true)
-        if echo "$out" | grep -q "SCRIPT ERROR: Parse Error:"; then
-            echo "$out" | grep -A1 "SCRIPT ERROR: Parse Error:" | grep -v "^--$"
-            gd_errors=1
-        fi
-    done < <(find {{project_path}} -name "*.gd")
-    [ $gd_errors -eq 0 ] || { echo "❌ GDScript compile errors found."; exit_code=1; }
-    echo "🔍 Building Astro site..."
-    (cd {{client_path}} && bun run build) || exit_code=$?
-    [ $exit_code -eq 0 ] && echo "✅ All checks passed!" || echo "❌ Check errors found."
-    exit $exit_code
+    GODOT={{godot_linux_headless}} CLIENT_PATH={{client_path}} PROJECT_PATH={{project_path}} ./scripts/ci/check.sh
 
 # [Test] Run Godot unit tests headlessly
 test:
-    #!/usr/bin/env bash
-    echo "🧪 Running Godot unit tests..."
-    OUTPUT=$({{godot_linux_headless}} --headless --path {{project_path}} res://scenes/tests/TestRunner.tscn 2>&1)
-    echo "$OUTPUT"
-    if echo "$OUTPUT" | grep -q "\[FAIL\]"; then
-        echo "❌ Tests failed!"
-        exit 1
-    fi
-    echo "✅ All tests passed!"
+    GODOT={{godot_linux_headless}} PROJECT_PATH={{project_path}} ./scripts/ci/test.sh
 
 # [Build] Export Godot game to web artifacts
 build_game:
