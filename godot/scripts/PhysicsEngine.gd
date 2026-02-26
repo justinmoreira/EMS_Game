@@ -9,18 +9,18 @@ func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
 
 
 func calculate_height_factor(height_tx: float, height_rx: float) -> float:
-    return 1.0 + (height_tx + height_rx) / 20.0
+	return 1.0 + (height_tx + height_rx) / 20.0
 
 
 func calculate_received_power(
-    tx_power: float,
-    height_tx: float,
-    height_rx: float,
-    frequency: float,
-    distance: float,
-    terrain_loss: float = 1.0
+	tx_power: float,
+	height_tx: float,
+	height_rx: float,
+	frequency: float,
+	distance: float,
+	terrain_loss: float = 1.0
 ) -> float:
-    """
+	"""
 	Calculates the signal strength (received power) between two entities.
 
 	Formula: ReceivedPower = (TxPower * HeightFactor * FrequencyFactor) / (DistanceLoss * TerrainLoss)
@@ -36,15 +36,15 @@ func calculate_received_power(
 	Returns:
 		Signal strength as a float
 	"""
-    var height_factor = calculate_height_factor(height_tx, height_rx)
-    var frequency_factor = 1000.0 / frequency
-    var distance_loss = pow(distance + 1.0, 2.0)
+	var height_factor = calculate_height_factor(height_tx, height_rx)
+	var frequency_factor = 1000.0 / frequency
+	var distance_loss = pow(distance + 1.0, 2.0)
 
-    # Avoid division by zero
-    if terrain_loss <= 0:
-        terrain_loss = 1.0
+	# Avoid division by zero
+	if terrain_loss <= 0:
+		terrain_loss = 1.0
 
-    var received_power = (
-        (tx_power * height_factor * frequency_factor) / (distance_loss * terrain_loss)
-    )
-    return received_power
+	var received_power = (
+		(tx_power * height_factor * frequency_factor) / (distance_loss * terrain_loss)
+	)
+	return received_power
