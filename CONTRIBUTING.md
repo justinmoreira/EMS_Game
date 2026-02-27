@@ -16,7 +16,7 @@ Working outside the workspace means no auto-formatting and no language features
 
 ## Code Quality
 
-A pre-push hook runs `just lint` automatically. This will check for formatting issues and potential compilation problems.
+A pre-push hook runs `just lint` automatically. This will check for formatting issues and potential compilation problems before pushing code to the repo.
 
 If it fails:
 
