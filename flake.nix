@@ -41,11 +41,16 @@
             fi
 
 
-            # Start Godot LSP server in background if not already running (enables format-on-save in VSCode)
-            if ! pgrep -f "godot4.*--editor" > /dev/null 2>&1; then
-              echo "🎮 Starting Godot LSP server (headless)..."
-              nohup godot4 --headless --editor --path "$(pwd)/godot" </dev/null &>/dev/null &
+            # Godot LSP systemd service (GDScript autocomplete + format-on-save in VSCode)
+            UNIT_DIR="$HOME/.config/systemd/user"
+            UNIT_FILE="$UNIT_DIR/godot-lsp.service"
+            if [ ! -f "$UNIT_FILE" ] || ! grep -q "$(pwd)" "$UNIT_FILE"; then
+              mkdir -p "$UNIT_DIR"
+              sed -e "s|EMS_GAME_DIR|$(pwd)|g" -e "s|NIX_BIN_DIR|$(dirname "$(which nix)")|g" scripts/godot-lsp.service > "$UNIT_FILE"
+              systemctl --user daemon-reload
+              systemctl --user enable godot-lsp.service
             fi
+            systemctl --user start godot-lsp.service 2>/dev/null || true
 
             # Setup git hooks
             git config core.hooksPath .github/hooks
