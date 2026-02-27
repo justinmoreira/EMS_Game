@@ -6,11 +6,6 @@ extends PanelContainer
 
 enum EntityType { NONE, TRANSCEIVER, JAMMER, SENSOR }
 
-# ── State ─────────────────────────────────────
-var selected_entity: EntityType = EntityType.NONE
-var selected_entity_name: String = ""
-var selected_node: Node = null
-
 # ── Colors ────────────────────────────────────
 const C_BG_DARK := Color("0d0f14")
 const C_BG_MID := Color("13161e")
@@ -22,6 +17,11 @@ const C_BLUE := Color("4fc3f7")
 const C_RED := Color("ff5c5c")
 const C_TEXT := Color("e8eaf0")
 const C_DIM := Color("6b7594")
+
+# ── State ─────────────────────────────────────
+var selected_entity: EntityType = EntityType.NONE
+var selected_entity_name: String = ""
+var selected_node: Node = null
 
 # ── Node refs ─────────────────────────────────
 var _attr_header: Label
@@ -109,9 +109,9 @@ func _build_tray() -> PanelContainer:
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 8)
 	vbox.add_child(stack)
-	stack.add_child(_build_entity_card("XCVR", "Transceiver", C_BLUE, EntityType.TRANSCEIVER))
-	stack.add_child(_build_entity_card("JMRR", "Jammer", C_AMBER, EntityType.JAMMER))
-	stack.add_child(_build_entity_card("SNSR", "Sensor", C_RED, EntityType.SENSOR))
+	stack.add_child(_build_entity_card("Transceiver", C_BLUE, EntityType.TRANSCEIVER))
+	stack.add_child(_build_entity_card("Jammer", C_AMBER, EntityType.JAMMER))
+	stack.add_child(_build_entity_card("Sensor", C_RED, EntityType.SENSOR))
 
 	var hint := _make_label("drag entities onto the scene", C_DIM, 15)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -121,7 +121,7 @@ func _build_tray() -> PanelContainer:
 	return panel
 
 
-func _build_entity_card(code: String, label: String, accent: Color, type: EntityType) -> Button:
+func _build_entity_card(label: String, accent: Color, type: EntityType) -> Button:
 	var card := Button.new()
 	card.text = label
 	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
