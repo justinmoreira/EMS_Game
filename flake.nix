@@ -43,8 +43,8 @@
 
             # Start Godot LSP server in background if not already running (enables format-on-save in VSCode)
             if ! pgrep -f "godot4.*--editor" > /dev/null 2>&1; then
-              godot4 --headless --editor --path "$(pwd)/godot" &>/dev/null &
-              disown
+              echo "🎮 Starting Godot LSP server (headless)..."
+              nohup godot4 --headless --editor --path "$(pwd)/godot" </dev/null &>/dev/null &
             fi
 
             # Setup git hooks
