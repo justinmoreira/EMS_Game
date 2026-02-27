@@ -138,11 +138,6 @@ ensure_pkg git
 ensure_pkg curl
 ensure_pkg docker docker.io  # docker.io on Ubuntu/Debian, docker on Arch
 
-# ── Install Godot for GUI (native Linux only, skip on prod/staging) ───────
-DEPLOY_ENV="${DEPLOY_ENV:-development}"
-if [ "$PLATFORM" != "wsl" ] && [ "$DEPLOY_ENV" != "production" ] && [ "$DEPLOY_ENV" != "staging" ]; then
-  ensure_pkg godot
-fi
 
 # ── Setup Docker permissions ──────────────────────────────────
 if ! groups "$USER" | grep -q docker; then
@@ -256,6 +251,12 @@ if [ -d "$DIR" ]; then
   sudo chown -R "$USER:$USER" "$DIR"
 fi
 
+# Mark project as safe for git (cross-filesystem in WSL)
+if ! git config --global --get-all safe.directory | grep -qF "$DIR"; then
+  echo "==> Adding $DIR to git safe.directory..."
+  git config --global --add safe.directory "$DIR"
+fi
+
 # ── Allow direnv for this project ─────────────────────────────
 cd "$DIR"
 if [ ! -f .envrc ]; then
@@ -265,7 +266,7 @@ fi
 # ── Create .env file with GODOT_WIN if provided ───────────────
 if [ -n "${GODOT_WIN:-}" ]; then
   echo "==> Configuring GODOT_WIN path..."
-  echo "GODOT_WIN=$GODOT_WIN" > .env
+  echo "GODOT_WIN=\"$GODOT_WIN\"" > .env
   echo "    ✓ Created .env with GODOT_WIN=$GODOT_WIN"
 fi
 
