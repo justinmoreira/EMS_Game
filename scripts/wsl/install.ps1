@@ -125,7 +125,10 @@ if (-not $godotExePath) {
 }
 
 # Convert Windows path to WSL path format
-$wslGodotPath = wsl wslpath -u "'$godotExePath'"
+$env:GODOT_WIN = $wslGodotPath
+$env:WIN_USER = $winUsername
+$env:WSLENV = "GODOT_WIN/u:WIN_USER/u"
+wsl -d $newDistroName bash -c "curl -sSL $projectInstallUrl | bash"
 
 Write-Host "WSL Path: $wslGodotPath"
 

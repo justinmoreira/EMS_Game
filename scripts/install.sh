@@ -256,6 +256,12 @@ if [ -d "$DIR" ]; then
   sudo chown -R "$USER:$USER" "$DIR"
 fi
 
+# Mark project as safe for git (cross-filesystem in WSL)
+if ! git config --global --get-all safe.directory | grep -qF "$DIR"; then
+  echo "==> Adding $DIR to git safe.directory..."
+  git config --global --add safe.directory "$DIR"
+fi
+
 # ── Allow direnv for this project ─────────────────────────────
 cd "$DIR"
 if [ ! -f .envrc ]; then
