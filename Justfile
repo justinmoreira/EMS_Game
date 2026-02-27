@@ -30,22 +30,8 @@ default:
 
 # [Setup] Download and install Godot Export Templates (Required for Web Export)
 _init_godot:
-    #!/usr/bin/env bash
     # Note: On WSL, we still want Linux templates because the HEADLESS builder is Linux.
-    TEMPLATE_DIR="$HOME/.local/share/godot/export_templates/{{godot_version}}"
-
-    if [ -f "$TEMPLATE_DIR/web_nothreads_release.zip" ]; then
-        echo "✅ Templates already installed."
-    else
-        echo "⬇️ Downloading Godot {{godot_release_tag}} templates..."
-        rm -rf "$TEMPLATE_DIR" /tmp/templates.tpz /tmp/templates
-        mkdir -p "$TEMPLATE_DIR"
-        wget -q --show-progress -O /tmp/templates.tpz https://github.com/godotengine/godot/releases/download/{{godot_release_tag}}/Godot_v{{godot_release_tag}}_export_templates.tpz
-        unzip -q /tmp/templates.tpz -d /tmp/
-        mv /tmp/templates/* "$TEMPLATE_DIR"
-        rm -rf /tmp/templates.tpz /tmp/templates
-        echo "✅ Templates installed."
-    fi
+    GODOT_RELEASE_TAG={{godot_release_tag}} GODOT_VERSION={{godot_version}} ./scripts/ci/install-templates.sh
 
 # [Edit] Open the Godot Editor (GUI)
 # Logic: If WSL -> Launch Windows Exe via PowerShell. If Arch -> Launch Linux Bin.
@@ -72,17 +58,17 @@ _init_client:
     bun install
     cd ..
 
+# [Lint] Fast style/format checks. Pass --fix to auto-fix, --fix --unsafe to also apply unsafe fixes.
+lint fix="" unsafe="":
+    CLIENT_PATH={{client_path}} PROJECT_PATH={{project_path}} ./scripts/ci/lint.sh {{fix}} {{unsafe}}
+
+# [Check] Compilation and build verification (tsc, GDScript compiler, Astro build).
+check:
+    GODOT={{godot_linux_headless}} CLIENT_PATH={{client_path}} PROJECT_PATH={{project_path}} ./scripts/ci/check.sh
+
 # [Test] Run Godot unit tests headlessly
 test:
-    #!/usr/bin/env bash
-    echo "🧪 Running Godot unit tests..."
-    OUTPUT=$({{godot_linux_headless}} --headless --path {{project_path}} res://scenes/tests/TestRunner.tscn 2>&1)
-    echo "$OUTPUT"
-    if echo "$OUTPUT" | grep -q "\[FAIL\]"; then
-        echo "❌ Tests failed!"
-        exit 1
-    fi
-    echo "✅ All tests passed!"
+    GODOT={{godot_linux_headless}} PROJECT_PATH={{project_path}} ./scripts/ci/test.sh
 
 # [Build] Export Godot game to web artifacts
 build_game:
@@ -139,7 +125,7 @@ stop:
 github-auth:
     #!/usr/bin/env bash
     echo "🔐 Checking GitHub authentication..."
-    
+
     # Check if already authenticated
     if gh auth status &>/dev/null; then
         echo "✅ Already authenticated with GitHub"
@@ -155,10 +141,10 @@ github-auth:
         echo "🔑 Not authenticated. Starting login..."
         gh auth login
     fi
-    
+
     echo ""
     echo "🔧 Checking Git configuration..."
-    
+
     # Check git user.name
     if ! git config --global user.name &>/dev/null; then
         echo "⚠️  Git user.name not set"
@@ -168,7 +154,7 @@ github-auth:
     else
         echo "✅ user.name: $(git config --global user.name)"
     fi
-    
+
     # Check git user.email
     if ! git config --global user.email &>/dev/null; then
         echo "⚠️  Git user.email not set"
@@ -178,7 +164,7 @@ github-auth:
     else
         echo "✅ user.email: $(git config --global user.email)"
     fi
-    
+
     echo ""
     echo "🎉 Authentication setup complete!"
 

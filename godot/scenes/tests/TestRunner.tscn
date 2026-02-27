@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://blfhppee3wuq6"]
 
-[ext_resource type="Script" uid="uid://nmk1aony5ft" path="res://scenes/tests/PhysicsTests.gd" id="1_h0n2f"]
+[ext_resource type="Script" path="res://scenes/tests/TestRunner.gd" id="1_runner"]
 
-[node name="TestRunner" type="Node2D" unique_id=2028257156]
-script = ExtResource("1_h0n2f")
+[node name="TestRunner" type="Node2D"]
+script = ExtResource("1_runner")

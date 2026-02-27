@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3 uid="uid://heightmap_demo"]
 
-[ext_resource type="PackedScene" uid="uid://baselevel_master" path="res://scenes/core/BaseLevel.tscn" id="1_base"]
+[ext_resource type="PackedScene" path="res://scenes/core/BaseLevel.tscn" id="1_base"]
 [ext_resource type="Shader" path="res://shaders/HeightMap.gdshader" id="2_shader"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ems"]

@@ -24,6 +24,7 @@
             bun            # For Astro web shell (build tool)
             entr           # For watching file changes (optional)
             python313      # For dev tooling scripts - eventual API
+            gdtoolkit_4    # GDScript linter & formatter
           ];
 
           shellHook = ''
@@ -36,10 +37,36 @@
               just _init_client
             fi
 
+            # Configure Godot editor to use tab size 4
+            bash scripts/set_godot_save_fmt.sh
+
             if ! systemctl is-active --quiet docker 2>/dev/null; then
               echo "Starting Docker daemon..."
               sudo systemctl start docker
             fi
+
+
+            # Start Godot LSP server in background if not already running (enables format-on-save in VSCode)
+            if ! pgrep -f "godot4.*--editor" > /dev/null 2>&1; then
+              echo "🎮 Starting Godot LSP server (headless)..."
+              godot4 --headless --editor --path "$(pwd)/godot" &>/dev/null &
+              disown
+            fi
+
+            # Setup git hooks
+            git config core.hooksPath .github/hooks
+            chmod +x .github/hooks/pre-push 2>/dev/null || true
+
+            cp ./client/biome.json ./biome.json
+
+            # Symlink Biome binary to a stable path for VSCode Server LSP (biome.lsp.bin)
+            # node_modules path changes with version bumps; this stays stable
+            BIOME_BIN=$(find "$HOME/.bun/install/cache/@biomejs/cli-linux-x64@"*/biome -type f 2>/dev/null | sort -V | tail -1)
+            if [ -n "$BIOME_BIN" ]; then
+              mkdir -p "$HOME/.local/bin"
+              ln -sfn "$BIOME_BIN" "$HOME/.local/bin/biome"
+            fi
+
             echo "🎮 EMS Game Dev Environment Loaded"
           '';
         };
