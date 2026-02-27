@@ -25,8 +25,8 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          curl -H "Content-Type: application/json" \
-            -d "{
+          # curl -H "Content-Type: application/json" -d \
+            echo "{
               \"content\": \"${{ steps.msg.outputs.content }}\",
               \"embeds\": [{
                 \"title\": \"${{ github.event.pull_request.title }}\",
@@ -35,4 +35,4 @@ jobs:
                 \"color\": 5814783
               }]
             }" \
-            "$DISCORD_WEBHOOK_URL"
+            # "$DISCORD_WEBHOOK_URL"
