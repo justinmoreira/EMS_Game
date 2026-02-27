@@ -1,5 +1,19 @@
 # Contributing
 
+## Workspace
+
+Open the project via `just code` or `code dev.code-workspace` or opening VSCode and `File` -> `Open Workspace from File` -> `dev.code-workspace`.
+
+Install Recommended Extensions from the left side panel or as they pop-up
+
+The workspace configures:
+
+- **Format on save** — Biome for TS/Astro, Godot Tools for GDScript
+- **Language support** — autocomplete, type hints, and error highlighting
+- **Tab settings** — tabs for GDScript, 2-space for everything else
+
+Working outside the workspace means no auto-formatting and no language features
+
 ## Code Quality
 
 A pre-push hook runs `just lint` automatically. This will check for formatting issues and potential compilation problems.
