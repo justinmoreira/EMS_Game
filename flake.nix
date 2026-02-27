@@ -30,11 +30,7 @@
             # Setup web compilation template
             just _init_godot
 
-            # Install client dependencies if needed
-            if [ ! -d "client/node_modules" ]; then
-              echo "📦 Installing client dependencies..."
-              just _init_client
-            fi
+            cd client && bun install && cd ..
 
             if ! systemctl is-active --quiet docker 2>/dev/null; then
               echo "Starting Docker daemon..."
