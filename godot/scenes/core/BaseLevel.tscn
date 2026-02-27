@@ -1,11 +1,7 @@
 [gd_scene format=3 uid="uid://cscdegdlpq00e"]
 
 [ext_resource type="Script" uid="uid://dwgpl1wpjd15g" path="res://scenes/core/BaseLevel.gd" id="1_script"]
-[ext_resource type="PackedScene" path="res://scenes/ui/HUD.tscn" id="2_hud"]
-[ext_resource type="Script" uid="uid://cn221t4cpxfpm" path="res://scenes/core/EMSUnit.gd" id="3_5xy86"]
-[ext_resource type="Script" uid="uid://dodi1hly6cpbv" path="res://scenes/core/components/Jammer.gd" id="4_e7dnx"]
-[ext_resource type="Script" uid="uid://drja1ty1kv8fq" path="res://scenes/core/components/Sensor.gd" id="5_xa4tb"]
-[ext_resource type="Script" uid="uid://bxatk7pufxq8k" path="res://scenes/core/components/Transceiver.gd" id="6_kpeql"]
+[ext_resource type="PackedScene" uid="uid://dsj74ba2gk75t" path="res://scenes/ui/HUD.tscn" id="2_hud"]
 
 [node name="BaseLevel" type="Control" unique_id=1691616856]
 layout_mode = 3
@@ -26,15 +22,3 @@ grow_vertical = 2
 expand_mode = 1
 
 [node name="HUD" parent="." unique_id=1831793807 instance=ExtResource("2_hud")]
-
-[node name="EMSUnit" type="Node2D" parent="." unique_id=1130637315]
-script = ExtResource("3_5xy86")
-
-[node name="Jammer" type="Node" parent="EMSUnit" unique_id=356367832]
-script = ExtResource("4_e7dnx")
-
-[node name="Sensor" type="Node" parent="EMSUnit" unique_id=1239094934]
-script = ExtResource("5_xa4tb")
-
-[node name="Transceiver" type="Node" parent="EMSUnit" unique_id=2121252431]
-script = ExtResource("6_kpeql")

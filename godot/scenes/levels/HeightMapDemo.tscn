@@ -1,7 +1,11 @@
-[gd_scene load_steps=5 format=3 uid="uid://heightmap_demo"]
+[gd_scene format=3 uid="uid://c05xgk4gjgvom"]
 
-[ext_resource type="PackedScene" path="res://scenes/core/BaseLevel.tscn" id="1_base"]
-[ext_resource type="Shader" path="res://shaders/HeightMap.gdshader" id="2_shader"]
+[ext_resource type="PackedScene" uid="uid://cscdegdlpq00e" path="res://scenes/core/BaseLevel.tscn" id="1_base"]
+[ext_resource type="Shader" uid="uid://caylm3dak62ug" path="res://shaders/HeightMap.gdshader" id="2_shader"]
+[ext_resource type="PackedScene" uid="uid://7xh14ua2fjg0" path="res://scenes/ui/Sidebar.tscn" id="3_ii0yk"]
+[ext_resource type="PackedScene" uid="uid://chhar72uv2w2v" path="res://scenes/core/units/JammerUnit.tscn" id="4_adt3p"]
+[ext_resource type="PackedScene" uid="uid://d3ikpb8okvbey" path="res://scenes/core/units/SensorUnit.tscn" id="5_u6uqn"]
+[ext_resource type="PackedScene" uid="uid://d04wswemiv8kc" path="res://scenes/core/units/TransceiverUnit.tscn" id="6_40hgv"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ems"]
 shader = ExtResource("2_shader")
@@ -18,8 +22,30 @@ frequency = 0.008
 [sub_resource type="NoiseTexture2D" id="NoiseTexture2D_ems"]
 noise = SubResource("FastNoiseLite_ems")
 
-[node name="HeightMapDemo" instance=ExtResource("1_base")]
+[node name="HeightMapDemo" unique_id=1713825799 instance=ExtResource("1_base")]
 
-[node name="BackgroundTexture" parent="." index="0"]
-texture = SubResource("NoiseTexture2D_ems")
+[node name="BackgroundTexture" parent="." index="0" unique_id=2008967764]
 material = SubResource("ShaderMaterial_ems")
+texture = SubResource("NoiseTexture2D_ems")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." index="2" unique_id=2135783381]
+
+[node name="Control" type="Control" parent="CanvasLayer" index="0" unique_id=175597304]
+layout_mode = 3
+anchors_preset = 9
+anchor_bottom = 1.0
+grow_vertical = 2
+
+[node name="Sidebar" parent="CanvasLayer/Control" index="0" unique_id=831222554 instance=ExtResource("3_ii0yk")]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_vertical = 2
+
+[node name="EMSUnit - Jammer" parent="." index="3" unique_id=1345118789 instance=ExtResource("4_adt3p")]
+
+[node name="EMSUnit - Sensor" parent="." index="4" unique_id=1723945658 instance=ExtResource("5_u6uqn")]
+
+[node name="EMSUnit - Transceiver" parent="." index="5" unique_id=908087630 instance=ExtResource("6_40hgv")]

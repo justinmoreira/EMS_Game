@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://chhar72uv2w2v"]
+
+[ext_resource type="Script" uid="uid://cn221t4cpxfpm" path="res://scenes/core/EMSUnit.gd" id="1_vqkxn"]
+[ext_resource type="PackedScene" uid="uid://lwgjly70ogpd" path="res://scenes/core/components/Jammer.tscn" id="2_p83nw"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_w5soc"]
+radius = 32.0
+
+[node name="EMSUnit - Jammer" type="Area2D" unique_id=1423769516]
+script = ExtResource("1_vqkxn")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
+shape = SubResource("CircleShape2D_w5soc")
+
+[node name="Jammer" parent="." unique_id=1057677908 instance=ExtResource("2_p83nw")]
