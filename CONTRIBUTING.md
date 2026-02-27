@@ -69,3 +69,11 @@ func my_tests():
     else:
         print("[FAIL] description")
 ```
+
+## Troubleshooting
+
+### I) `Command <command> not found`
+- Ensure in `EMS_Game` directory and try `direnv allow`
+- if either `nix` or `direnv` is the command not available. There is an issue with your installation.
+- run `scripts/install.sh`
+- Reach out to someone before trying uninstall and reinstalling wsl distro - Probably a greater problem is happening

@@ -28,10 +28,9 @@
           ];
 
           shellHook = ''
-            # Setup web compilation template
-            just _init_godot
-
-            cd client && bun install && cd ..
+            if [ ! -d client/node_modules/@biomejs ]; then
+              cd client && bun install && cd ..
+            fi
 
             # Configure Godot editor to use tab size 4
             bash scripts/set_godot_save_fmt.sh
@@ -45,7 +44,7 @@
             # Start Godot LSP server in background if not already running (enables format-on-save in VSCode)
             if ! pgrep -f "godot4.*--editor" > /dev/null 2>&1; then
               echo "🎮 Starting Godot LSP server (headless)..."
-              godot4 --headless --editor --path "$(pwd)/godot" &>/dev/null &
+              godot4 --headless --editor --path "$(pwd)/scripts/bin/godot" &>/dev/null &
               disown
             fi
 
@@ -63,7 +62,22 @@
               ln -sfn "$BIOME_BIN" "$HOME/.local/bin/biome"
             fi
 
-            echo "🎮 EMS Game Dev Environment Loaded"
+            # Silence direnv noise (env diff, loading messages) on future runs
+            DIRENV_TOML="$HOME/.config/direnv/direnv.toml"
+            if [ ! -f "$DIRENV_TOML" ] || ! grep -q "hide_env_diff" "$DIRENV_TOML"; then
+              mkdir -p "$(dirname "$DIRENV_TOML")"
+              cat > "$DIRENV_TOML" << 'TOML'
+[global]
+hide_env_diff = true
+warn_timeout = "0s"
+TOML
+            fi
+
+            RC_FILE="$HOME/.$(basename "''${SHELL:-/bin/bash}")rc"
+            if ! grep -q 'DIRENV_LOG_FORMAT' "$RC_FILE" 2>/dev/null; then
+              printf '\n# Silence direnv status messages (added by EMS_Game)\nexport DIRENV_LOG_FORMAT=\n' >> "$RC_FILE"
+              export DIRENV_LOG_FORMAT=
+            fi
           '';
         };
       }
