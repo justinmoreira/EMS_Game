@@ -2,7 +2,9 @@
 
 ## Code Quality
 
-A pre-push hook runs `just lint` automatically. If it fails:
+A pre-push hook runs `just lint` automatically. This will check for formatting issues and potential compilation problems.
+
+If it fails:
 
 ```bash
 just lint --fix              # Auto-fix formatting issues
@@ -10,7 +12,7 @@ just lint --fix              # Auto-fix formatting issues
 just lint --fix --unsafe     # Also apply unsafe fixes if still failing
 ```
 
-Then stage and commit the fixes before pushing.
+IMPORTANT: Remember to stage and commit the fixes before pushing.
 
 ## Formatting
 
@@ -19,11 +21,19 @@ Then stage and commit the fixes before pushing.
 
 Both are handled by `just lint --fix` — you don't need to run them separately.
 
+## Pull Requests
+
+- Assign yourself to your PR.
+- Request review from whoever you think is relevant.
+- Approvers: leave feedback but **don't merge** — merging is the assignee's responsibility.
+
 ## Just Commands
 
 ```bash
+just dev                     # Spin up dev server to view your changes to the website
+
 just lint                    # Check formatting (TypeScript, Astro, GDScript)
-just lint --fix              # Auto-fix formatting
+just lint --fix              # Auto-fix formatting  --unsafe if ur feeling risky
 just check                   # Type-check (tsc), compile (GDScript), build (Astro)
 just test                    # Run Godot unit tests headlessly
 ```
