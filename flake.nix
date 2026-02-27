@@ -31,11 +31,7 @@
             # Setup web compilation template
             just _init_godot
 
-            # Install client dependencies if needed
-            if [ ! -d "client/node_modules" ]; then
-              echo "📦 Installing client dependencies..."
-              just _init_client
-            fi
+            cd client && bun install && cd ..
 
             # Configure Godot editor to use tab size 4
             bash scripts/set_godot_save_fmt.sh
