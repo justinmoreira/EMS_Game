@@ -266,7 +266,7 @@ fi
 # ── Create .env file with GODOT_WIN if provided ───────────────
 if [ -n "${GODOT_WIN:-}" ]; then
   echo "==> Configuring GODOT_WIN path..."
-  echo "GODOT_WIN=$GODOT_WIN" > .env
+  echo "GODOT_WIN=\"$GODOT_WIN\"" > .env
   echo "    ✓ Created .env with GODOT_WIN=$GODOT_WIN"
 fi
 
