@@ -35,4 +35,4 @@ jobs:
                 \"color\": 5814783
               }]
             }" \
-            # "$DISCORD_WEBHOOK_URL"
+            "$DISCORD_WEBHOOK_URL"
