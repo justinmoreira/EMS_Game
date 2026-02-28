@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dwgpl1wpjd15g" path="res://scenes/core/BaseLevel.gd" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://dsj74ba2gk75t" path="res://scenes/ui/HUD.tscn" id="2_hud"]
+[ext_resource type="PackedScene" uid="uid://7xh14ua2fjg0" path="res://scenes/ui/Sidebar.tscn" id="3_5xy86"]
 
 [node name="BaseLevel" type="Control" unique_id=1691616856]
 layout_mode = 3
@@ -22,3 +23,19 @@ grow_vertical = 2
 expand_mode = 1
 
 [node name="HUD" parent="." unique_id=1831793807 instance=ExtResource("2_hud")]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1066529668]
+
+[node name="Control" type="Control" parent="CanvasLayer" unique_id=860915758]
+layout_mode = 3
+anchors_preset = 9
+anchor_bottom = 1.0
+grow_vertical = 2
+
+[node name="Sidebar" parent="CanvasLayer/Control" unique_id=831222554 instance=ExtResource("3_5xy86")]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_vertical = 2

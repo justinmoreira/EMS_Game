@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://cn221t4cpxfpm" path="res://scenes/core/EMSUnit.gd" id="1_dem8i"]
 [ext_resource type="PackedScene" uid="uid://dkdtgyqubt46m" path="res://scenes/core/components/Sensor.tscn" id="2_xbxfc"]
+[ext_resource type="Script" uid="uid://ck42ox5aq2g2o" path="res://scenes/core/components/UnitVisual.gd" id="3_tm6hg"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_o81bo"]
 radius = 32.0
@@ -13,3 +14,8 @@ script = ExtResource("1_dem8i")
 shape = SubResource("CircleShape2D_o81bo")
 
 [node name="Sensor" parent="." unique_id=2031422171 instance=ExtResource("2_xbxfc")]
+
+[node name="Visual" type="Node2D" parent="." unique_id=1094016982]
+script = ExtResource("3_tm6hg")
+unit_label = "S"
+circle_color = Color(0.4627451, 0, 0.078431375, 1)
