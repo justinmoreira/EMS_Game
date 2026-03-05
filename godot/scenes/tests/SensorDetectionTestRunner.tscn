@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://cj6138nit0if"]
+
+[ext_resource type="Script" uid="uid://dr828hn1rmpv1" path="res://scenes/tests/SensorDetectionTest.gd" id="1_ebhye"]
+
+[node name="TestRunner" type="Node2D" unique_id=1763363474]
+script = ExtResource("1_ebhye")
