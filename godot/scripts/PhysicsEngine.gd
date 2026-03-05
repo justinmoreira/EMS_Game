@@ -61,10 +61,7 @@ func calculate_received_power(
 
 
 func calculate_interference(
-	rx_frequency: float,
-	rx_height: float,
-	rx_position: Vector2,
-	jammers: Array) -> float:
+	_rx_frequency: float, _rx_height: float, _rx_position: Vector2, jammers: Array) -> float:
 	"""
 	Calculates the total interference power from all jammers.
 
@@ -87,7 +84,7 @@ func calculate_interference(
 	var total_interference = 0.0
 	for jammer in jammers:
 		# Check if jammer is within receiver's bandwidth
-		var frequency_diff = abs(rx_frequency - jammer.frequency)
+		var frequency_diff = abs(_rx_frequency - jammer.frequency)
 		var bandwidth_half = jammer.bandwidth / 2.0
 
 		# Only add interference if frequencies are close enough
@@ -96,9 +93,9 @@ func calculate_interference(
 			var jammer_power_at_rx = calculate_received_power(
 				jammer.power,
 				jammer.height,
-				rx_height,
+				_rx_height,
 				jammer.frequency,
-				calculate_distance(jammer.position, rx_pos),
+				calculate_distance(jammer.position, _rx_position),
 				1.0 # terrain_loss (assume 1.0 for now)
 			)
 

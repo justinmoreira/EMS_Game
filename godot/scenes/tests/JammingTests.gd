@@ -1,5 +1,6 @@
 extends Node
 
+
 func _ready():
 	test_calculate_interference()
 	test_range_check()
@@ -7,6 +8,7 @@ func _ready():
 
 	await get_tree().create_timer(0.1).timeout
 	get_tree().quit()
+
 
 func test_calculate_interference():
 	print("Running Interference Tests...\n")
@@ -21,13 +23,15 @@ func test_calculate_interference():
 
 	# Test 2: Single jammer, same frequency (should interfere)
 	# Jammer: power=5, height=5, at same position, frequency=1000 (same as rx)
-	jammers = [ {
-		"frequency": 1000.0,
-		"power": 5.0,
-		"height": 5.0,
-		"position": Vector2(100, 0), # 1 km away
-		"bandwidth": "Narrow"
-	}]
+	jammers = [
+		{
+			"frequency": 1000.0,
+			"power": 5.0,
+			"height": 5.0,
+			"position": Vector2(100, 0),  # 1 km away
+			"bandwidth": "Narrow"
+		}
+	]
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
 	# JammerPowerAtRx = calculate_received_power(5, 5, 5, 1000, 1, 1) = 3.75
 	# BandwidthPower = 1.0 (Narrow)
@@ -38,13 +42,15 @@ func test_calculate_interference():
 		print("[FAIL] Single jammer same frequency: Expected 3.75, Got ", interference)
 
 	# Test 3: Jammer outside frequency range (should NOT interfere)
-	jammers = [ {
-		"frequency": 2000.0, # Far from rx 1000 MHz
-		"power": 5.0,
-		"height": 5.0,
-		"position": Vector2(100, 0),
-		"bandwidth": "Narrow" # 1 MHz range
-	}]
+	jammers = [
+		{
+			"frequency": 2000.0,  # Far from rx 1000 MHz
+			"power": 5.0,
+			"height": 5.0,
+			"position": Vector2(100, 0),
+			"bandwidth": "Narrow"  # 1 MHz range
+		}
+	]
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
 	# Frequency diff = abs(1000 - 2000) = 1000 MHz
 	# Bandwidth/2 = 1/2 = 0.5 MHz
@@ -64,11 +70,11 @@ func test_calculate_interference():
 			"bandwidth": "Narrow"
 		},
 		{
-			"frequency": 1000.5, # Close to rx
+			"frequency": 1000.5,  # Close to rx
 			"power": 3.0,
 			"height": 5.0,
 			"position": Vector2(100, 0),
-			"bandwidth": "Medium" # 10 MHz range
+			"bandwidth": "Medium"  # 10 MHz range
 		}
 	]
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
@@ -81,6 +87,7 @@ func test_calculate_interference():
 		print("[FAIL] Multiple jammers: Expected ~4.875, Got ", interference)
 
 	print("\n")
+
 
 func test_range_check():
 	print("Running Range Check Tests...\n")
@@ -114,6 +121,7 @@ func test_range_check():
 		print("[FAIL] Signal just above noise floor: Expected true, Got ", result)
 
 	print("\n")
+
 
 func test_jamming_check():
 	print("Running Jamming Check Tests...\n")
