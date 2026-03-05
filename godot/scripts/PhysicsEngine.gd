@@ -7,11 +7,7 @@ const PIXELS_PER_UNIT = 100.0
 const NOISE_FLOOR = 0.5
 
 # Different jammer types (bandwidth power)
-const BANDWIDTH_POWER = {
-	"Narrow": 1.0, # 1 MHz
-	"Medium": 0.5, # 10 MHz
-	"Wide": 0.3 # 50 MHz
-}
+const BANDWIDTH_POWER = {"Narrow": 1.0, "Medium": 0.5, "Wide": 0.3}  # 1 MHz  # 10 MHz  # 50 MHz
 
 
 func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
@@ -61,7 +57,8 @@ func calculate_received_power(
 
 
 func calculate_interference(
-	_rx_frequency: float, _rx_height: float, _rx_position: Vector2, jammers: Array) -> float:
+	_rx_frequency: float, _rx_height: float, _rx_position: Vector2, jammers: Array
+) -> float:
 	"""
 	Calculates the total interference power from all jammers.
 
@@ -96,7 +93,7 @@ func calculate_interference(
 				_rx_height,
 				jammer.frequency,
 				calculate_distance(jammer.position, _rx_position),
-				1.0 # terrain_loss (assume 1.0 for now)
+				1.0  # terrain_loss (assume 1.0 for now)
 			)
 
 			# Get bandwidth penalty for this jammer type
