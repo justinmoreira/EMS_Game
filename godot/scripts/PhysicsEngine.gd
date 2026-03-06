@@ -60,7 +60,7 @@ func calculate_received_power(
 
 
 func calculate_interference(
-	_rx_frequency: float, _rx_height: float, _rx_pos: Vector2, jammers: Array
+	_rx_frequency: float, rx_height: float, _rx_pos: Vector2, jammers: Array
 ) -> float:
 	"""
 	Calculates the total interference power from all jammers
@@ -79,7 +79,7 @@ func calculate_interference(
 		}
 
 	Returns:
-		Totalinterferencepower as afloat
+		Totalinterferencepower as a grep -B 2 "var jammer_power_at_rx" godot/scripts/PhysicsEngine.gdfloat
 	"""
 	var total_interference = 0.0
 	for jammer in jammers:
@@ -93,7 +93,7 @@ func calculate_interference(
 			var jammer_power_at_rx = calculate_received_power(
 				jammer.power,
 				jammer.height,
-				_rx_height,
+				rx_height,
 				jammer.frequency,
 				calculate_distance(jammer.position, _rx_pos),
 				1.0  # terrain_loss

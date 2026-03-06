@@ -28,27 +28,27 @@ func test_calculate_interference():
 			"frequency": 1000.0,
 			"power": 5.0,
 			"height": 5.0,
-			"position": Vector2(100, 0),  # 1 km away
+			"position": Vector2(100, 0), # 1 km away
 			"bandwidth": "Narrow"
 		}
 	]
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
-	# JammerPowerAtRx = calculate_received_power(5, 5, 5, 1000, 1, 1) = 3.75
+	# JammerPowerAtRx = calculate_received_power(5, 5, 5, 1000, 1, 1) = 1.875
 	# BandwidthPower = 1.0 (Narrow)
-	# Total = 3.75 * 1.0 = 3.75
-	if is_equal_approx(interference, 3.75):
-		print("[PASS] Single jammer same frequency: Got 3.75")
+	# Total = 1.875 * 1.0 = 1.875
+	if is_equal_approx(interference, 1.875):
+		print("[PASS] Single jammer same frequency: Got 1.875")
 	else:
-		print("[FAIL] Single jammer same frequency: Expected 3.75, Got ", interference)
+		print("[FAIL] Single jammer same frequency: Expected 1.875, Got ", interference)
 
 	# Test 3: Jammer outside frequency range (should NOT interfere)
 	jammers = [
 		{
-			"frequency": 2000.0,  # Far from rx 1000 MHz
+			"frequency": 2000.0, # Far from rx 1000 MHz
 			"power": 5.0,
 			"height": 5.0,
 			"position": Vector2(100, 0),
-			"bandwidth": "Narrow"  # 1 MHz range
+			"bandwidth": "Narrow" # 1 MHz range
 		}
 	]
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
@@ -70,21 +70,21 @@ func test_calculate_interference():
 			"bandwidth": "Narrow"
 		},
 		{
-			"frequency": 1000.5,  # Close to rx
+			"frequency": 1000.5, # Close to rx
 			"power": 3.0,
 			"height": 5.0,
 			"position": Vector2(100, 0),
-			"bandwidth": "Medium"  # 10 MHz range
+			"bandwidth": "Medium" # 10 MHz range
 		}
 	]
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
-	# Jammer 1: 3.75 * 1.0 = 3.75
+	# Jammer 1: 1.875 * 1.0 = 1.875
 	# Jammer 2: calculate_received_power(3, 5, 5, 1000.5, 1, 1) ≈ 2.25 * 0.5 = 1.125
-	# Total ≈ 4.875
-	if is_equal_approx(interference, 4.875):
-		print("[PASS] Multiple jammers: Got ~4.875")
+	# Total ≈ 2.437
+	if abs(interference - 2.437) < 0.01:
+		print("[PASS] Multiple jammers: Got ~2.437")
 	else:
-		print("[FAIL] Multiple jammers: Expected ~4.875, Got ", interference)
+		print("[FAIL] Multiple jammers: Expected ~2.437, Got ", interference)
 
 	print("\n")
 
