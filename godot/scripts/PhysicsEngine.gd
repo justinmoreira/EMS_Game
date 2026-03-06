@@ -1,11 +1,11 @@
 extends Node
 
+#assign values to names, Low = 0, Medium =1, High =2
+enum FrequencyBand { FQ_LOW, FQ_MED, FQ_HIGH }
+enum Bandwidth { BW_NARROW, BW_MED, BW_WIDE }
+
 # This will map to 100 pixels -> 1 km
 const PIXELS_PER_UNIT = 100.0
-
-#assign values to names, Low = 0, Medium =1, High =2
-enum FrequencyBand { Low, Medium, High }
-enum Bandwidth { Narrow, MediumBand, Wide }
 
 
 func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
@@ -22,11 +22,11 @@ func calculate_distance_loss(dis: float) -> float:
 
 func frequency_check(emit: FrequencyBand, receiver: Bandwidth) -> bool:
 	match receiver:
-		Bandwidth.Narrow:
-			return emit == FrequencyBand.Low
-		Bandwidth.MediumBand:
-			return emit == FrequencyBand.Medium or emit == FrequencyBand.Low
-		Bandwidth.Wide:
+		Bandwidth.BW_NARROW:
+			return emit == FrequencyBand.FQ_LOW
+		Bandwidth.BW_MED:
+			return emit == FrequencyBand.FQ_MED or emit == FrequencyBand.FQ_LOW
+		Bandwidth.BW_WIDE:
 			return true
 		_:
 			return false
@@ -34,17 +34,17 @@ func frequency_check(emit: FrequencyBand, receiver: Bandwidth) -> bool:
 
 func bandwidth_penalty(receiver: Bandwidth) -> float:
 	match receiver:
-		Bandwidth.Narrow:
+		Bandwidth.BW_NARROW:
 			return 0.0
-		Bandwidth.MediumBand:
+		Bandwidth.BW_MED:
 			return 2.0
-		Bandwidth.Wide:
+		Bandwidth.BW_WIDE:
 			return 5.0
 		_:
 			return 0.0
 
 
-func calculate_Srx(
+func calculate_srx(
 	ptx: float, height_tx: float, height_sensor: float, distance: float, terrain_loss: float = 1
 ) -> float:
 	var p := clampf(ptx, 0.0, 10.0)
@@ -70,7 +70,7 @@ func is_detected(
 
 	var threshold = sensitivity + bandwidth_penalty(receiver)
 
-	var srx = calculate_Srx(ptx, height_tx, height_sensor, dis, terrain_loss)
+	var srx = calculate_srx(ptx, height_tx, height_sensor, dis, terrain_loss)
 
 	return srx > threshold
 
