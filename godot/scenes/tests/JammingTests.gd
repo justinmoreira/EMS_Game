@@ -28,7 +28,7 @@ func test_calculate_interference():
 			"frequency": 1000.0,
 			"power": 5.0,
 			"height": 5.0,
-			"position": Vector2(100, 0), # 1 km away
+			"position": Vector2(100, 0),  # 1 km away
 			"bandwidth": "Narrow"
 		}
 	]
@@ -44,11 +44,11 @@ func test_calculate_interference():
 	# Test 3: Jammer outside frequency range (should NOT interfere)
 	jammers = [
 		{
-			"frequency": 2000.0, # Far from rx 1000 MHz
+			"frequency": 2000.0,  # Far from rx 1000 MHz
 			"power": 5.0,
 			"height": 5.0,
 			"position": Vector2(100, 0),
-			"bandwidth": "Narrow" # 1 MHz range
+			"bandwidth": "Narrow"  # 1 MHz range
 		}
 	]
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
@@ -70,11 +70,11 @@ func test_calculate_interference():
 			"bandwidth": "Narrow"
 		},
 		{
-			"frequency": 1000.5, # Close to rx
+			"frequency": 1000.5,  # Close to rx
 			"power": 3.0,
 			"height": 5.0,
 			"position": Vector2(100, 0),
-			"bandwidth": "Medium" # 10 MHz range
+			"bandwidth": "Medium"  # 10 MHz range
 		}
 	]
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
