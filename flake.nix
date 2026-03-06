@@ -35,6 +35,9 @@
             # Configure Godot editor to use tab size 4
             bash scripts/set_godot_save_fmt.sh
 
+            # Configure Godot editor to use tab size 4
+            bash scripts/set_godot_save_fmt.sh
+
             if ! systemctl is-active --quiet docker 2>/dev/null; then
               echo "Starting Docker daemon..."
               sudo systemctl start docker
