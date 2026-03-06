@@ -7,18 +7,10 @@ const PIXELS_PER_UNIT = 100.0
 const NOISE_FLOOR = 0.5
 
 # Different types of jammers (bandwidth power)
-const BANDWIDTH_POWER = {
-	"Narrow": 1.0, # 1 MHz
-	"Medium": 0.5, # 10 MHz
-	"Wide": 0.3 # 50 MHz
-}
+const BANDWIDTH_POWER = {"Narrow": 1.0, "Medium": 0.5, "Wide": 0.3}  # 1 MHz  # 10 MHz  # 50 MHz
 
 # Actual bandwidth values in MHz for each jammer type
-const BANDWIDTH_VALUES = {
-	"Narrow": 1.0, # 1 MHz
-	"Medium": 10.0, # 10 MHz
-	"Wide": 50.0 # 50 MHz
-}
+const BANDWIDTH_VALUES = {"Narrow": 1.0, "Medium": 10.0, "Wide": 50.0}  # 1 MHz  # 10 MHz  # 50 MHz
 
 
 func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
@@ -68,10 +60,8 @@ func calculate_received_power(
 
 
 func calculate_interference(
-	_rx_frequency: float,
-	_rx_height: float,
-	_rx_pos: Vector2,
-	jammers: Array) -> float:
+	_rx_frequency: float, _rx_height: float, _rx_pos: Vector2, jammers: Array
+) -> float:
 	"""
 	Calculates the total interference power from all jammers
 
@@ -106,7 +96,7 @@ func calculate_interference(
 				_rx_height,
 				jammer.frequency,
 				calculate_distance(jammer.position, _rx_pos),
-				1.0 # terrain_loss
+				1.0  # terrain_loss
 			)
 
 			# Get bandwidth penalty for this jammer type
@@ -116,6 +106,7 @@ func calculate_interference(
 			total_interference += (jammer_power_at_rx * bandwidth_power)
 
 	return total_interference
+
 
 func range_check(received_power: float) -> bool:
 	"""
@@ -128,6 +119,7 @@ func range_check(received_power: float) -> bool:
 		true if in range(signal > noisefloor), false if outofrange
 	"""
 	return received_power > NOISE_FLOOR
+
 
 func jamming_check(received_power: float, interference_power: float) -> bool:
 	"""
