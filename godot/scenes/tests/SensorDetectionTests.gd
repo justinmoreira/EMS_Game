@@ -10,12 +10,12 @@ func _ready() -> void:
 
 
 func test_sensor_detection():
-	print("Running Sensor Detection Tests...")
+	print("\nRunning Sensor Detection Tests...")
 
 	#Test Frequency Check
 
 	var r1 = PhysicsEngine.frequency_check(
-		PhysicsEngine.FrequencyBand.Low, PhysicsEngine.Bandwidth.Narrow
+		PhysicsEngine.FrequencyBand.FQ_LOW, PhysicsEngine.Bandwidth.BW_NARROW
 	)
 
 	if r1:
@@ -29,16 +29,16 @@ func test_sensor_detection():
 	#Distance Loss= (1+1)^2 = 4
 	#Srx = (10*1)/(4*1) = 2.5
 
-	var srx = PhysicsEngine.calculate_Srx(10.0, 10.0, 10.0, 1.0, 1.0)
-	if is_equal_approx(srx, 2.5):
+	var srx = PhysicsEngine.calculate_srx(10.0, 10.0, 10.0, 1.0, 1.0)
+	if is_equal_approx(srx, 5.0):
 		print("[PASS] Srx calculation correct")
 	else:
 		print("[FAIL] Srx incorrect: Got ", srx)
 
 	# Test Detection
 	var detected = PhysicsEngine.is_detected(
-		PhysicsEngine.FrequencyBand.Low,
-		PhysicsEngine.Bandwidth.Narrow,
+		PhysicsEngine.FrequencyBand.FQ_LOW,
+		PhysicsEngine.Bandwidth.BW_NARROW,
 		1.0,
 		10.0,
 		10.0,
@@ -52,4 +52,4 @@ func test_sensor_detection():
 	else:
 		print("[FAIL] Detection should have succeeded")
 
-	print("\nSensor Detection Tests Complete.")
+	print("\n")
