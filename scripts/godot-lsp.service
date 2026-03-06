@@ -1,0 +1,11 @@
+[Unit]
+Description=Godot LSP Server (headless)
+
+[Service]
+Environment=PATH=NIX_BIN_DIR:/usr/bin:/bin
+ExecStart=EMS_GAME_DIR/scripts/bin/godot4 --headless --editor --path EMS_GAME_DIR/godot
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

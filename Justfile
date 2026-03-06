@@ -71,7 +71,7 @@ test:
     GODOT={{godot_linux_headless}} PROJECT_PATH={{project_path}} ./scripts/ci/test.sh
 
 # [Build] Export Godot game to web artifacts
-build_game:
+build_game: _init_godot
     @echo "🔨 Exporting Godot for Web..."
     @mkdir -p {{export_path}}
     {{godot_linux_headless}} --headless --path {{project_path}} --export-release "{{export_preset}}" ../{{export_path}}/index.html
