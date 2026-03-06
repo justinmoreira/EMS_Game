@@ -1,5 +1,5 @@
-extends Node2D
 class_name EMSUnit
+extends Node2D
 
 @export_group("ID")
 @export var unit_name: String = "New Unit"

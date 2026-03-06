@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+echo "🔍 Running lint checks before push..."
+if ! just lint; then
+    echo ""
+    echo "=========================================="
+    echo "  Push blocked by lint errors."
+    echo ""
+    echo "  Run:  just lint --fix"
+    echo ""
+    echo "  Still failing? Try:"
+    echo "        just lint --fix --unsafe"
+    echo ""
+    echo "  Make sure to stage and commit the fixes"
+    echo "=========================================="
+    exit 1
+fi
+
+if ! git diff --quiet; then
+    echo ""
+    echo "⚠️  Warning: you have uncommitted changes."
+    echo "   Make sure lint fixes are committed or CI may fail."
+fi

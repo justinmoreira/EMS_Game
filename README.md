@@ -27,7 +27,7 @@ cd /mnt/c/Users/<you>/EMS_Game
 just code  # Open VSCode editor (If available)
 ```
 
-### B) Linux / Existing WSL
+### B) Ubuntu 24.04 or Arch (VM or Bare-Metal)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/justinmoreira/EMS_Game/main/scripts/install.sh | bash
@@ -54,6 +54,9 @@ just edit            # Open the Godot editor (GUI; cross-platform)
 just dev             # THE MAIN COMMAND
 # Start Astro dev server & auto-rebuild Godot on git-tracked file changes
 
+just lint             # Check formatting (TypeScript, Astro, GDScript)
+just lint --fix       # Auto-fix formatting issues
+
 just build           # Full production build pipeline: Godot → Astro → server/public/
 
 just run             # Build for Production and serve (Godot + Astro + Docker)
@@ -77,14 +80,17 @@ Along with JIRA, it would be useful to annotate further work needed in-line on o
 
 ```
 EMS_Game/
+├── client/app/         # Astro frontend (TypeScript/HTML)
+│       ├── components/ # Reactive / Reusable components
+│       ├── */          # Astro (HTML Templating) + styles
+│       └── utils.ts    # Helper/reusable TypeScript functions
 ├── godot/              # Godot project files
-├── server/             # Nginx config + web build output
-│   ├── public/         # Built game (index.html, .wasm, .pck)
-│   └── nginx.conf      # Server configuration
-├── scripts/            # Installation scripts
-│   ├── install.sh      # Project setup (Linux/WSL)
-│   └── wsl/            # WSL-specific automation
-└── Justfile            # Task definitions
+│   ├── scripts/        # GDScript game logic
+│   ├── scenes/tests/   # *Tests.gd Unit tests
+│   └── shaders/        # GLSL shaders
+└──  server/            # Nginx config + web build output
+    ├── public/         # Build files
+    └── nginx.conf      # Server configuration
 ```
 
 ## Environment Variables
@@ -119,3 +125,9 @@ wsl -l -v                # List all distros
 - `Docker`: VM for isolated webserver
 - `nginx`: Router/Webserver
 - `godot`: GUI for game editing and binaries for compilation to web
+
+---
+
+### Contributing
+
+Want to contribute? Check out the [Contributing Guide](https://github.com/justinmoreira/EMS_Game?tab=contributing-ov-file) for formatting, linting, and testing conventions.
