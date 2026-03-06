@@ -14,14 +14,15 @@ func test_sensor_detection():
 
 	#Test Frequency Check
 
-	var r1 = PhysicsEngine.frequency_check(PhysicsEngine.FrequencyBand.Low, PhysicsEngine.Bandwidth.Narrow)
+	var r1 = PhysicsEngine.frequency_check(
+		PhysicsEngine.FrequencyBand.Low, PhysicsEngine.Bandwidth.Narrow
+	)
 
 	if r1:
 		print("[PASS] Narrow allows Low")
 	else:
 		print("[Fail] Narrow allows Low")
 
-	
 	#Test Srx Calculation
 	# Expected output:
 	#Hf = (10+10)/20 =1
@@ -33,7 +34,6 @@ func test_sensor_detection():
 		print("[PASS] Srx calculation correct")
 	else:
 		print("[FAIL] Srx incorrect: Got ", srx)
-
 
 	# Test Detection
 	var detected = PhysicsEngine.is_detected(
