@@ -25,9 +25,9 @@ func test_sensor_detection():
 
 	#Test Srx Calculation
 	# Expected output:
-	#Hf = (10+10)/20 =1
+	#Hf = 1 + (10+10)/20 = 2
 	#Distance Loss= (1+1)^2 = 4
-	#Srx = (10*1)/(4*1) = 2.5
+	#Srx = (10*2)/(4*1) = 5.0
 
 	var srx = PhysicsEngine.calculate_srx(10.0, 10.0, 10.0, 1.0, 1.0)
 	if is_equal_approx(srx, 5.0):
