@@ -3,6 +3,15 @@ extends Node
 # This will map to 100 pixels -> 1 km
 const PIXELS_PER_UNIT = 100.0
 
+# Prohibits communication at extreme distance with no power
+const NOISE_FLOOR = 0.5
+
+# Different types of jammers (bandwidth power)
+const BANDWIDTH_POWER = {"Narrow": 1.0, "Medium": 0.5, "Wide": 0.3}  # 1 MHz  # 10 MHz  # 50 MHz
+
+# Actual bandwidth values in MHz for each jammer type
+const BANDWIDTH_VALUES = {"Narrow": 1.0, "Medium": 10.0, "Wide": 50.0}  # 1 MHz  # 10 MHz  # 50 MHz
+
 
 func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
 	return pos1.distance_to(pos2) / PIXELS_PER_UNIT
@@ -48,3 +57,79 @@ func calculate_received_power(
 		(tx_power * height_factor * frequency_factor) / (distance_loss * terrain_loss)
 	)
 	return received_power
+
+
+func calculate_interference(
+	_rx_frequency: float, rx_height: float, _rx_pos: Vector2, jammers: Array
+) -> float:
+	"""
+	Calculates the total interference power from all jammers
+
+	Args:
+		_rx_frequency: Receiverfrequency in MHz
+		_rx_height: Receiverheight in meters
+		_rx_pos: Receiverposition as Vector2
+		jammers: Arrayofdictionarieswithjammerproperties:
+		{
+			"position": Vector2,
+			"power": float(0 - 10),
+			"frequency": float(MHz),
+			"bandwidth": String("Narrow", "Medium", "Wide"),
+			"height": float(meters)
+		}
+
+	Returns:
+		Totalinterferencepower as a grep -B 2 "var jammer_power_at_rx" godot/scripts/PhysicsEngine.gdfloat
+	"""
+	var total_interference = 0.0
+	for jammer in jammers:
+		# Check if jammer is within receiver's bandwidth
+		var frequency_diff = abs(_rx_frequency - jammer.frequency)
+		var bandwidth_half = BANDWIDTH_VALUES.get(jammer.bandwidth, 1.0) / 2.0
+
+		# Only add interference if frequencies are close enough
+		if frequency_diff < bandwidth_half:
+			# Calculate jammer's power at receiver
+			var jammer_power_at_rx = calculate_received_power(
+				jammer.power,
+				jammer.height,
+				rx_height,
+				jammer.frequency,
+				calculate_distance(jammer.position, _rx_pos),
+				1.0  # terrain_loss
+			)
+
+			# Get bandwidth penalty for this jammer type
+			var bandwidth_power = BANDWIDTH_POWER.get(jammer.bandwidth, 1.0)
+
+			# Add to total interference
+			total_interference += (jammer_power_at_rx * bandwidth_power)
+
+	return total_interference
+
+
+func range_check(received_power: float) -> bool:
+	"""
+	Checks if receivedpower is abovenoisefloor
+
+	Args:
+		received_power: Thecalculatedreceivedpower
+
+	Returns:
+		true if in range(signal > noisefloor), false if outofrange
+	"""
+	return received_power > NOISE_FLOOR
+
+
+func jamming_check(received_power: float, interference_power: float) -> bool:
+	"""
+	Checks if receivedpowerovercomesinterference and noisefloor
+
+	Args:
+		received_power: Thecalculatedreceivedpower
+		interference_power: Totalinterferencefromjammers
+
+	Returns:
+		true if linksuccessful(signal beatsinterference), false if jammed
+	"""
+	return received_power > (interference_power + NOISE_FLOOR)
