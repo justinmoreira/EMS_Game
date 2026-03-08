@@ -20,11 +20,16 @@ frequency = 0.008
 [sub_resource type="NoiseTexture2D" id="NoiseTexture2D_ems"]
 noise = SubResource("FastNoiseLite_ems")
 
+<<<<<<< HEAD
 [node name="HeightMapDemo" unique_id=1713825799 instance=ExtResource("1_base")]
+=======
+[node name="HeightMapDemo" unique_id=141607713 instance=ExtResource("1_base")]
+>>>>>>> origin
 
 [node name="BackgroundTexture" parent="." index="0" unique_id=2008967764]
 material = SubResource("ShaderMaterial_ems")
 texture = SubResource("NoiseTexture2D_ems")
+<<<<<<< HEAD
 
 [node name="Units" type="Node2D" parent="." index="3" unique_id=1875138343]
 
@@ -36,3 +41,5 @@ position = Vector2(750, 500)
 
 [node name="EMSUnit - Transceiver2" parent="Units" index="2" unique_id=674199607 instance=ExtResource("4_3lxd6")]
 position = Vector2(1250, 500)
+=======
+>>>>>>> origin
