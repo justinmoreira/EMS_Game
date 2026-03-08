@@ -1,12 +1,7 @@
 [gd_scene format=3 uid="uid://c05xgk4gjgvom"]
 
-<<<<<<< HEAD
-[ext_resource type="PackedScene" uid="uid://cscdegdlpq00e" path="res://scenes/core/BaseLevel.tscn" id="1_base"]
-[ext_resource type="Shader" uid="uid://caylm3dak62ug" path="res://shaders/HeightMap.gdshader" id="2_shader"]
-=======
 [ext_resource type="PackedScene" path="res://scenes/core/BaseLevel.tscn" id="1_base"]
 [ext_resource type="Shader" path="res://shaders/HeightMap.gdshader" id="2_shader"]
->>>>>>> origin
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ems"]
 shader = ExtResource("2_shader")

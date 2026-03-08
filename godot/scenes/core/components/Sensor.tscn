@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://dkdtgyqubt46m"]
+
+[ext_resource type="Script" uid="uid://drja1ty1kv8fq" path="res://scenes/core/components/Sensor.gd" id="1_1skol"]
+
+[node name="Sensor" type="Node2D" unique_id=2031422171]
+script = ExtResource("1_1skol")

@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://lwgjly70ogpd"]
+
+[ext_resource type="Script" uid="uid://dodi1hly6cpbv" path="res://scenes/core/components/Jammer.gd" id="1_xvveb"]
+
+[node name="Jammer" type="Node2D" unique_id=1057677908]
+script = ExtResource("1_xvveb")

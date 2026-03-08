@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://bg84wpaaycden"]
+
+[ext_resource type="Script" uid="uid://bxatk7pufxq8k" path="res://scenes/core/components/Transceiver.gd" id="1_sdup5"]
+
+[node name="Transceiver" type="Node2D" unique_id=948404429]
+script = ExtResource("1_sdup5")

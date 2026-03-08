@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://7xh14ua2fjg0"]
+
+[ext_resource type="Script" uid="uid://lovad8bhjgbc" path="res://scenes/ui/Sidebar.gd" id="1_8cvjg"]
+
+[node name="Sidebar" type="PanelContainer" unique_id=831222554]
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_8cvjg")
