@@ -10,6 +10,8 @@ const PIXELS_PER_UNIT = 100.0
 # Prohibits communication at extreme distance with no power
 const NOISE_FLOOR = 0.5
 
+const BW_LOOKUP = ["Narrow", "Medium", "Wide"]
+
 # Different types of jammers (bandwidth power)
 const BANDWIDTH_POWER = {"Narrow": 1.0, "Medium": 0.5, "Wide": 0.3}  # 1 MHz  # 10 MHz  # 50 MHz
 
@@ -123,7 +125,7 @@ func calculate_received_power(
 
 
 func calculate_interference(
-	_rx_frequency: float, rx_height: float, _rx_pos: Vector2, jammers: Array
+	rx_frequency: float, rx_height: float, rx_pos: Vector2, jammers: Array
 ) -> float:
 	"""
 	Calculates the total interference power from all jammers
@@ -147,23 +149,23 @@ func calculate_interference(
 	var total_interference = 0.0
 	for jammer in jammers:
 		# Check if jammer is within receiver's bandwidth
-		var frequency_diff = abs(_rx_frequency - jammer.frequency)
-		var bandwidth_half = BANDWIDTH_VALUES.get(jammer.bandwidth, 1.0) / 2.0
+		var frequency_diff = abs(rx_frequency - jammer.frequency)
+		var bw_key = BW_LOOKUP[jammer.jammer_bandwidth]
+		var bandwidth_half = BANDWIDTH_VALUES.get(bw_key, 1.0) / 2.0
 
 		# Only add interference if frequencies are close enough
-		if frequency_diff < bandwidth_half:
+		if frequency_diff <= bandwidth_half:
 			# Calculate jammer's power at receiver
 			var jammer_power_at_rx = calculate_received_power(
 				jammer.power,
 				jammer.height,
 				rx_height,
 				jammer.frequency,
-				calculate_distance(jammer.position, _rx_pos),
+				calculate_distance(jammer.global_position, rx_pos),
 				1.0  # terrain_loss
 			)
-
 			# Get bandwidth penalty for this jammer type
-			var bandwidth_power = BANDWIDTH_POWER.get(jammer.bandwidth, 1.0)
+			var bandwidth_power = BANDWIDTH_POWER.get(bw_key, 1.0)
 
 			# Add to total interference
 			total_interference += (jammer_power_at_rx * bandwidth_power)

@@ -1,5 +1,5 @@
 class_name Jammer
-extends Node
+extends EMSUnit
 
 @export_group("Settings")
 @export_range(0, 10) var power: int = 5

@@ -1,5 +1,5 @@
 class_name Sensor
-extends Node
+extends EMSUnit
 
 @export_group("Settings")
 @export_range(0, 10) var sensitivity: int = 3

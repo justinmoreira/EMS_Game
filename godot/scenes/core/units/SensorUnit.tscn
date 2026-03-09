@@ -1,19 +1,16 @@
 [gd_scene format=3 uid="uid://d3ikpb8okvbey"]
 
-[ext_resource type="Script" uid="uid://cn221t4cpxfpm" path="res://scenes/core/EMSUnit.gd" id="1_dem8i"]
-[ext_resource type="PackedScene" uid="uid://dkdtgyqubt46m" path="res://scenes/core/components/Sensor.tscn" id="2_xbxfc"]
+[ext_resource type="Script" uid="uid://drja1ty1kv8fq" path="res://scenes/core/components/Sensor.gd" id="1_o81bo"]
 [ext_resource type="Script" uid="uid://ck42ox5aq2g2o" path="res://scenes/core/components/UnitVisual.gd" id="3_tm6hg"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_o81bo"]
 radius = 32.0
 
 [node name="EMSUnit - Sensor" type="Area2D" unique_id=864604190]
-script = ExtResource("1_dem8i")
+script = ExtResource("1_o81bo")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_o81bo")
-
-[node name="Sensor" parent="." unique_id=2031422171 instance=ExtResource("2_xbxfc")]
 
 [node name="Visual" type="Node2D" parent="." unique_id=1094016982]
 script = ExtResource("3_tm6hg")
