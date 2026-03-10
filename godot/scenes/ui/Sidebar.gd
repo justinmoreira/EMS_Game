@@ -255,6 +255,13 @@ func _refresh_attribute_panel() -> void:
 				func(v): _write_node("height", int(v)),
 				true
 			)
+			_add_dropdown(
+				"Bandwidth",
+				["Narrow", "Medium", "Wide"],
+				_prop_int("transceiver_bandwidth", 1),
+				C_BLUE,
+				func(v): _write("transceiver_bandwidth", v)
+			)
 
 		EntityType.JAMMER:
 			_attr_header.text = "Jammer"

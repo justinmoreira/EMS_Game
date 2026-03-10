@@ -1,7 +1,7 @@
 extends Node
 
 var timer: Timer
-
+var link_results = {}
 
 func _ready():
 	setup_timer()
@@ -23,6 +23,9 @@ func simulate():
 
 			var link_a_to_b = calculate_link(unit_a, unit_b, jammers)
 			var link_b_to_a = calculate_link(unit_b, unit_a, jammers)
+
+			link_results[unit_a.name + "_to_" + unit_b.name] = link_a_to_b
+			link_results[unit_b.name + "_to_" + unit_a.name] = link_b_to_a
 
 
 func calculate_link(tx: Transceiver, rx: Transceiver, jammers) -> bool:
