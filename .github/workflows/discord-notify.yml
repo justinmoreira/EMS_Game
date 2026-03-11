@@ -2,37 +2,91 @@ name: Discord PR Notification
 
 on:
   pull_request:
-    types: [opened, reopened]
+    types: [opened, reopened, closed, review_requested]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  issues: write
+  pull-requests: write
 
 jobs:
-  notify:
+  notify-open:
+    if: >
+      github.event_name == 'pull_request' &&
+      (github.event.action == 'opened' || github.event.action == 'reopened')
     runs-on: ubuntu-latest
     steps:
-      - name: Build message
-        id: msg
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const pr = context.payload.pull_request;
-            const assignee = pr.assignee?.login || pr.user.login;
-            const reviewers = pr.requested_reviewers.map(r => r.login);
-            let content = '';
-            if (reviewers.length > 0) {
-              content = `${assignee} requests review from ${reviewers.join(', ')}`;
-            }
-            core.setOutput('content', content);
-      - name: Notify Discord
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: |
-          curl -H "Content-Type: application/json" -d \
-            "{
-              \"content\": \"${{ steps.msg.outputs.content }}\",
-              \"embeds\": [{
-                \"title\": \"${{ github.event.pull_request.title }}\",
-                \"url\": \"${{ github.event.pull_request.html_url }}\",
-                \"description\": \"PR #${{ github.event.pull_request.number }} by ${{ github.event.pull_request.user.login }}\",
-                \"color\": 5814783
-              }]
-            }" \
-            "$DISCORD_WEBHOOK_URL"
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const run = require('./scripts/ci/pr-bot/notify-open.js');
+            await run({ github, context });
+
+  notify-approved:
+    if: >
+      github.event_name == 'pull_request_review' &&
+      github.event.review.state == 'approved'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const run = require('./scripts/ci/pr-bot/notify-approved.js');
+            await run({ github, context });
+
+  notify-changes-requested:
+    if: >
+      github.event_name == 'pull_request_review' &&
+      github.event.review.state == 'changes_requested'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const run = require('./scripts/ci/pr-bot/notify-changes-requested.js');
+            await run({ github, context });
+
+  notify-rerequest:
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.action == 'review_requested'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const run = require('./scripts/ci/pr-bot/notify-rerequest.js');
+            await run({ github, context });
+
+  notify-closed:
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const run = require('./scripts/ci/pr-bot/notify-closed.js');
+            await run({ github, context });
