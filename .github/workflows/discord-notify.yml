@@ -2,7 +2,7 @@ name: Discord PR Notification
 
 on:
   pull_request:
-    types: [opened, reopened, closed]
+    types: [opened, reopened, closed, review_requested]
   pull_request_review:
     types: [submitted]
 
@@ -41,6 +41,38 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const run = require('./scripts/ci/pr-bot/notify-approved.js');
+            await run({ github, context });
+
+  notify-changes-requested:
+    if: >
+      github.event_name == 'pull_request_review' &&
+      github.event.review.state == 'changes_requested'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const run = require('./scripts/ci/pr-bot/notify-changes-requested.js');
+            await run({ github, context });
+
+  notify-rerequest:
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.action == 'review_requested'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const run = require('./scripts/ci/pr-bot/notify-rerequest.js');
             await run({ github, context });
 
   notify-closed:

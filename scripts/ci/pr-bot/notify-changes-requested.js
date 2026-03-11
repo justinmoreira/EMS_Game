@@ -9,13 +9,13 @@ module.exports = async ({ github, context }) => {
   if (!tracked) return;
 
   await discord('PATCH', `/messages/${tracked.msgId}`, {
-    content: `${author} your PR was approved by ${reviewer}`,
+    content: `${author} you have Requested Changes from ${reviewer}`,
     embeds: [
       {
-        title: `READY TO MERGE: ${pr.title}`,
+        title: `CHANGES REQUESTED: ${pr.title}`,
         url: pr.html_url,
-        description: `PR #${pr.number} by ${mapUser(pr.user.login)}`,
-        color: 3066993,
+        description: `PR #${pr.number} by ${author}`,
+        color: 15158332,
       },
     ],
   });

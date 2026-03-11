@@ -6,8 +6,8 @@ module.exports = async ({ github, context }) => {
   const reviewers = pr.requested_reviewers.map((r) => mapUser(r.login));
 
   const content = reviewers.length
-    ? `${author} requests review from ${reviewers.join(', ')}`
-    : '';
+    ? `${pr.user.login} requests review from ${reviewers.join(', ')}`
+    : `${pr.user.login} opened a PR`;
 
   const msg = await discord('POST', '?wait=true', {
     content,
