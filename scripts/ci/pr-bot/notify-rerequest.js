@@ -8,7 +8,7 @@ module.exports = async ({ github, context }) => {
   if (!tracked) return;
 
   const content = reviewers.length
-    ? `${pr.user.login} requests review from ${reviewers.join(', ')}`
+    ? `${pr.user.login} requests re-review from ${reviewers.join(', ')}`
     : `${pr.user.login} opened a PR`;
 
   await discord('PATCH', `/messages/${tracked.msgId}`, {
