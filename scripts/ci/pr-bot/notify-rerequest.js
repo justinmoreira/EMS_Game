@@ -7,11 +7,15 @@ module.exports = async ({ github, context }) => {
   const tracked = await findTrackedMessage(github, context.repo, pr.number);
   if (!tracked) return;
 
+  // Delete the old message
+  await discord('DELETE', `/messages/${tracked.msgId}`);
+
   const content = reviewers.length
     ? `${pr.user.login} requests re-review from ${reviewers.join(', ')}`
     : `${pr.user.login} opened a PR`;
 
-  await discord('PATCH', `/messages/${tracked.msgId}`, {
+  // Post a new message so it appears at the bottom of the channel
+  const msg = await discord('POST', '?wait=true', {
     content,
     embeds: [
       {
@@ -21,5 +25,12 @@ module.exports = async ({ github, context }) => {
         color: 5814783,
       },
     ],
+  });
+
+  // Update the tracked comment with the new message ID
+  await github.rest.issues.updateComment({
+    ...context.repo,
+    comment_id: tracked.commentId,
+    body: `<!-- discord-msg-id:${msg.id} -->`,
   });
 };

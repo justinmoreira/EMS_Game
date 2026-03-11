@@ -8,7 +8,9 @@ module.exports = async ({ github, context }) => {
   const tracked = await findTrackedMessage(github, context.repo, pr.number);
   if (!tracked) return;
 
-  await discord('PATCH', `/messages/${tracked.msgId}`, {
+  await discord('DELETE', `/messages/${tracked.msgId}`);
+
+  const msg = await discord('POST', '?wait=true', {
     content: `${author} you have Requested Changes from ${reviewer}`,
     embeds: [
       {
@@ -18,5 +20,11 @@ module.exports = async ({ github, context }) => {
         color: 15158332,
       },
     ],
+  });
+
+  await github.rest.issues.updateComment({
+    ...context.repo,
+    comment_id: tracked.commentId,
+    body: `<!-- discord-msg-id:${msg.id} -->`,
   });
 };
