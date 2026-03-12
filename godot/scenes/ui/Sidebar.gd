@@ -109,31 +109,40 @@ func _build_tray() -> PanelContainer:
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 8)
 	vbox.add_child(stack)
-	stack.add_child(
-		_build_entity_card(
-			"Transceiver",
-			"T",
-			C_BLUE,
-			EntityType.TRANSCEIVER,
-			"res://scenes/core/units/TransceiverUnit.tscn",
+	(
+		stack
+		. add_child(
+			_build_entity_card(
+				"Transceiver",
+				"T",
+				C_BLUE,
+				EntityType.TRANSCEIVER,
+				"res://scenes/core/units/TransceiverUnit.tscn",
+			)
 		)
 	)
-	stack.add_child(
-		_build_entity_card(
-			"Jammer",
-			"J",
-			C_AMBER,
-			EntityType.JAMMER,
-			"res://scenes/core/units/JammerUnit.tscn",
+	(
+		stack
+		. add_child(
+			_build_entity_card(
+				"Jammer",
+				"J",
+				C_AMBER,
+				EntityType.JAMMER,
+				"res://scenes/core/units/JammerUnit.tscn",
+			)
 		)
 	)
-	stack.add_child(
-		_build_entity_card(
-			"Sensor",
-			"S",
-			C_RED,
-			EntityType.SENSOR,
-			"res://scenes/core/units/SensorUnit.tscn",
+	(
+		stack
+		. add_child(
+			_build_entity_card(
+				"Sensor",
+				"S",
+				C_RED,
+				EntityType.SENSOR,
+				"res://scenes/core/units/SensorUnit.tscn",
+			)
 		)
 	)
 

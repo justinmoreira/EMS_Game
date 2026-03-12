@@ -119,6 +119,7 @@ func _apply_hover_style() -> void:
 
 # ── Drag-and-drop ──────────────────────────
 
+
 func _get_drag_data(_at_position: Variant) -> Variant:
 	var icon := _IconDraw.new()
 	icon.radius = PREVIEW_RADIUS
@@ -138,7 +139,9 @@ func _get_drag_data(_at_position: Variant) -> Variant:
 
 # ── Inner class: draws a circle + letter ───
 
-class _IconDraw extends Control:
+
+class _IconDraw:
+	extends Control
 	var radius := 20.0
 	var font_size := 18
 	var label := "T"
@@ -150,8 +153,6 @@ class _IconDraw extends Control:
 		draw_arc(center, radius, 0, TAU, 32, color, 1.5)
 
 		var font := ThemeDB.fallback_font
-		var text_size := font.get_string_size(
-			label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
-		)
+		var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 		var offset := center + Vector2(-text_size.x / 2.0, text_size.y / 4.0)
 		draw_string(font, offset, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
