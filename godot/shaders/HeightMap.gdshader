@@ -23,9 +23,19 @@ void fragment() {
     if (transformed_uv.x < 0.0 || transformed_uv.x > 1.0 || transformed_uv.y < 0.0 || transformed_uv.y > 1.0) {
         COLOR = vec4(0.05, 0.05, 0.05, 1.0);
     } else {
-        float height = texture(TEXTURE, transformed_uv).r;
-        vec3 low = vec3(0.0, 1.0, 0.0);
-        vec3 high = vec3(1.0, 0.0, 0.0);
-        COLOR = vec4(mix(low, high, height * sensitivity), 1.0);
+        float height = texture(TEXTURE, transformed_uv).r * sensitivity;
+        vec3 color;
+        if (height < 0.2) {
+            color = mix(vec3(0.0, 0.0, 0.4), vec3(0.1, 0.3, 0.8), height / 0.2);
+        } else if (height < 0.4) {
+            color = mix(vec3(0.1, 0.3, 0.8), vec3(0.2, 0.6, 0.2), (height - 0.2) / 0.2);
+        } else if (height < 0.6) {
+            color = mix(vec3(0.2, 0.6, 0.2), vec3(0.8, 0.8, 0.2), (height - 0.4) / 0.2);
+        } else if (height < 0.8) {
+            color = mix(vec3(0.8, 0.8, 0.2), vec3(0.8, 0.3, 0.1), (height - 0.6) / 0.2);
+        } else {
+            color = mix(vec3(0.8, 0.3, 0.1), vec3(1.0, 0.1, 0.0), (height - 0.8) / 0.2);
+        }
+        COLOR = vec4(color, 1.0);
     }
 }

@@ -32,13 +32,28 @@ func update_shader():
 		background.material.set_shader_parameter("aspect_ratio", aspect)
 
 
+func _clamp_offset():
+	var margin = (1.0 - zoom) / 2.0
+	offset.x = clamp(offset.x, -margin, margin)
+	offset.y = clamp(offset.y, -margin, margin)
+
+
 func _input(event):
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+			var old_zoom = zoom
 			zoom = clamp(zoom * 0.9, 0.1, 1.0)
+			# Zoom toward mouse position
+			var mouse_uv = event.position / get_viewport_rect().size - Vector2(0.5, 0.5)
+			offset += mouse_uv * (old_zoom - zoom)
+			_clamp_offset()
 			update_shader()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+			var old_zoom = zoom
 			zoom = clamp(zoom * 1.1, 0.1, 1.0)
+			var mouse_uv = event.position / get_viewport_rect().size - Vector2(0.5, 0.5)
+			offset += mouse_uv * (old_zoom - zoom)
+			_clamp_offset()
 			update_shader()
 		elif event.button_index == MOUSE_BUTTON_LEFT:
 			dragging = event.pressed
@@ -47,11 +62,6 @@ func _input(event):
 	elif event is InputEventMouseMotion and dragging:
 		var delta = (event.position - last_mouse_pos) / get_viewport_rect().size
 		offset -= delta * zoom
-
-		# Clamp logic
-		var margin = (1.0 - zoom) / 2.0
-		offset.x = clamp(offset.x, -margin, margin)
-		offset.y = clamp(offset.y, -margin, margin)
-
+		_clamp_offset()
 		last_mouse_pos = event.position
 		update_shader()
