@@ -10,47 +10,30 @@ export_path := "client/public/godot"
 export_preset := "Web"
 
 # ── Environment Detection ─────────────────────────────────────────────────────
-# Returns "true" if running in WSL, "false" otherwise
 is_wsl := shell("grep -qi microsoft /proc/version && echo 'true' || echo 'false'")
 
 # ── Executable Paths ──────────────────────────────────────────────────────────
-# [Linux Native]: Find system Godot (non-Nix) for GUI, use Nix for headless
+# Find system Godot (non-Nix) for GUI, use Nix for headless
 godot_linux_gui := shell("which -a godot 2>/dev/null | grep -v '/nix/store' | head -n1 || echo 'godot'")
 godot_linux_headless := "godot4"
-
-# [Windows Native]: Path to your Windows Executable (WSL Access Path)
-# You can override this in a .env file or by running `GODOT_WIN=... just edit`
+# Override in .env or via `GODOT_WIN=... just edit`
 godot_win := env("GODOT_WIN", "/mnt/c/Program Files/Godot/Godot_v4.6-stable_win64.exe")
 
-# ── Default Command ───────────────────────────────────────────────────────────
-default:
+# ── Default ───────────────────────────────────────────────────────────────────
+_default:
     @just --list
 
 # ── Recipes ───────────────────────────────────────────────────────────────────
 
-# [Setup] Download and install Godot Export Templates (Required for Web Export)
+[group('setup')]
+[doc('Download and install Godot export templates')]
+[private]
 _init_godot:
-    # Note: On WSL, we still want Linux templates because the HEADLESS builder is Linux.
     GODOT_RELEASE_TAG={{godot_release_tag}} GODOT_VERSION={{godot_version}} ./scripts/ci/install-templates.sh
 
-# [Edit] Open the Godot Editor (GUI)
-# Logic: If WSL -> Launch Windows Exe via PowerShell. If Arch -> Launch Linux Bin.
-edit:
-    @echo "🚀 Launching Editor..."
-    @if [ "{{is_wsl}}" = "true" ]; then \
-        echo "   [Environment]: WSL detected via /proc/version"; \
-        if [ ! -f "{{godot_win}}" ]; then \
-            echo "   ❌ Error: Windows Godot executable not found at: {{godot_win}}"; \
-            echo "   👉 Please set GODOT_WIN in your .env file."; \
-            exit 1; \
-        fi; \
-        echo "   [Executable]:  {{godot_win}}"; \
-        powershell.exe -Command "Start-Process '$(wslpath -w "{{godot_win}}")' -ArgumentList '-e','--path','$(wslpath -w "{{project_path}}")'"; \
-    else \
-        echo "   [Environment]: Native Linux detected"; \
-        {{godot_linux_gui}} -e --path {{project_path}} &>/dev/null & \
-    fi
-
+[group('setup')]
+[doc('Install client dependencies with bun')]
+[private]
 _init_client:
     #!/usr/bin/env bash
     echo "📦 Installing client dependencies with bun..."
@@ -58,70 +41,8 @@ _init_client:
     bun install
     cd ..
 
-# [Lint] Fast style/format checks. Pass --fix to auto-fix, --fix --unsafe to also apply unsafe fixes.
-lint fix="" unsafe="":
-    CLIENT_PATH={{client_path}} PROJECT_PATH={{project_path}} ./scripts/ci/lint.sh {{fix}} {{unsafe}}
-
-# [Check] Compilation and build verification (tsc, GDScript compiler, Astro build).
-check:
-    GODOT={{godot_linux_headless}} CLIENT_PATH={{client_path}} PROJECT_PATH={{project_path}} ./scripts/ci/check.sh
-
-# [Test] Run Godot unit tests headlessly
-test:
-    GODOT={{godot_linux_headless}} PROJECT_PATH={{project_path}} ./scripts/ci/test.sh
-
-# [Build] Export Godot game to web artifacts
-build_game: _init_godot
-    @echo "🔨 Exporting Godot for Web..."
-    @mkdir -p {{export_path}}
-    {{godot_linux_headless}} --headless --path {{project_path}} --export-release "{{export_preset}}" ../{{export_path}}/index.html
-    @echo "✅ Godot export complete"
-
-# [Build] Build Astro site (outputs to server/public/)
-_build_client:
-    @echo "🔨 Building Astro site..."
-    cd {{client_path}} && bun run build
-    @echo "✅ Astro build complete"
-
-# [Build] Full pipeline: Godot → Astro → server/public/
-build:
-    @just build_game
-    @just _build_client
-
-# [Watch] Rebuild Godot web export on file changes
-watch_godot:
-    find godot -type f | entr -r just build_game
-
-# [Dev] Start Astro dev server and watch for changes to git-tracked Godot files (auto rebuild)
-dev:
-    #!/usr/bin/env bash
-    echo "🔄 Watching git-tracked godot/ files for changes (auto rebuild)..."
-    (git ls-files | grep '^godot/' | entr -r just build_game &)
-    PORT=$(python3 scripts/find_port.py)
-    echo "🌐 Starting dev server on port $PORT..."
-    cd {{client_path}} && bun run dev --port $PORT
-
-# [Serve] Launch web build in a Docker container (http://localhost:8080)
-_serve:
-    #!/usr/bin/env bash
-    docker rm -f ems-game-server 2>/dev/null
-    echo "🌐 Serving at http://localhost:8080"
-    docker run -d --name ems-game-server -p 8080:80 \
-        -v "$(pwd)/server/public:/usr/share/nginx/html:ro" \
-        -v "$(pwd)/server/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
-        --rm nginx:alpine
-
-# [Run] Build and Serve
-run:
-    @just build
-    @just _serve
-
-# [Stop] Stop the serve container
-stop:
-    docker rm -f ems-game-server 2>/dev/null
-    @echo "🛑 Server stopped."
-
-# [Auth] Authenticate with GitHub CLI and configure Git
+[group('setup')]
+[doc('Authenticate with GitHub CLI and configure Git')]
 github-auth:
     #!/usr/bin/env bash
     echo "🔐 Checking GitHub authentication..."
@@ -168,9 +89,96 @@ github-auth:
     echo ""
     echo "🎉 Authentication setup complete!"
 
+[group('dev')]
+[doc('Open the Godot editor (WSL → Windows exe, Linux → native)')]
+edit:
+    @echo "🚀 Launching Editor..."
+    @if [ "{{is_wsl}}" = "true" ]; then \
+        echo "   [Environment]: WSL detected via /proc/version"; \
+        if [ ! -f "{{godot_win}}" ]; then \
+            echo "   ❌ Error: Windows Godot executable not found at: {{godot_win}}"; \
+            echo "   👉 Please set GODOT_WIN in your .env file."; \
+            exit 1; \
+        fi; \
+        echo "   [Executable]:  {{godot_win}}"; \
+        powershell.exe -Command "Start-Process '$(wslpath -w "{{godot_win}}")' -ArgumentList '-e','--path','$(wslpath -w "{{project_path}}")'"; \
+    else \
+        echo "   [Environment]: Native Linux detected"; \
+        {{godot_linux_gui}} -e --path {{project_path}} &>/dev/null & \
+    fi
+
+[group('dev')]
+[doc('Open the VSCode workspace')]
 code:
     code dev.code-workspace
 
-# [Cat all files in a directory, respecting .gitignore, print filename before content]
-print-files dir:
+[group('dev')]
+[doc('Start Astro dev server with auto Godot rebuild on changes')]
+dev:
+    #!/usr/bin/env bash
+    echo "🔄 Watching git-tracked godot/ files for changes (auto rebuild)..."
+    (git ls-files | grep '^godot/' | entr -r just build_game &)
+    PORT=$(python3 scripts/find_port.py)
+    echo "🌐 Starting dev server on port $PORT..."
+    cd {{client_path}} && bun run dev --port $PORT
+
+[group('quality')]
+[doc('Fast style/format checks (--fix to auto-fix, --fix --unsafe for unsafe fixes)')]
+lint fix="" unsafe="":
+    CLIENT_PATH={{client_path}} PROJECT_PATH={{project_path}} ./scripts/ci/lint.sh {{fix}} {{unsafe}}
+
+[group('quality')]
+[doc('Compilation and build verification (tsc, GDScript, Astro)')]
+check:
+    GODOT={{godot_linux_headless}} CLIENT_PATH={{client_path}} PROJECT_PATH={{project_path}} ./scripts/ci/check.sh
+
+[group('quality')]
+[doc('Run Godot unit tests headlessly')]
+test:
+    GODOT={{godot_linux_headless}} PROJECT_PATH={{project_path}} ./scripts/ci/test.sh
+
+[group('build')]
+[doc('Export Godot game to web artifacts')]
+build_game: _init_godot
+    @echo "🔨 Exporting Godot for Web..."
+    @mkdir -p {{export_path}}
+    {{godot_linux_headless}} --headless --path {{project_path}} --export-release "{{export_preset}}" ../{{export_path}}/index.html
+    @echo "✅ Godot export complete"
+
+[group('build')]
+[doc('Build Astro site')]
+build_client:
+    @echo "🔨 Building Astro site..."
+    cd {{client_path}} && bun run build
+    @echo "✅ Astro build complete"
+
+[group('build')]
+[doc('Full pipeline: Godot → Astro')]
+build: build_game build_client
+
+[group('deploy')]
+[doc('Build and serve in Docker')]
+run: build _serve
+
+[group('deploy')]
+[doc('Launch web build in Docker (http://localhost:8080)')]
+[private]
+_serve:
+    #!/usr/bin/env bash
+    docker rm -f ems-game-server 2>/dev/null
+    echo "🌐 Serving at http://localhost:8080"
+    docker run -d --name ems-game-server -p 8080:80 \
+        -v "$(pwd)/server/public:/usr/share/nginx/html:ro" \
+        -v "$(pwd)/server/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
+        --rm nginx:alpine
+
+[group('deploy')]
+[doc('Stop the Docker serve container')]
+stop:
+    docker rm -f ems-game-server 2>/dev/null
+    @echo "🛑 Server stopped."
+
+[group('utils')]
+[doc('Print all git-tracked files in a directory with their contents')]
+print-files dir=".":
     @git -C {{dir}} ls-files | xargs -I{} sh -c 'echo "===== {{dir}}/{} ====="; cat "{{dir}}/{}" || true'
