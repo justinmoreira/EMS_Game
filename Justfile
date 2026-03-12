@@ -116,8 +116,8 @@ code:
 [doc('Start Astro dev server with auto Godot rebuild on changes')]
 dev:
     #!/usr/bin/env bash
-    echo "🔄 Watching git-tracked godot/ files for changes (auto rebuild)..."
-    (git ls-files | grep '^godot/' | entr -r just build_game &)
+    echo "🔄 Watching godot/ for changes (auto rebuild)..."
+    (watchexec -w godot -e gd,tscn,gdshader,tres -- just build_game &)
     PORT=$(python3 scripts/find_port.py)
     echo "🌐 Starting dev server on port $PORT..."
     cd {{client_path}} && bun run dev --port $PORT

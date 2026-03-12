@@ -22,7 +22,11 @@ export default defineConfig({
   integrations: [preact()],
   vite: {
     plugins: [tailwindcss(), crossOriginIsolation()],
-    server: {},
+    server: {
+      watch: {
+        ignored: ['**/public/godot/**'],
+      },
+    },
   },
   outDir: '../server/public',
 });

@@ -22,7 +22,7 @@
             fzf            # For just --choose
             gh             # GitHub CLI
             bun            # For Astro web shell (build tool)
-            entr           # For watching file changes (optional)
+            watchexec      # For watching file changes (HMR)
             python313      # For dev tooling scripts - eventual API
             gdtoolkit_4    # GDScript linter & formatter
           ];
