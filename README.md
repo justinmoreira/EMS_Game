@@ -86,7 +86,7 @@ EMS_Game/
 │       └── utils.ts    # Helper/reusable TypeScript functions
 ├── godot/              # Godot project files
 │   ├── scripts/        # GDScript game logic
-│   ├── scenes/tests/   # *Tests.gd Unit tests
+│   ├── tests/          # *Tests.gd Unit tests
 │   └── shaders/        # GLSL shaders
 └──  server/            # Nginx config + web build output
     ├── public/         # Build files

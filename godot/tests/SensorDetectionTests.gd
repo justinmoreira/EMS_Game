@@ -5,9 +5,6 @@ extends Node
 func _ready() -> void:
 	test_sensor_detection()
 
-	await get_tree().create_timer(0.1).timeout
-	get_tree().quit()
-
 
 func test_sensor_detection():
 	print("\nRunning Sensor Detection Tests...")

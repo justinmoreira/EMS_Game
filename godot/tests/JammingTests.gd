@@ -6,9 +6,6 @@ func _ready():
 	test_range_check()
 	test_jamming_check()
 
-	await get_tree().create_timer(0.1).timeout
-	get_tree().quit()
-
 
 func test_calculate_interference():
 	print("Running Interference Tests...\n")

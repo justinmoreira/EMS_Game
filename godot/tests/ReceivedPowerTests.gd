@@ -4,9 +4,6 @@ extends Node
 func _ready():
 	test_received_power()
 
-	await get_tree().create_timer(0.1).timeout
-	get_tree().quit()
-
 
 func test_received_power():
 	print("Running Received Power Tests...\n")
