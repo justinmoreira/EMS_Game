@@ -5,7 +5,7 @@ const FONT_SIZE := 25
 
 # Set these in the Inspector per unit type
 @export var unit_label: String = "T"  # "T", "J", or "S"
-@export var circle_color: Color = Color("4a7c6f")  # match your sidebar accent
+@export var circle_color: Color = Color("4fc3f7")  # match sidebar accent
 
 
 func _draw() -> void:
