@@ -4,6 +4,7 @@
 [ext_resource type="Shader" uid="uid://caylm3dak62ug" path="res://shaders/HeightMap.gdshader" id="2_shader"]
 [ext_resource type="PackedScene" uid="uid://chhar72uv2w2v" path="res://scenes/core/units/JammerUnit.tscn" id="3_drsij"]
 [ext_resource type="PackedScene" uid="uid://d04wswemiv8kc" path="res://scenes/core/units/TransceiverUnit.tscn" id="4_3lxd6"]
+[ext_resource type="PackedScene" uid="uid://d3ikpb8okvbey" path="res://scenes/core/units/SensorUnit.tscn" id="5_3lxd6"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ems"]
 shader = ExtResource("2_shader")
@@ -38,11 +39,15 @@ position = Vector2(750, 500)
 [node name="EMSUnit - Transceiver" parent="Units/Transceivers" index="0" unique_id=2117697803 instance=ExtResource("4_3lxd6")]
 position = Vector2(1100, 600)
 power = 8
-frequency = 990.0
-transceiver_bandwidth = 2
+transceiver_bandwidth = 0
 
 [node name="EMSUnit - Transceiver2" parent="Units/Transceivers" index="1" unique_id=674199607 instance=ExtResource("4_3lxd6")]
 position = Vector2(1250, 500)
 transceiver_bandwidth = 0
 
 [node name="Sensors" type="Node2D" parent="Units" index="2" unique_id=1842112512]
+
+[node name="EMSUnit - Sensor" parent="Units/Sensors" index="0" unique_id=864604190 instance=ExtResource("5_3lxd6")]
+position = Vector2(1000, 500)
+sensitivity = 1
+sensor_bandwidth = 0

@@ -2,9 +2,12 @@ extends Node
 
 var timer: Timer
 var link_results = {}
+var detect_results = {}
+
 
 func _ready():
 	setup_timer()
+	simulate()
 
 
 func simulate():
@@ -27,6 +30,12 @@ func simulate():
 			link_results[unit_a.name + "_to_" + unit_b.name] = link_a_to_b
 			link_results[unit_b.name + "_to_" + unit_a.name] = link_b_to_a
 
+	for sensor in sensors:
+		for tx in transceivers:
+			var detected = calculate_detection(sensor, tx)
+			print("%s detects %s: %s" % [sensor.name, tx.name, detected])
+			detect_results[sensor.name + "_detects_" + tx.name] = detected
+
 
 func calculate_link(tx: Transceiver, rx: Transceiver, jammers) -> bool:
 	var frequency_diff = abs(tx.frequency - rx.frequency)
@@ -45,9 +54,20 @@ func calculate_link(tx: Transceiver, rx: Transceiver, jammers) -> bool:
 			rx.frequency, rx.height, rx.global_position, jammers
 		)
 		var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER.get(bw_key, 1.0)
-
 		return PhysicsEngine.jamming_check(received_power * bandwidth_penalty, interference)
 	return false
+
+
+func calculate_detection(sensor, tx) -> bool:
+	return PhysicsEngine.is_detected(
+		tx.frequency,
+		sensor.sensor_bandwidth,
+		sensor.sensitivity,
+		tx.power,
+		tx.height,
+		sensor.height,
+		PhysicsEngine.calculate_distance(sensor.global_position, tx.global_position)
+	)
 
 
 func setup_timer():
