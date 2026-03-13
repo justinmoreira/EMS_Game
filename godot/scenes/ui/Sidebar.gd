@@ -109,9 +109,42 @@ func _build_tray() -> PanelContainer:
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 8)
 	vbox.add_child(stack)
-	stack.add_child(_build_entity_card("Transceiver", C_BLUE, EntityType.TRANSCEIVER))
-	stack.add_child(_build_entity_card("Jammer", C_AMBER, EntityType.JAMMER))
-	stack.add_child(_build_entity_card("Sensor", C_RED, EntityType.SENSOR))
+	(
+		stack
+		. add_child(
+			_build_entity_card(
+				"Transceiver",
+				"T",
+				C_BLUE,
+				EntityType.TRANSCEIVER,
+				"res://scenes/core/units/TransceiverUnit.tscn",
+			)
+		)
+	)
+	(
+		stack
+		. add_child(
+			_build_entity_card(
+				"Jammer",
+				"J",
+				C_AMBER,
+				EntityType.JAMMER,
+				"res://scenes/core/units/JammerUnit.tscn",
+			)
+		)
+	)
+	(
+		stack
+		. add_child(
+			_build_entity_card(
+				"Sensor",
+				"S",
+				C_RED,
+				EntityType.SENSOR,
+				"res://scenes/core/units/SensorUnit.tscn",
+			)
+		)
+	)
 
 	var hint := _make_label("drag entities onto the scene", C_DIM, 15)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -121,36 +154,12 @@ func _build_tray() -> PanelContainer:
 	return panel
 
 
-func _build_entity_card(label: String, accent: Color, type: EntityType) -> Button:
-	var card := Button.new()
-	card.text = label
-	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	card.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	card.add_theme_font_size_override("font_size", 22)
-	card.add_theme_color_override("font_color", accent)
-	card.add_theme_color_override("font_hover_color", accent.lightened(0.2))
-	card.add_theme_color_override("font_pressed_color", accent.darkened(0.2))
-
-	var s := _flat_style(C_BG_LIGHT, 6)
-	s.set_border_color(accent)
-	s.set_border_width_all(0)
-	s.border_width_top = 2
-	card.add_theme_stylebox_override("normal", s)
-
-	var sh := _flat_style(C_BG_LIGHT.lightened(0.08), 6)
-	sh.set_border_color(accent)
-	sh.set_border_width_all(0)
-	sh.border_width_top = 2
-	card.add_theme_stylebox_override("hover", sh)
-
-	var sp := _flat_style(accent.darkened(0.6), 6)
-	sp.set_border_color(accent)
-	sp.set_border_width_all(0)
-	sp.border_width_top = 2
-	card.add_theme_stylebox_override("pressed", sp)
-
+func _build_entity_card(
+	label: String, icon_letter: String, accent: Color, type: EntityType, scene_path: String
+) -> PanelContainer:
+	var EntityCard := load("res://scenes/ui/EntityCard.gd")
+	var card = EntityCard.new()
+	card.setup(type, icon_letter, accent, scene_path, label, C_BG_LIGHT, C_BG_LIGHT.lightened(0.08))
 	card.pressed.connect(func(): select_entity(type, label, null))
 	return card
 

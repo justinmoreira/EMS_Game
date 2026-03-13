@@ -18,3 +18,4 @@ shape = SubResource("CircleShape2D_w5soc")
 [node name="Visual" type="Node2D" parent="." unique_id=413501508]
 script = ExtResource("3_hkf84")
 unit_label = "J"
+circle_color = Color(1, 0.7019608, 0.27843139, 1)

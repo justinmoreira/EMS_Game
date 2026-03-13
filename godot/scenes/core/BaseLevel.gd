@@ -32,7 +32,22 @@ func update_shader():
 		background.material.set_shader_parameter("aspect_ratio", aspect)
 
 
+func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
+	return data is Dictionary and data.has("scene_path")
+
+
+func _drop_data(at_position: Vector2, data: Variant) -> void:
+	var scene := load(data["scene_path"]) as PackedScene
+	if scene == null:
+		return
+	var unit := scene.instantiate()
+	unit.position = at_position
+	add_child(unit)
+
+
 func _input(event):
+	if get_viewport().gui_is_dragging():
+		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			zoom = clamp(zoom * 0.9, 0.1, 1.0)
