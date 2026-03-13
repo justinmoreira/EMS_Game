@@ -54,7 +54,7 @@ just test                    # Run Godot unit tests headlessly
 
 ## Adding Tests
 
-Drop a `*Tests.gd` file into `godot/scenes/tests/`. It will be picked up automatically by the test runner — no registration needed. Your test script should:
+Drop a `*Tests.gd` file into `godot/tests/`. It will be picked up automatically by the test runner — no registration needed. Your test script should:
 
 ```gdscript
 extends Node
