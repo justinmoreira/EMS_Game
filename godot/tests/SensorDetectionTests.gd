@@ -1,12 +1,8 @@
-extends Node
+extends "res://tests/BaseTest.gd"
 
 
-# Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	test_sensor_detection()
-
-	await get_tree().create_timer(0.1).timeout
-	get_tree().quit()
 
 
 func test_sensor_detection():

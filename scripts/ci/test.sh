@@ -5,7 +5,7 @@ GODOT="${GODOT:-godot4}"
 PROJECT_PATH="${PROJECT_PATH:-godot}"
 
 echo "🧪 Running Godot unit tests..."
-OUTPUT=$($GODOT --headless --path "$PROJECT_PATH" res://scenes/tests/TestRunner.tscn 2>&1)
+OUTPUT=$($GODOT --headless --path "$PROJECT_PATH" res://tests/TestRunner.tscn 2>&1)
 echo "$OUTPUT"
 
 if echo "$OUTPUT" | grep -q "ERROR:"; then

@@ -14,4 +14,4 @@ shape = SubResource("CircleShape2D_8fr1l")
 
 [node name="Visual" type="Node2D" parent="." unique_id=1739282174]
 script = ExtResource("3_2w5d4")
-circle_color = Color(0.5245726, 0.27997804, 0.8288084, 1)
+circle_color = Color(0.30980393, 0.7647059, 0.96862745, 1)
