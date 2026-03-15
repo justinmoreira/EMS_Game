@@ -1,5 +1,6 @@
 extends "res://tests/BaseTest.gd"
 
+
 func _ready():
 	run_sim_test()
 
