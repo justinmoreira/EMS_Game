@@ -3,15 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://6551llkb3nlf"
-path="res://.godot/imported/sensor.png-d8530054e28e368a94b9fbd69abf406e.ctex"
-metadata={
-"vram_texture": false
-}
+valid=false
 
 [deps]
 
 source_file="res://assets/sprites/sensor.png"
-dest_files=["res://.godot/imported/sensor.png-d8530054e28e368a94b9fbd69abf406e.ctex"]
 
 [params]
 

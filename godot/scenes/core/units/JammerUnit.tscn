@@ -1,21 +1,12 @@
 [gd_scene format=3 uid="uid://chhar72uv2w2v"]
 
-[ext_resource type="Script" uid="uid://cn221t4cpxfpm" path="res://scenes/core/EMSUnit.gd" id="1_vqkxn"]
-[ext_resource type="PackedScene" uid="uid://jwf2rfhtgkhc" path="res://scenes/core/components/Jammer.tscn" id="2_p83nw"]
+[ext_resource type="Script" uid="uid://dodi1hly6cpbv" path="res://scenes/core/components/Jammer.gd" id="1_hkf84"]
 [ext_resource type="Script" uid="uid://ck42ox5aq2g2o" path="res://scenes/core/components/UnitVisual.gd" id="3_hkf84"]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_w5soc"]
-radius = 32.0
+[node name="Jammer" type="Node2D" unique_id=1057677908]
+script = ExtResource("1_hkf84")
 
-[node name="EMSUnit - Jammer" type="Area2D" unique_id=1423769516]
-script = ExtResource("1_vqkxn")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
-shape = SubResource("CircleShape2D_w5soc")
-
-[node name="Jammer" parent="." unique_id=1057677908 instance=ExtResource("2_p83nw")]
-
-[node name="Visual" type="Node2D" parent="." unique_id=413501508]
+[node name="Node2D" type="Node2D" parent="." unique_id=1843100740]
 script = ExtResource("3_hkf84")
 unit_label = "J"
 circle_color = Color(1, 0.7019608, 0.2784314, 1)

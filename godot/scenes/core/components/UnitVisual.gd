@@ -1,6 +1,5 @@
-extends Node2D
-
 class_name UnitVisual
+extends Node2D
 
 const RADIUS := 32.0
 const FONT_SIZE := 25
@@ -13,6 +12,7 @@ const FONT_SIZE := 25
 @export var frame_height: int = 970  # 2910 / 3 rows
 @export var animation_speed: float = 12.0  # Frames per second
 
+var is_selected: bool = false
 var _animated_sprite: AnimatedSprite2D
 
 
@@ -28,34 +28,31 @@ func _setup_animated_sprite() -> void:
 	_animated_sprite = AnimatedSprite2D.new()
 	_animated_sprite.position = Vector2.ZERO
 	add_child(_animated_sprite)
-	
+
 	# Load the sprite sheet
 	var texture = load(sprite_sheet_path)
-	
+
 	# Create an animation
 	var sprite_frames = SpriteFrames.new()
 	sprite_frames.add_animation("idle")
-	
+
 	# Add all 12 frames (4 columns x 3 rows)
 	for row in range(3):
 		for col in range(4):
 			var atlas_texture = AtlasTexture.new()
 			atlas_texture.atlas = texture
 			atlas_texture.region = Rect2(
-				col * frame_width,
-				row * frame_height,
-				frame_width,
-				frame_height
+				col * frame_width, row * frame_height, frame_width, frame_height
 			)
 			sprite_frames.add_frame("idle", atlas_texture)
-	
+
 	# Set animation speed
 	sprite_frames.set_animation_loop("idle", true)
 	_animated_sprite.sprite_frames = sprite_frames
 	_animated_sprite.animation = "idle"
 	_animated_sprite.speed_scale = animation_speed / 6.0
 	_animated_sprite.play()
-	
+
 	# Center and scale
 	_animated_sprite.centered = true
 	_animated_sprite.scale = Vector2(0.05, 0.05)
@@ -63,9 +60,6 @@ func _setup_animated_sprite() -> void:
 
 func _setup_fallback_circle() -> void:
 	queue_redraw()
-
-
-var is_selected: bool = false
 
 
 func set_selected(selected: bool) -> void:
@@ -77,7 +71,7 @@ func _draw() -> void:
 	# Draw selection ring if selected
 	if is_selected:
 		draw_arc(Vector2.ZERO, RADIUS + 15, 0, TAU, 32, Color.YELLOW, 3.0)
-	
+
 	if not _animated_sprite:
 		draw_circle(Vector2.ZERO, RADIUS, Color(circle_color, 0.8))
 		draw_arc(Vector2.ZERO, RADIUS, 0, TAU, 32, circle_color, 1.5)

@@ -3,15 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bh4a32wcb243x"
-path="res://.godot/imported/transceiverAni.png-ce943b0b5058b4019f423780574cbb07.ctex"
-metadata={
-"vram_texture": false
-}
+valid=false
 
 [deps]
 
 source_file="res://assets/sprites/transceiverAni.png"
-dest_files=["res://.godot/imported/transceiverAni.png-ce943b0b5058b4019f423780574cbb07.ctex"]
 
 [params]
 

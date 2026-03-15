@@ -3,15 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dgqrobpicetsh"
-path="res://.godot/imported/jammerAni.png-7e53d914142178e361fc10138f861510.ctex"
-metadata={
-"vram_texture": false
-}
+valid=false
 
 [deps]
 
 source_file="res://assets/sprites/jammerAni.png"
-dest_files=["res://.godot/imported/jammerAni.png-7e53d914142178e361fc10138f861510.ctex"]
 
 [params]
 

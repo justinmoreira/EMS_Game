@@ -3,15 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dbk3xesgepbpi"
-path="res://.godot/imported/jammer.png-b28d61a22ae2218086d0a0f83c19813f.ctex"
-metadata={
-"vram_texture": false
-}
+valid=false
 
 [deps]
 
 source_file="res://assets/sprites/jammer.png"
-dest_files=["res://.godot/imported/jammer.png-b28d61a22ae2218086d0a0f83c19813f.ctex"]
 
 [params]
 
