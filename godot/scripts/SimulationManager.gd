@@ -7,7 +7,6 @@ var detect_results = {}
 
 func _ready():
 	setup_timer()
-	simulate()
 
 
 func simulate():

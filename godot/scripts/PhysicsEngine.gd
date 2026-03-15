@@ -1,6 +1,6 @@
 extends Node
 
-enum Bandwidth { BW_NARROW, BW_MED, BW_WIDE }
+enum Bandwidth {BW_NARROW, BW_MED, BW_WIDE}
 
 # This will map to 100 pixels -> 1 km
 const PIXELS_PER_UNIT = 100.0
@@ -11,10 +11,10 @@ const NOISE_FLOOR = 0.5
 const BW_LOOKUP = ["Narrow", "Medium", "Wide"]
 
 # Different types of jammers (bandwidth power)
-const BANDWIDTH_POWER = {"Narrow": 1.0, "Medium": 0.5, "Wide": 0.3}  # 1 MHz  # 10 MHz  # 50 MHz
+const BANDWIDTH_POWER = {"Narrow": 1.0, "Medium": 0.5, "Wide": 0.3} # 1 MHz  # 10 MHz  # 50 MHz
 
 # Actual bandwidth values in MHz for each jammer type
-const BANDWIDTH_VALUES = {"Narrow": 1.0, "Medium": 10.0, "Wide": 50.0}  # 1 MHz  # 10 MHz  # 50 MHz
+const BANDWIDTH_VALUES = {"Narrow": 1.0, "Medium": 10.0, "Wide": 50.0} # 1 MHz  # 10 MHz  # 50 MHz
 
 
 func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
@@ -54,7 +54,6 @@ func is_detected(
 	var threshold = sensitivity + bandwidth_penalty(receiver)
 
 	var srx = calculate_received_power(ptx, height_tx, height_sensor, frequency, dis, terrain_loss)
-	print(srx)
 
 	return srx > threshold
 
@@ -135,7 +134,7 @@ func calculate_interference(
 				rx_height,
 				jammer.frequency,
 				calculate_distance(jammer.global_position, rx_pos),
-				1.0  # terrain_loss
+				1.0 # terrain_loss
 			)
 			# Get bandwidth penalty for this jammer type
 			var bandwidth_power = BANDWIDTH_POWER.get(bw_key, 1.0)

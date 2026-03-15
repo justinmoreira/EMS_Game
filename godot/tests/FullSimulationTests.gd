@@ -1,5 +1,4 @@
-extends Node
-
+extends "res://tests/BaseTest.gd"
 
 func _ready():
 	run_sim_test()
@@ -71,10 +70,7 @@ func run_sim_test():
 		manager.link_results.get("UnitA_to_UnitB") && manager.link_results.get("UnitB_to_UnitA")
 	)
 
-	if result == false:
-		print("[PASS]: Link correctly identified as JAMMED.")
-	else:
-		print("[FAIL]: Link should be jammed but shows as CLEAR.")
+	assert_false(result, "Link correctly identified as JAMMED.")
 
 	jammer.global_position = Vector2(1500, 1500)
 
@@ -83,10 +79,7 @@ func run_sim_test():
 		manager.link_results.get("UnitA_to_UnitB") && manager.link_results.get("UnitB_to_UnitA")
 	)
 
-	if result2 == true:
-		print("[PASS]: Link correctly identified as CLEAR.")
-	else:
-		print("[FAIL]: Link should be clear but shows as JAMMED.")
+	assert_true(result2, "Link correctly identified as CLEAR.")
 
 	manager.queue_free()
 	demo_scene.queue_free()
