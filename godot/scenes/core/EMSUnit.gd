@@ -1,30 +1,45 @@
 class_name EMSUnit
-extends Area2D
+extends Node2D
 
-@export_group("ID")
-@export var unit_name: String = "New Unit"
-@export var unit_id: String = "0000"
+signal selected(unit: Node)
 
-@export_group("Physics")
-@export_range(0, 10) var height: int = 5
+var component: Node
+var selection_area: Area2D
 
-@export_group("Status")
-@export var is_active: bool = true
+func _ready() -> void:
+	# Find whichever component was instantiated
+	for child in get_all_children(self):
+		if child is Transceiver or child is Jammer or child is Sensor:
+			component = child
+			break
+	
+	# Create the selection area with a bigger collision radius
+	selection_area = Area2D.new()
+	selection_area.name = "SelectionArea"
+	selection_area.input_pickable = true
+	
+	var collision = CollisionShape2D.new()
+	var circle = CircleShape2D.new()
+	circle.radius = 100
+	collision.shape = circle
+	
+	selection_area.add_child(collision)
+	add_child(selection_area)
 
 
-func _ready():
-	input_pickable = true
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var mouse_pos = get_global_mouse_position()
+		var distance = global_position.distance_to(mouse_pos)
+		
+		if distance < 100:  # Within the 100 radius
+			selected.emit(self)
+			get_tree().root.set_input_as_handled()
 
 
-func _input_event(_viewport, event, _shape_idx):
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		var sidebar = get_tree().current_scene.get_node("CanvasLayer/Control/Sidebar")
-		print("clicked unit: ", unit_name)  # add this to confirm clicks are registering
-		print("sidebar found: ", sidebar)  # add this to confirm path is correct
-
-		if find_child("Jammer"):
-			sidebar.select_entity(2, unit_name, self)
-		elif find_child("Transceiver"):
-			sidebar.select_entity(1, unit_name, self)
-		elif find_child("Sensor"):
-			sidebar.select_entity(3, unit_name, self)
+func get_all_children(node: Node) -> Array:
+	var children = []
+	for child in node.get_children():
+		children.append(child)
+		children.append_array(get_all_children(child))
+	return children

@@ -118,6 +118,7 @@ func _build_tray() -> PanelContainer:
 				C_BLUE,
 				EntityType.TRANSCEIVER,
 				"res://scenes/core/units/TransceiverUnit.tscn",
+				"res://assets/sprites/transceiver.png"
 			)
 		)
 	)
@@ -130,6 +131,7 @@ func _build_tray() -> PanelContainer:
 				C_AMBER,
 				EntityType.JAMMER,
 				"res://scenes/core/units/JammerUnit.tscn",
+				"res://assets/sprites/jammer.png"
 			)
 		)
 	)
@@ -142,6 +144,7 @@ func _build_tray() -> PanelContainer:
 				C_RED,
 				EntityType.SENSOR,
 				"res://scenes/core/units/SensorUnit.tscn",
+				"res://assets/sprites/sensor.png"
 			)
 		)
 	)
@@ -155,12 +158,12 @@ func _build_tray() -> PanelContainer:
 
 
 func _build_entity_card(
-	label: String, icon_letter: String, accent: Color, type: EntityType, scene_path: String
+	label: String, icon_letter: String, accent: Color, type: EntityType, scene_path: String, sprite_path: String = ""
 ) -> PanelContainer:
 	var EntityCard := load("res://scenes/ui/EntityCard.gd")
 	var card = EntityCard.new()
-	card.setup(type, icon_letter, accent, scene_path, label, C_BG_LIGHT, C_BG_LIGHT.lightened(0.08))
-	card.pressed.connect(func(): select_entity(type, label, null))
+	card.setup(type, icon_letter, accent, scene_path, label, C_BG_LIGHT, C_BG_LIGHT.lightened(0.08), sprite_path)
+	card.pressed.connect(func(): select_entity(type, label, selected_node))
 	return card
 
 
@@ -273,7 +276,7 @@ func _refresh_attribute_panel() -> void:
 				"Power",
 				0.0,
 				10.0,
-				_prop_float("power", 5.0),
+				_prop_int("power", 5),
 				"dBm",
 				C_AMBER,
 				func(v): _write("power", int(v)),
@@ -315,7 +318,7 @@ func _refresh_attribute_panel() -> void:
 				"Sensitivity",
 				0.0,
 				10.0,
-				_prop_float("sensitivity", 3.0),
+				_prop_int("sensitivity", 3),
 				"dBm",
 				C_RED,
 				func(v): _write("sensitivity", int(v)),
@@ -482,26 +485,24 @@ func _make_row_container() -> VBoxContainer:
 
 
 func _component() -> Node:
-	if not selected_node:
-		return null
-	match selected_entity:
-		EntityType.TRANSCEIVER:
-			return selected_node.find_child("Transceiver")
-		EntityType.JAMMER:
-			return selected_node.find_child("Jammer")
-		EntityType.SENSOR:
-			return selected_node.find_child("Sensor")
-	return null
+	return selected_node
 
 
 func _prop_float(p: String, fallback: float) -> float:
 	var c := _component()
-	return float(c.get(p)) if c and p in c else fallback
-
+	if c:
+		var val = c.get(p)
+		if val != null:
+			return float(val)
+	return fallback
 
 func _prop_int(p: String, fallback: int) -> int:
 	var c := _component()
-	return int(c.get(p)) if c and p in c else fallback
+	if c:
+		var val = c.get(p)
+		if val != null:
+			return int(val)
+	return fallback
 
 
 func _prop_bool(p: String, fallback: bool) -> bool:
@@ -511,8 +512,17 @@ func _prop_bool(p: String, fallback: bool) -> bool:
 
 func _write(p: String, value) -> void:
 	var c := _component()
-	if c and p in c:
-		c.set(p, value)
+	if not c:
+		return
+	
+	c.set(p, value)
+	
+	# Get the unit (parent of component)
+	var unit = c.get_parent()
+	if unit:
+		var scene_path = unit.scene_file_path
+		if scene_path:
+			ResourceSaver.save(unit, scene_path)
 
 
 ## Read/write directly on the EMSUnit node (not the component child)

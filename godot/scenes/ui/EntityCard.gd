@@ -12,6 +12,7 @@ var entity_label: String  # "T", "J", "S"
 var accent_color: Color
 var scene_path: String
 var display_name: String
+var _sprite_path: String = ""
 
 # Style colors (matched from Sidebar)
 var _bg_normal: Color
@@ -26,6 +27,7 @@ func setup(
 	p_display_name: String,
 	bg_normal: Color,
 	bg_hover: Color,
+	p_sprite_path: String = ""
 ) -> void:
 	entity_type = p_type
 	entity_label = p_label
@@ -34,6 +36,7 @@ func setup(
 	display_name = p_display_name
 	_bg_normal = bg_normal
 	_bg_hover = bg_hover
+	_sprite_path = p_sprite_path
 
 
 func _ready() -> void:
@@ -59,6 +62,7 @@ func _ready() -> void:
 	icon.custom_minimum_size = Vector2(ICON_RADIUS * 2, ICON_RADIUS * 2)
 	icon.mouse_filter = Control.MOUSE_FILTER_PASS
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.sprite_path = _sprite_path
 	hbox.add_child(icon)
 
 	var name_label := Label.new()
@@ -129,6 +133,7 @@ func _get_drag_data(_at_position: Variant) -> Variant:
 	icon.modulate.a = 0.5
 	icon.position = Vector2(-PREVIEW_RADIUS, -PREVIEW_RADIUS)
 	icon.custom_minimum_size = Vector2(PREVIEW_RADIUS * 2, PREVIEW_RADIUS * 2)
+	icon.sprite_path = _sprite_path
 
 	var preview := Control.new()
 	preview.add_child(icon)
@@ -139,20 +144,31 @@ func _get_drag_data(_at_position: Variant) -> Variant:
 
 # ── Inner class: draws a circle + letter ───
 
-
 class _IconDraw:
-	extends Control
+	extends TextureRect
 	var radius := 20.0
 	var font_size := 18
 	var label := "T"
 	var color := Color.WHITE
+	var sprite_path := ""
+
+	func _ready() -> void:
+		if sprite_path and ResourceLoader.exists(sprite_path):
+			texture = load(sprite_path)
+			expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+			stretch_mode = TextureRect.STRETCH_SCALE
+		else:
+			# Use a custom drawing control for fallback
+			pass
 
 	func _draw() -> void:
-		var center := Vector2(radius, radius)
-		draw_circle(center, radius, Color(color, 0.8))
-		draw_arc(center, radius, 0, TAU, 32, color, 1.5)
+		if not texture:
+			# Fallback to circle with letter
+			var center := Vector2(radius, radius)
+			draw_circle(center, radius, Color(color, 0.8))
+			draw_arc(center, radius, 0, TAU, 32, color, 1.5)
 
-		var font := ThemeDB.fallback_font
-		var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-		var offset := center + Vector2(-text_size.x / 2.0, text_size.y / 4.0)
-		draw_string(font, offset, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
+			var font := ThemeDB.fallback_font
+			var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+			var offset := center + Vector2(-text_size.x / 2.0, text_size.y / 4.0)
+			draw_string(font, offset, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)

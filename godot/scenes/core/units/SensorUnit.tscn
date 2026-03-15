@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://d3ikpb8okvbey"]
 
 [ext_resource type="Script" uid="uid://cn221t4cpxfpm" path="res://scenes/core/EMSUnit.gd" id="1_dem8i"]
-[ext_resource type="PackedScene" uid="uid://dkdtgyqubt46m" path="res://scenes/core/components/Sensor.tscn" id="2_xbxfc"]
+[ext_resource type="PackedScene" uid="uid://di5qvuuy8oj2u" path="res://scenes/core/components/Sensor.tscn" id="2_xbxfc"]
 [ext_resource type="Script" uid="uid://ck42ox5aq2g2o" path="res://scenes/core/components/UnitVisual.gd" id="3_tm6hg"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_o81bo"]
@@ -19,3 +19,4 @@ shape = SubResource("CircleShape2D_o81bo")
 script = ExtResource("3_tm6hg")
 unit_label = "S"
 circle_color = Color(1, 0.36078432, 0.36078432, 1)
+sprite_sheet_path = "res://assets/sprites/sensorAni.png"
