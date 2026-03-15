@@ -1,8 +1,13 @@
 [gd_scene format=3 uid="uid://3s0irvfhcgi1"]
 
-[ext_resource type="Script" uid="uid://cn221t4cpxfpm" path="res://scenes/core/EMSUnit.gd" id="1_egtbu"]
+[ext_resource type="Script" uid="uid://dodi1hly6cpbv" path="res://scenes/core/components/Jammer.gd" id="1_d0jlf"]
+[ext_resource type="Script" uid="uid://ck42ox5aq2g2o" path="res://scenes/core/components/UnitVisual.gd" id="2_ac5q2"]
 
-[node name="EMSUnit" type="Area2D" unique_id=1519568243]
-script = ExtResource("1_egtbu")
+[node name="Jammer" type="Node2D" unique_id=1057677908]
+script = ExtResource("1_d0jlf")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
+[node name="Node2D" type="Node2D" parent="." unique_id=1843100740]
+script = ExtResource("2_ac5q2")
+unit_label = "J"
+circle_color = Color(1, 0.7019608, 0.2784314, 1)
+sprite_sheet_path = "res://assets/sprites/jammerAni.png"
