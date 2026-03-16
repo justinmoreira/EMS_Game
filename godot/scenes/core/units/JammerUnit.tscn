@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://chhar72uv2w2v"]
 
 [ext_resource type="Script" uid="uid://cn221t4cpxfpm" path="res://scenes/core/EMSUnit.gd" id="1_vqkxn"]
-[ext_resource type="PackedScene" uid="uid://lwgjly70ogpd" path="res://scenes/core/components/Jammer.tscn" id="2_p83nw"]
+[ext_resource type="PackedScene" uid="uid://jwf2rfhtgkhc" path="res://scenes/core/components/Jammer.tscn" id="2_p83nw"]
 [ext_resource type="Script" uid="uid://ck42ox5aq2g2o" path="res://scenes/core/components/UnitVisual.gd" id="3_hkf84"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_w5soc"]
@@ -18,4 +18,5 @@ shape = SubResource("CircleShape2D_w5soc")
 [node name="Visual" type="Node2D" parent="." unique_id=413501508]
 script = ExtResource("3_hkf84")
 unit_label = "J"
-circle_color = Color(1, 0.7019608, 0.27843139, 1)
+circle_color = Color(1, 0.7019608, 0.2784314, 1)
+sprite_sheet_path = "res://assets/sprites/jammerAni.png"
