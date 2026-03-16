@@ -11,7 +11,7 @@ if [ "${1:-}" = "--fix" ]; then
     echo "🔧 Formatting GDScript (gdformat)..."
     find "$PROJECT_PATH" -name "*.gd" | xargs gdformat
     echo "🔧 Removing trailing whitespace..."
-    git ls-files -z | xargs -0 sed -i 's/[[:space:]]*$//'
+    git ls-files -z -- '*.gd' '*.ts' '*.tsx' '*.js' '*.jsx' '*.astro' '*.json' '*.md' '*.yml' '*.yaml' '*.sh' '*.nix' '*.cfg' '*.tscn' | xargs -0 sed -i 's/[[:space:]]*$//'
     echo "✅ All fixes applied!"
 else
     exit_code=0
