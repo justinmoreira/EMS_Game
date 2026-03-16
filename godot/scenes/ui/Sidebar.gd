@@ -109,34 +109,43 @@ func _build_tray() -> PanelContainer:
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 8)
 	vbox.add_child(stack)
-	stack.add_child(
-		_build_entity_card(
-			"Transceiver",
-			"T",
-			C_BLUE,
-			EntityType.TRANSCEIVER,
-			"res://scenes/core/units/TransceiverUnit.tscn",
-			"res://assets/sprites/transceiver.png"
+	(
+		stack
+		. add_child(
+			_build_entity_card(
+				"Transceiver",
+				"T",
+				C_BLUE,
+				EntityType.TRANSCEIVER,
+				"res://scenes/core/units/TransceiverUnit.tscn",
+				"res://assets/sprites/transceiver.png"
+			)
 		)
 	)
-	stack.add_child(
-		_build_entity_card(
-			"Jammer",
-			"J",
-			C_AMBER,
-			EntityType.JAMMER,
-			"res://scenes/core/units/JammerUnit.tscn",
-			"res://assets/sprites/jammer.png"
+	(
+		stack
+		. add_child(
+			_build_entity_card(
+				"Jammer",
+				"J",
+				C_AMBER,
+				EntityType.JAMMER,
+				"res://scenes/core/units/JammerUnit.tscn",
+				"res://assets/sprites/jammer.png"
+			)
 		)
 	)
-	stack.add_child(
-		_build_entity_card(
-			"Sensor",
-			"S",
-			C_RED,
-			EntityType.SENSOR,
-			"res://scenes/core/units/SensorUnit.tscn",
-			"res://assets/sprites/sensor.png"
+	(
+		stack
+		. add_child(
+			_build_entity_card(
+				"Sensor",
+				"S",
+				C_RED,
+				EntityType.SENSOR,
+				"res://scenes/core/units/SensorUnit.tscn",
+				"res://assets/sprites/sensor.png"
+			)
 		)
 	)
 
@@ -149,25 +158,11 @@ func _build_tray() -> PanelContainer:
 
 
 func _build_entity_card(
-	label: String,
-	icon_letter: String,
-	accent: Color,
-	type: EntityType,
-	scene_path: String,
-	sprite_path: String = ""
+	label: String, icon_letter: String, accent: Color, type: EntityType, scene_path: String, sprite_path: String = ""
 ) -> PanelContainer:
 	var EntityCard := load("res://scenes/ui/EntityCard.gd")
 	var card = EntityCard.new()
-	card.setup(
-		type,
-		icon_letter,
-		accent,
-		scene_path,
-		label,
-		C_BG_LIGHT,
-		C_BG_LIGHT.lightened(0.08),
-		sprite_path
-	)
+	card.setup(type, icon_letter, accent, scene_path, label, C_BG_LIGHT, C_BG_LIGHT.lightened(0.08), sprite_path)
 	card.pressed.connect(func(): select_entity(type, label, selected_node))
 	return card
 
@@ -501,7 +496,6 @@ func _prop_float(p: String, fallback: float) -> float:
 			return float(val)
 	return fallback
 
-
 func _prop_int(p: String, fallback: int) -> int:
 	var c := _component()
 	if c:
@@ -520,9 +514,9 @@ func _write(p: String, value) -> void:
 	var c := _component()
 	if not c:
 		return
-
+	
 	c.set(p, value)
-
+	
 	# Get the unit (parent of component)
 	var unit = c.get_parent()
 	if unit:

@@ -1,4 +1,4 @@
-class_name Sensor
+class_name Sensor 
 extends Node
 
 @export_group("Settings")

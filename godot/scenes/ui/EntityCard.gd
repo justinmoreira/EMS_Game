@@ -144,7 +144,6 @@ func _get_drag_data(_at_position: Variant) -> Variant:
 
 # ── Inner class: draws a circle + letter ───
 
-
 class _IconDraw:
 	extends TextureRect
 	var radius := 20.0

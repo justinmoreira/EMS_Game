@@ -1,13 +1,8 @@
 [gd_scene format=3 uid="uid://7xh14ua2fjg0"]
 
-[ext_resource type="Script" uid="uid://dodi1hly6cpbv" path="res://scenes/core/components/Jammer.gd" id="1_nlafc"]
-[ext_resource type="Script" uid="uid://ck42ox5aq2g2o" path="res://scenes/core/components/UnitVisual.gd" id="2_37o06"]
+[ext_resource type="Script" uid="uid://lovad8bhjgbc" path="res://scenes/ui/Sidebar.gd" id="1_8cvjg"]
 
-[node name="Jammer" type="Node2D" unique_id=1057677908]
-script = ExtResource("1_nlafc")
-
-[node name="Node2D" type="Node2D" parent="." unique_id=1843100740]
-script = ExtResource("2_37o06")
-unit_label = "J"
-circle_color = Color(1, 0.7019608, 0.2784314, 1)
-sprite_sheet_path = "res://assets/sprites/jammerAni.png"
+[node name="Sidebar" type="PanelContainer" unique_id=831222554]
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_8cvjg")

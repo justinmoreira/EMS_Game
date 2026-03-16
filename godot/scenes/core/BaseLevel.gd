@@ -45,7 +45,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	var unit := scene.instantiate()
 	unit.position = at_position
 	add_child(unit)
-
+	
 	# Connect the selection signal
 	_on_unit_placed(unit)
 
@@ -62,14 +62,14 @@ func _on_unit_selected(unit: Node) -> void:
 		if prev_visual:
 			if prev_visual.has_method("set_selected"):
 				prev_visual.set_selected(false)
-
+	
 	# Select new unit
 	currently_selected_unit = unit
 	var visual = unit.find_child("Visual")
 	if visual:
 		if visual.has_method("set_selected"):
 			visual.set_selected(true)
-
+	
 	# Show attribute panel - find by name
 	var component: Node = null
 	for child in unit.get_children():
@@ -84,7 +84,7 @@ func _on_unit_selected(unit: Node) -> void:
 func _show_attributes(component: Node) -> void:
 	if sidebar == null:
 		return
-
+	
 	# Determine component type by NAME instead of `is` check
 	match component.name:
 		"Transceiver":
