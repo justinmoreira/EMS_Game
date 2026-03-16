@@ -133,7 +133,7 @@ func _get_drag_data(_at_position: Variant) -> Variant:
 	var preview := Control.new()
 	preview.add_child(icon)
 	set_drag_preview(preview)
-
+	
 	return {"type": entity_type, "scene_path": scene_path}
 
 

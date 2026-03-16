@@ -7,15 +7,13 @@ var detect_results = {}
 
 func _ready():
 	setup_timer()
+	call_deferred("simulate")
 
 
 func simulate():
-	var scene = "HeightMapDemo"
-	var path = "/root/%s/Units" % scene
-
-	var transceivers = get_node("%s/Transceivers" % path).get_children()
-	var jammers = get_node("%s/Jammers" % path).get_children()
-	var sensors = get_node("%s/Sensors" % path).get_children()
+	var transceivers = get_tree().get_nodes_in_group("transceivers")
+	var jammers = get_tree().get_nodes_in_group("jammers")
+	var sensors = get_tree().get_nodes_in_group("sensors")
 
 	for i in range(transceivers.size()):
 		var unit_a = transceivers[i] as Transceiver
@@ -32,7 +30,6 @@ func simulate():
 	for sensor in sensors:
 		for tx in transceivers:
 			var detected = calculate_detection(sensor, tx)
-			print("%s detects %s: %s" % [sensor.name, tx.name, detected])
 			detect_results[sensor.name + "_detects_" + tx.name] = detected
 
 
