@@ -3,7 +3,9 @@ extends Node
 
 @export_group("Settings")
 @export_range(0, 10) var power: int = 5
+@export_range(0, 10) var height: int = 5
 @export_range(30, 3000) var frequency: float = 1000.0
+@export_enum("Narrow", "Medium", "Wide") var transceiver_bandwidth: int = 1
 @export_group("Visual")
 @export var unit_label: String = "T"
 @export var circle_color: Color = Color("4fc3f7")
