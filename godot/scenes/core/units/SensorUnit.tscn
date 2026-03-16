@@ -13,6 +13,8 @@ script = ExtResource("1_dem8i")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_o81bo")
 
+[node name="Sensor" parent="." unique_id=2031422171 instance=ExtResource("2_xbxfc")]
+
 [node name="Visual" type="Node2D" parent="." unique_id=1094016982]
 script = ExtResource("3_tm6hg")
 unit_label = "S"

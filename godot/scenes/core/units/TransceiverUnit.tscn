@@ -13,6 +13,8 @@ script = ExtResource("1_8mgq0")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_8fr1l")
 
+[node name="Transceiver" parent="." unique_id=948404429 instance=ExtResource("2_qfeqd")]
+
 [node name="Visual" type="Node2D" parent="." unique_id=1739282174]
 script = ExtResource("3_2w5d4")
 sprite_sheet_path = "res://assets/sprites/transceiverAni.png"

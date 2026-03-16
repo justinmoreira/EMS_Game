@@ -13,6 +13,8 @@ script = ExtResource("1_vqkxn")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_w5soc")
 
+[node name="Jammer" parent="." unique_id=1057677908 instance=ExtResource("2_p83nw")]
+
 [node name="Visual" type="Node2D" parent="." unique_id=413501508]
 script = ExtResource("3_hkf84")
 unit_label = "J"
