@@ -1,4 +1,4 @@
-class_name Jammer 
+class_name Jammer
 extends Node
 
 @export_group("Settings")
