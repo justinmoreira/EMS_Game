@@ -536,7 +536,7 @@ func _update_simulate_button() -> void:
 
 func _on_simulate_pressed() -> void:
 	SimulationManager.simulate()
-	
+
 
 # ════════════════════════════════════════════
 #  NODE PROPERTY HELPERS
