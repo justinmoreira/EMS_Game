@@ -536,9 +536,7 @@ func _update_simulate_button() -> void:
 
 func _on_simulate_pressed() -> void:
 	SimulationManager.simulate()
-	#var sim = get_tree().get_first_node_in_group("simulation_manager")
-	#if sim:
-		#sim.simulate()
+	
 
 # ════════════════════════════════════════════
 #  NODE PROPERTY HELPERS
