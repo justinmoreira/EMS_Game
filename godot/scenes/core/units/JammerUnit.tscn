@@ -8,7 +8,7 @@
 radius = 32.0
 
 [node name="EMSUnit - Jammer" type="Area2D" unique_id=1423769516]
-script = ExtResource("1_w5soc")
+script = ExtResource("1_vqkxn")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_w5soc")

@@ -8,7 +8,7 @@
 radius = 32.0
 
 [node name="EMSUnit - Transceiver" type="Area2D" unique_id=2117697803]
-script = ExtResource("1_8fr1l")
+script = ExtResource("1_8mgq0")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_8fr1l")

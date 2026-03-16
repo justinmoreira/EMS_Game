@@ -8,7 +8,7 @@
 radius = 32.0
 
 [node name="EMSUnit - Sensor" type="Area2D" unique_id=864604190]
-script = ExtResource("1_o81bo")
+script = ExtResource("1_dem8i")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_o81bo")
