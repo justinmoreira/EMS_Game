@@ -109,9 +109,36 @@ func _build_tray() -> PanelContainer:
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 8)
 	vbox.add_child(stack)
-	stack.add_child(_build_entity_card("Transceiver", C_BLUE, EntityType.TRANSCEIVER))
-	stack.add_child(_build_entity_card("Jammer", C_AMBER, EntityType.JAMMER))
-	stack.add_child(_build_entity_card("Sensor", C_RED, EntityType.SENSOR))
+	stack.add_child(
+		_build_entity_card(
+			"Transceiver",
+			"T",
+			C_BLUE,
+			EntityType.TRANSCEIVER,
+			"res://scenes/core/units/TransceiverUnit.tscn",
+			"res://assets/sprites/transceiver.png"
+		)
+	)
+	stack.add_child(
+		_build_entity_card(
+			"Jammer",
+			"J",
+			C_AMBER,
+			EntityType.JAMMER,
+			"res://scenes/core/units/JammerUnit.tscn",
+			"res://assets/sprites/jammer.png"
+		)
+	)
+	stack.add_child(
+		_build_entity_card(
+			"Sensor",
+			"S",
+			C_RED,
+			EntityType.SENSOR,
+			"res://scenes/core/units/SensorUnit.tscn",
+			"res://assets/sprites/sensor.png"
+		)
+	)
 
 	var hint := _make_label("drag entities onto the scene", C_DIM, 15)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -121,37 +148,27 @@ func _build_tray() -> PanelContainer:
 	return panel
 
 
-func _build_entity_card(label: String, accent: Color, type: EntityType) -> Button:
-	var card := Button.new()
-	card.text = label
-	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	card.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	card.add_theme_font_size_override("font_size", 22)
-	card.add_theme_color_override("font_color", accent)
-	card.add_theme_color_override("font_hover_color", accent.lightened(0.2))
-	card.add_theme_color_override("font_pressed_color", accent.darkened(0.2))
-
-	var s := _flat_style(C_BG_LIGHT, 6)
-	s.set_border_color(accent)
-	s.set_border_width_all(0)
-	s.border_width_top = 2
-	card.add_theme_stylebox_override("normal", s)
-
-	var sh := _flat_style(C_BG_LIGHT.lightened(0.08), 6)
-	sh.set_border_color(accent)
-	sh.set_border_width_all(0)
-	sh.border_width_top = 2
-	card.add_theme_stylebox_override("hover", sh)
-
-	var sp := _flat_style(accent.darkened(0.6), 6)
-	sp.set_border_color(accent)
-	sp.set_border_width_all(0)
-	sp.border_width_top = 2
-	card.add_theme_stylebox_override("pressed", sp)
-
-	card.pressed.connect(func(): select_entity(type, label, null))
+func _build_entity_card(
+	label: String,
+	icon_letter: String,
+	accent: Color,
+	type: EntityType,
+	scene_path: String,
+	sprite_path: String = ""
+) -> PanelContainer:
+	var EntityCard := load("res://scenes/ui/EntityCard.gd")
+	var card = EntityCard.new()
+	card.setup(
+		type,
+		icon_letter,
+		accent,
+		scene_path,
+		label,
+		C_BG_LIGHT,
+		C_BG_LIGHT.lightened(0.08),
+		sprite_path
+	)
+	card.pressed.connect(func(): select_entity(type, label, selected_node))
 	return card
 
 
@@ -264,7 +281,7 @@ func _refresh_attribute_panel() -> void:
 				"Power",
 				0.0,
 				10.0,
-				_prop_float("power", 5.0),
+				_prop_int("power", 5),
 				"dBm",
 				C_AMBER,
 				func(v): _write("power", int(v)),
@@ -306,7 +323,7 @@ func _refresh_attribute_panel() -> void:
 				"Sensitivity",
 				0.0,
 				10.0,
-				_prop_float("sensitivity", 3.0),
+				_prop_int("sensitivity", 3),
 				"dBm",
 				C_RED,
 				func(v): _write("sensitivity", int(v)),
@@ -473,26 +490,25 @@ func _make_row_container() -> VBoxContainer:
 
 
 func _component() -> Node:
-	if not selected_node:
-		return null
-	match selected_entity:
-		EntityType.TRANSCEIVER:
-			return selected_node.find_child("Transceiver")
-		EntityType.JAMMER:
-			return selected_node.find_child("Jammer")
-		EntityType.SENSOR:
-			return selected_node.find_child("Sensor")
-	return null
+	return selected_node
 
 
 func _prop_float(p: String, fallback: float) -> float:
 	var c := _component()
-	return float(c.get(p)) if c and p in c else fallback
+	if c:
+		var val = c.get(p)
+		if val != null:
+			return float(val)
+	return fallback
 
 
 func _prop_int(p: String, fallback: int) -> int:
 	var c := _component()
-	return int(c.get(p)) if c and p in c else fallback
+	if c:
+		var val = c.get(p)
+		if val != null:
+			return int(val)
+	return fallback
 
 
 func _prop_bool(p: String, fallback: bool) -> bool:
@@ -502,8 +518,17 @@ func _prop_bool(p: String, fallback: bool) -> bool:
 
 func _write(p: String, value) -> void:
 	var c := _component()
-	if c and p in c:
-		c.set(p, value)
+	if not c:
+		return
+
+	c.set(p, value)
+
+	# Get the unit (parent of component)
+	var unit = c.get_parent()
+	if unit:
+		var scene_path = unit.scene_file_path
+		if scene_path:
+			ResourceSaver.save(unit, scene_path)
 
 
 ## Read/write directly on the EMSUnit node (not the component child)

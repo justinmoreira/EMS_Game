@@ -2,10 +2,14 @@ extends Node
 
 
 func _ready():
-	var dir = DirAccess.open("res://scenes/tests/")
+	var dir = DirAccess.open("res://tests/")
+	if dir == null:
+		print("[FAIL] Could not open res://tests/ directory")
+		get_tree().quit()
+		return
 	for file_name in dir.get_files():
 		if file_name.ends_with("Tests.gd"):
-			var script = load("res://scenes/tests/" + file_name)
+			var script = load("res://tests/" + file_name)
 			var node = script.new()
 			add_child(node)
 
