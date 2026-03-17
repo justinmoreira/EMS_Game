@@ -637,8 +637,14 @@ func _update_simulate_button() -> void:
 	)
 	if _simulate_btn:
 		_simulate_btn.disabled = not has_units
+		_simulate_btn.mouse_default_cursor_shape = (
+			Control.CURSOR_POINTING_HAND if has_units else Control.CURSOR_ARROW
+		)
 	if _reset_btn:
 		_reset_btn.disabled = not has_units
+		_reset_btn.mouse_default_cursor_shape = (
+			Control.CURSOR_POINTING_HAND if has_units else Control.CURSOR_ARROW
+		)
 
 
 func _on_simulate_pressed() -> void:
