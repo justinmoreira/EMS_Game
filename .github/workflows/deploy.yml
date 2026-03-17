@@ -44,6 +44,11 @@ jobs:
           godot4 --headless --path godot --import
           godot4 --headless --path godot --export-release "Web" ../client/public/godot/index.html
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
