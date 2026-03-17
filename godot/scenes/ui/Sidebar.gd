@@ -4,7 +4,7 @@ extends PanelContainer
 #  Sidebar.gd — EMS Simulation
 # ─────────────────────────────────────────────
 
-enum EntityType {NONE, TRANSCEIVER, JAMMER, SENSOR}
+enum EntityType { NONE, TRANSCEIVER, JAMMER, SENSOR }
 
 # ── Colors ────────────────────────────────────
 const C_BG_DARK := Color("0d0f14")
@@ -23,6 +23,7 @@ var selected_entity: EntityType = EntityType.NONE
 var selected_entity_name: String = ""
 var selected_node: Node = null
 var _reset_btn: Button = null
+var _simulate_btn: Button = null
 
 # ── Node refs ─────────────────────────────────
 var _attr_header: Label
@@ -32,6 +33,7 @@ var _attr_placeholder: Label
 
 # ════════════════════════════════════════════
 func _ready() -> void:
+	GameEvents.units_changed.connect(_update_simulate_button)
 	_build_sidebar()
 	_refresh_attribute_panel()
 
@@ -46,6 +48,7 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 	selected_entity_name = display_name
 	selected_node = node
 	_refresh_attribute_panel()
+	_update_simulate_button()
 
 
 # ════════════════════════════════════════════
@@ -54,7 +57,7 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 
 
 func _build_sidebar() -> void:
-	_apply_style(self , C_BG_DARK, C_BORDER, 0, 0, 0, 1)
+	_apply_style(self, C_BG_DARK, C_BORDER, 0, 0, 0, 1)
 	custom_minimum_size = Vector2(300, 0)
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -78,6 +81,7 @@ func _build_header() -> PanelContainer:
 
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 8)
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_child(hbox)
 
 	var dot := ColorRect.new()
@@ -88,6 +92,10 @@ func _build_header() -> PanelContainer:
 	_animate_blink(dot)
 
 	hbox.add_child(_make_label("GEMS", C_GREEN, 25))
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(spacer)
 
 	var reset_btn := Button.new()
 	reset_btn.text = "RESET"
@@ -108,6 +116,37 @@ func _build_header() -> PanelContainer:
 	reset_btn.pressed.connect(_on_reset_pressed)
 	hbox.add_child(reset_btn)
 	_reset_btn = reset_btn
+
+	var btn := Button.new()
+	btn.text = "SIMULATE"
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	btn.add_theme_font_size_override("font_size", 13)
+	btn.add_theme_color_override("font_color", C_BG_DARK)
+
+	var btn_style := StyleBoxFlat.new()
+	btn_style.bg_color = C_GREEN
+	btn_style.corner_radius_top_left = 3
+	btn_style.corner_radius_top_right = 3
+	btn_style.corner_radius_bottom_left = 3
+	btn_style.corner_radius_bottom_right = 3
+	btn_style.set_content_margin_all(8)
+	btn.add_theme_stylebox_override("normal", btn_style)
+
+	var btn_disabled_style := StyleBoxFlat.new()
+	btn_disabled_style.bg_color = C_BORDER
+	btn_disabled_style.corner_radius_top_left = 3
+	btn_disabled_style.corner_radius_top_right = 3
+	btn_disabled_style.corner_radius_bottom_left = 3
+	btn_disabled_style.corner_radius_bottom_right = 3
+	btn_disabled_style.set_content_margin_all(8)
+	btn.add_theme_stylebox_override("disabled", btn_disabled_style)
+
+	btn.pressed.connect(_on_simulate_pressed)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	hbox.add_child(btn)
+
+	_simulate_btn = btn
+	_update_simulate_button()
 
 	return panel
 
@@ -293,6 +332,13 @@ func _refresh_attribute_panel() -> void:
 				C_BLUE,
 				func(v): _write_node("height", int(v)),
 				true
+			)
+			_add_dropdown(
+				"Bandwidth",
+				["Narrow", "Medium", "Wide"],
+				_prop_int("transceiver_bandwidth", 1),
+				C_BLUE,
+				func(v): _write("transceiver_bandwidth", v)
 			)
 
 		EntityType.JAMMER:
@@ -515,22 +561,35 @@ func _on_reset_pressed() -> void:
 	get_tree().root.add_child(dialog)
 	dialog.popup_centered()
 
-	dialog.confirmed.connect(func():
-		for unit in get_tree().get_nodes_in_group("transceivers"):
-			unit.get_parent().queue_free()
-		for unit in get_tree().get_nodes_in_group("sensors"):
-			unit.get_parent().queue_free()
-		for unit in get_tree().get_nodes_in_group("jammers"):
-			unit.get_parent().queue_free()
-		#for unit in get_tree().get_nodes_in_group("units"):
-			#unit.get_parent().queue_free()
-		select_entity(EntityType.NONE)
-		# _update_simulate_button()
-		dialog.queue_free()
+	dialog.confirmed.connect(
+		func():
+			for unit in get_tree().get_nodes_in_group("transceivers"):
+				unit.get_parent().queue_free()
+			for unit in get_tree().get_nodes_in_group("sensors"):
+				unit.get_parent().queue_free()
+			for unit in get_tree().get_nodes_in_group("jammers"):
+				unit.get_parent().queue_free()
+			select_entity(EntityType.NONE)
+			GameEvents.units_changed.emit.call_deferred()
+			dialog.queue_free()
 	)
-	dialog.canceled.connect(func():
-		dialog.queue_free()
+	dialog.canceled.connect(func(): dialog.queue_free())
+
+
+func _update_simulate_button() -> void:
+	var has_units = (
+		get_tree().get_nodes_in_group("transceivers").size() > 0
+		or get_tree().get_nodes_in_group("jammers").size() > 0
+		or get_tree().get_nodes_in_group("sensors").size() > 0
 	)
+	if _simulate_btn:
+		_simulate_btn.disabled = not has_units
+	if _reset_btn:
+		_reset_btn.disabled = not has_units
+
+
+func _on_simulate_pressed() -> void:
+	SimulationManager.simulate()
 
 
 # ════════════════════════════════════════════

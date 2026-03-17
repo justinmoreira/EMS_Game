@@ -1,10 +1,11 @@
 class_name Transceiver
-extends Node
+extends Node2D
 
 @export_group("Settings")
 @export_range(0, 10) var power: int = 5
+@export_range(0, 10) var height: int = 5
 @export_range(30, 3000) var frequency: float = 1000.0
-
+@export_enum("Narrow", "Medium", "Wide") var transceiver_bandwidth: int = 1
 @export_group("Visual")
 @export var unit_label: String = "T"
 @export var circle_color: Color = Color("4fc3f7")
@@ -17,6 +18,8 @@ var _unit_visual: Node2D
 
 
 func _ready() -> void:
+	add_to_group("transceivers")
+	GameEvents.units_changed.emit()
 	_unit_visual = UnitVisual.new()
 	_unit_visual.unit_label = unit_label
 	_unit_visual.circle_color = circle_color
@@ -25,3 +28,7 @@ func _ready() -> void:
 	_unit_visual.frame_height = frame_height
 	_unit_visual.animation_speed = animation_speed
 	add_child(_unit_visual)
+
+
+func _exit_tree() -> void:
+	GameEvents.units_changed.emit.call_deferred()
