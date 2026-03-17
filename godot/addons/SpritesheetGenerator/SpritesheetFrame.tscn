@@ -13,9 +13,9 @@ var odd: Vector2
 func set_frame_margin(margin: Vector2):
 	$MarginContainer.add_theme_constant_override(&\"margin_left\", margin.x)
 	$MarginContainer.add_theme_constant_override(&\"margin_top\", margin.y)
-	
+
 	margin += odd
-	
+
 	$MarginContainer.add_theme_constant_override(&\"margin_right\", margin.x)
 	$MarginContainer.add_theme_constant_override(&\"margin_bottom\", margin.y)
 
