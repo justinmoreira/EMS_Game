@@ -26,12 +26,43 @@ func toggle_shader(enabled: bool):
 		background.material.set_shader_parameter("sensitivity", 1.0 if enabled else 0.0)
 
 
+func screen_to_world_uv(screen_pos: Vector2) -> Vector2:
+	var vp = get_viewport_rect().size
+	var aspect = vp.x / vp.y
+	var uv = screen_pos / vp - Vector2(0.5, 0.5)
+	if aspect > 1.0:
+		uv.x *= aspect
+	else:
+		uv.y *= 1.0 / aspect
+	return uv * zoom + Vector2(0.5, 0.5) + offset
+
+
+func world_uv_to_screen(world_uv: Vector2) -> Vector2:
+	var vp = get_viewport_rect().size
+	var aspect = vp.x / vp.y
+	var uv = (world_uv - Vector2(0.5, 0.5) - offset) / zoom
+	if aspect > 1.0:
+		uv.x /= aspect
+	else:
+		uv.y *= aspect
+	return (uv + Vector2(0.5, 0.5)) * vp
+
+
+func _reposition_units():
+	var unit_scale = 1.0 / zoom
+	for child in get_children():
+		if child is EMSUnit and child.has_meta("world_uv"):
+			child.position = world_uv_to_screen(child.get_meta("world_uv"))
+			child.scale = Vector2(unit_scale, unit_scale)
+
+
 func update_shader():
 	if background and background.material:
 		var aspect = size.x / size.y
 		background.material.set_shader_parameter("zoom", zoom)
 		background.material.set_shader_parameter("offset", offset)
 		background.material.set_shader_parameter("aspect_ratio", aspect)
+	_reposition_units()
 
 
 func _clamp_offset():
@@ -49,7 +80,9 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	if scene == null:
 		return
 	var unit := scene.instantiate()
+	unit.set_meta("world_uv", screen_to_world_uv(at_position))
 	unit.position = at_position
+	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
 	add_child(unit)
 
 	# Connect the selection signal
@@ -106,7 +139,6 @@ func _input(event):
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			var old_zoom = zoom
 			zoom = clamp(zoom * 0.9, 0.1, 1.0)
-			# Zoom toward mouse position
 			var mouse_uv = event.position / get_viewport_rect().size - Vector2(0.5, 0.5)
 			offset += mouse_uv * (old_zoom - zoom)
 			_clamp_offset()
@@ -118,15 +150,15 @@ func _input(event):
 			offset += mouse_uv * (old_zoom - zoom)
 			_clamp_offset()
 			update_shader()
-		elif event.button_index == MOUSE_BUTTON_LEFT:
-			if event.pressed:
-				# Check if we're clicking on a UI element first
-				if not get_viewport().gui_is_dragging():
-					dragging = true
-					last_mouse_pos = event.position
-			else:
-				dragging = false
 
+
+func _unhandled_input(event):
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			dragging = true
+			last_mouse_pos = event.position
+		else:
+			dragging = false
 	elif event is InputEventMouseMotion and dragging:
 		var delta = (event.position - last_mouse_pos) / get_viewport_rect().size
 		offset -= delta * zoom
