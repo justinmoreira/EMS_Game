@@ -1,5 +1,5 @@
 class_name Sensor
-extends Node
+extends Node2D
 
 @export_group("Settings")
 @export_range(0, 10) var height: int = 5
