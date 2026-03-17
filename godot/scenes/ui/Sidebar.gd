@@ -24,6 +24,7 @@ var selected_entity_name: String = ""
 var selected_node: Node = null
 var _reset_btn: Button = null
 var _simulate_btn: Button = null
+var _delete_btn: Button = null
 
 # ── Node refs ─────────────────────────────────
 var _attr_header: Label
@@ -245,7 +246,36 @@ func _build_attr_section() -> PanelContainer:
 	content.add_theme_constant_override("separation", 12)
 	panel.add_child(content)
 
-	content.add_child(_make_label("ATTRIBUTES", C_DIM, 15))
+	var attr_header_row := HBoxContainer.new()
+	attr_header_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_child(attr_header_row)
+
+	attr_header_row.add_child(_make_label("ATTRIBUTES", C_DIM, 15))
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	attr_header_row.add_child(spacer)
+
+	var delete_btn := Button.new()
+	delete_btn.text = "DELETE UNIT"
+	delete_btn.add_theme_font_size_override("font_size", 12)
+	delete_btn.add_theme_color_override("font_color", C_BG_DARK)
+	delete_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
+	var del_style := StyleBoxFlat.new()
+	del_style.bg_color = C_RED
+	del_style.corner_radius_top_left = 3
+	del_style.corner_radius_top_right = 3
+	del_style.corner_radius_bottom_left = 3
+	del_style.corner_radius_bottom_right = 3
+	del_style.set_content_margin_all(8)
+	delete_btn.add_theme_stylebox_override("normal", del_style)
+	delete_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	delete_btn.pressed.connect(_on_delete_pressed)
+	delete_btn.visible = false
+
+	attr_header_row.add_child(delete_btn)
+	_delete_btn = delete_btn
 
 	_attr_header = _make_label("", C_TEXT, 20)
 	content.add_child(_attr_header)
@@ -289,6 +319,8 @@ func _build_divider() -> HSeparator:
 func _refresh_attribute_panel() -> void:
 	for child in _attr_body.get_children():
 		child.queue_free()
+
+	_delete_btn.visible = selected_entity != EntityType.NONE and selected_node != null
 
 	if selected_entity == EntityType.NONE:
 		_attr_header.visible = false
@@ -570,7 +602,28 @@ func _on_reset_pressed() -> void:
 			for unit in get_tree().get_nodes_in_group("jammers"):
 				unit.get_parent().queue_free()
 			select_entity(EntityType.NONE)
-			GameEvents.units_changed.emit.call_deferred()
+			dialog.queue_free()
+	)
+	dialog.canceled.connect(func(): dialog.queue_free())
+
+
+func _on_delete_pressed() -> void:
+	if not selected_node:
+		return
+
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "Delete Unit"
+	dialog.dialog_text = "Delete %s from the scene?" % selected_entity_name
+	dialog.ok_button_text = "Delete"
+	dialog.cancel_button_text = "Cancel"
+	get_tree().root.add_child(dialog)
+	dialog.popup_centered()
+
+	dialog.confirmed.connect(
+		func():
+			print("Deleting: ", selected_node.get_path())
+			selected_node.get_parent().queue_free()
+			select_entity(EntityType.NONE)
 			dialog.queue_free()
 	)
 	dialog.canceled.connect(func(): dialog.queue_free())
