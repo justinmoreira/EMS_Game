@@ -6,6 +6,7 @@ var offset := Vector2.ZERO
 var dragging := false
 var last_mouse_pos := Vector2.ZERO
 var currently_selected_unit: Node = null
+var sidebar_width: float = 0.0
 
 @onready var background := $BackgroundTexture
 @onready var sidebar = get_tree().root.find_child("Sidebar", true, false)
@@ -13,11 +14,20 @@ var currently_selected_unit: Node = null
 
 func _ready():
 	get_tree().get_root().size_changed.connect(_on_window_resized)
+	if sidebar:
+		sidebar.resized.connect(_on_window_resized)
 	_on_window_resized()
+
+
+func get_map_size() -> Vector2:
+	return Vector2(size.x - sidebar_width, size.y)
 
 
 func _on_window_resized():
 	self.size = get_viewport_rect().size
+	sidebar_width = sidebar.size.x if sidebar else 0.0
+	if background:
+		background.offset_left = sidebar_width
 	update_shader()
 
 
@@ -27,9 +37,9 @@ func toggle_shader(enabled: bool):
 
 
 func screen_to_world_uv(screen_pos: Vector2) -> Vector2:
-	var vp = get_viewport_rect().size
-	var aspect = vp.x / vp.y
-	var uv = screen_pos / vp - Vector2(0.5, 0.5)
+	var map = get_map_size()
+	var aspect = map.x / map.y
+	var uv = (screen_pos - Vector2(sidebar_width, 0)) / map - Vector2(0.5, 0.5)
 	if aspect > 1.0:
 		uv.x *= aspect
 	else:
@@ -38,14 +48,14 @@ func screen_to_world_uv(screen_pos: Vector2) -> Vector2:
 
 
 func world_uv_to_screen(world_uv: Vector2) -> Vector2:
-	var vp = get_viewport_rect().size
-	var aspect = vp.x / vp.y
+	var map = get_map_size()
+	var aspect = map.x / map.y
 	var uv = (world_uv - Vector2(0.5, 0.5) - offset) / zoom
 	if aspect > 1.0:
 		uv.x /= aspect
 	else:
 		uv.y *= aspect
-	return (uv + Vector2(0.5, 0.5)) * vp
+	return (uv + Vector2(0.5, 0.5)) * map + Vector2(sidebar_width, 0)
 
 
 func _reposition_units():
@@ -58,7 +68,8 @@ func _reposition_units():
 
 func update_shader():
 	if background and background.material:
-		var aspect = size.x / size.y
+		var map = get_map_size()
+		var aspect = map.x / map.y
 		background.material.set_shader_parameter("zoom", zoom)
 		background.material.set_shader_parameter("offset", offset)
 		background.material.set_shader_parameter("aspect_ratio", aspect)
@@ -72,6 +83,8 @@ func _clamp_offset():
 
 
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
+	if _at_position.x < sidebar_width:
+		return false
 	return data is Dictionary and data.has("scene_path")
 
 
@@ -136,17 +149,21 @@ func _show_attributes(component: Node) -> void:
 
 func _input(event):
 	if event is InputEventMouseButton:
+		if event.position.x < sidebar_width:
+			return
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			var old_zoom = zoom
 			zoom = clamp(zoom * 0.9, 0.1, 1.0)
-			var mouse_uv = event.position / get_viewport_rect().size - Vector2(0.5, 0.5)
+			var map = get_map_size()
+			var mouse_uv = (event.position - Vector2(sidebar_width, 0)) / map - Vector2(0.5, 0.5)
 			offset += mouse_uv * (old_zoom - zoom)
 			_clamp_offset()
 			update_shader()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
 			var old_zoom = zoom
 			zoom = clamp(zoom * 1.1, 0.1, 1.0)
-			var mouse_uv = event.position / get_viewport_rect().size - Vector2(0.5, 0.5)
+			var map = get_map_size()
+			var mouse_uv = (event.position - Vector2(sidebar_width, 0)) / map - Vector2(0.5, 0.5)
 			offset += mouse_uv * (old_zoom - zoom)
 			_clamp_offset()
 			update_shader()
@@ -160,7 +177,7 @@ func _unhandled_input(event):
 		else:
 			dragging = false
 	elif event is InputEventMouseMotion and dragging:
-		var delta = (event.position - last_mouse_pos) / get_viewport_rect().size
+		var delta = (event.position - last_mouse_pos) / get_map_size()
 		offset -= delta * zoom
 		_clamp_offset()
 		last_mouse_pos = event.position
