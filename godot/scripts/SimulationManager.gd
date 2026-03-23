@@ -12,15 +12,14 @@ const ARROW_SIZE := 14.0
 const LINE_OFFSET := 12.0
 const NODE_PADDING := 22.0
 
-# purely visual delay for yellow -> final color
+# visual delay for yellow -> final color
 const VISUAL_TRANSITION_DELAY := 0.12
 
 var active_links: Dictionary = {}
 
-# kept for TimerTests.gd compatibility
 var timer: Timer
 
-# global show/hide toggle for all links
+# global variable to show or hide all links lines
 var links_visible: bool = true
 
 
@@ -29,6 +28,7 @@ func _ready() -> void:
 	print("SimulationManager ready")
 
 
+# cleanup visual when a node is removed
 func _exit_tree() -> void:
 	clear_all_links()
 
@@ -36,6 +36,7 @@ func _exit_tree() -> void:
 func _process(_delta: float) -> void:
 	var keys_to_remove: Array[String] = []
 
+	# update every active link every frame
 	for key in active_links.keys():
 		var link_data: Dictionary = active_links[key]
 		var source_unit: Node2D = link_data.source
