@@ -11,6 +11,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 1
 script = ExtResource("1_script")
 
 [node name="BackgroundTexture" type="TextureRect" parent="." unique_id=2008967764]
@@ -20,11 +21,13 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 1
 expand_mode = 1
 
 [node name="HUD" parent="." unique_id=1831793807 instance=ExtResource("2_hud")]
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1066529668]
+layer = 10
 
 [node name="Control" type="Control" parent="CanvasLayer" unique_id=860915758]
 layout_mode = 3
