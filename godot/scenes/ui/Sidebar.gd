@@ -523,12 +523,39 @@ func _write(p: String, value) -> void:
 
 	c.set(p, value)
 
-	# Get the unit (parent of component)
 	var unit = c.get_parent()
-	if unit:
-		var scene_path = unit.scene_file_path
-		if scene_path:
-			ResourceSaver.save(unit, scene_path)
+	if unit == null:
+		return
+
+	var sim_manager = get_node_or_null("/root/SimulationManager")
+	if sim_manager == null:
+		return
+	# remove old link from unit
+	if sim_manager.has_method("reset_links_for_unit"):
+		sim_manager.reset_links_for_unit(unit)
+	# recreate links between the units
+	var parent_level = unit.get_parent()
+	if parent_level == null:
+		return
+	for other_unit in parent_level.get_children():
+		if other_unit == unit:
+			continue
+
+		if _is_transceiver_unit(other_unit) and _is_transceiver_unit(unit):
+			sim_manager.send_message(unit, other_unit)
+			sim_manager.send_message(other_unit, unit)
+
+
+# helper function to check for transceiver units
+func _is_transceiver_unit(unit: Node) -> bool:
+	if unit == null:
+		return false
+
+	for child in unit.get_children():
+		if child.name == "Transceiver":
+			return true
+
+	return false
 
 
 ## Read/write directly on the EMSUnit node (not the component child)

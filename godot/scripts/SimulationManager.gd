@@ -292,11 +292,14 @@ func _evaluate_link_state(source_unit: Node2D, target_unit: Node2D) -> LinkState
 	if source_unit == null or target_unit == null:
 		return LinkState.FAILED_OUT_OF_RANGE
 
-	var tx_power := _get_number(source_unit, ["power", "tx_power", "transmit_power"], 10.0)
-	var tx_height := _get_number(source_unit, ["height", "antenna_height"], 1.0)
-	var rx_height := _get_number(target_unit, ["height", "antenna_height"], 1.0)
-	var frequency := _get_number(source_unit, ["frequency", "freq_mhz"], 300.0)
-	var terrain_loss := _get_number(target_unit, ["terrain_loss"], 1.0)
+	var source_component := _get_component_node(source_unit)
+	var target_component := _get_component_node(target_unit)
+
+	var tx_power := _get_number(source_component, ["power", "tx_power", "transmit_power"], 10.0)
+	var tx_height := _get_number(source_component, ["height", "antenna_height"], 1.0)
+	var rx_height := _get_number(target_component, ["height", "antenna_height"], 1.0)
+	var frequency := _get_number(source_component, ["frequency", "freq_mhz"], 300.0)
+	var terrain_loss := _get_number(target_component, ["terrain_loss"], 1.0)
 
 	var distance := PhysicsEngine.calculate_distance(
 		source_unit.global_position, target_unit.global_position
@@ -317,6 +320,17 @@ func _evaluate_link_state(source_unit: Node2D, target_unit: Node2D) -> LinkState
 		return LinkState.FAILED_JAMMED
 
 	return LinkState.SUCCESS
+
+
+func _get_component_node(unit: Node) -> Node:
+	if unit == null:
+		return null
+
+	for child in unit.get_children():
+		if child.name in ["Transceiver", "Jammer", "Sensor"]:
+			return child
+
+	return unit
 
 
 func _gather_jammers() -> Array:
