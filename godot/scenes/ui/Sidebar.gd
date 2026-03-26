@@ -590,7 +590,11 @@ func _write(p: String, value) -> void:
 	if unit:
 		var scene_path = unit.scene_file_path
 		if scene_path:
-			ResourceSaver.save(unit, scene_path)
+			var packed_scene := PackedScene.new()
+			if packed_scene.pack(unit) == OK:
+				ResourceSaver.save(packed_scene, scene_path)
+			else:
+				push_error("Failed to pack unit")
 
 
 ## Read/write directly on the EMSUnit node (not the component child)
