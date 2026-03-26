@@ -17,60 +17,64 @@ func test_calculate_interference():
 
 	# Test 2: Single jammer, same frequency (should interfere)
 	# Jammer: power=5, height=5, at same position, frequency=1000 (same as rx)
-	jammers = [
-		{
-			"frequency": 1000.0,
-			"power": 5.0,
-			"height": 5.0,
-			"position": Vector2(100, 0),  # 1 km away
-			"bandwidth": "Narrow"
-		}
-	]
+	var jammer_a = Jammer.new()
+	jammer_a.frequency = 1000.0
+	jammer_a.power = 5.0
+	jammer_a.height = 5.0
+	jammer_a.position = Vector2(100, 0)
+	jammer_a.jammer_bandwidth = "Narrow"
+	jammers = [jammer_a]
+
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
 	# JammerPowerAtRx = calculate_received_power(5, 5, 5, 1000, 1, 1) = 1.875
 	# BandwidthPower = 1.0 (Narrow)
 	# Total = 1.875 * 1.0 = 1.875
 	assert_eq(interference, 1.875, "Single jammer same frequency: Got 1.875")
 
+	jammer_a.free()
+
+	var jammer = Jammer.new()
+	jammer.frequency = 2000.0
+	jammer.power = 5.0
+	jammer.height = 5.0
+	jammer.position = Vector2(100, 0)
+	jammer.jammer_bandwidth = "Narrow"
+
 	# Test 3: Jammer outside frequency range (should NOT interfere)
-	jammers = [
-		{
-			"frequency": 2000.0,  # Far from rx 1000 MHz
-			"power": 5.0,
-			"height": 5.0,
-			"position": Vector2(100, 0),
-			"bandwidth": "Narrow"  # 1 MHz range
-		}
-	]
+	jammers = [jammer]
+
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
 	# Frequency diff = abs(1000 - 2000) = 1000 MHz
 	# Bandwidth/2 = 1/2 = 0.5 MHz
 	# 1000 > 0.5, so NO interference
 	assert_eq(interference, 0.0, "Jammer outside range: Got 0.0")
 
+	jammer.free()
+
 	# Test 4: Multiple jammers
-	jammers = [
-		{
-			"frequency": 1000.0,
-			"power": 5.0,
-			"height": 5.0,
-			"position": Vector2(100, 0),
-			"bandwidth": "Narrow"
-		},
-		{
-			"frequency": 1000.5,  # Close to rx
-			"power": 3.0,
-			"height": 5.0,
-			"position": Vector2(100, 0),
-			"bandwidth": "Medium"  # 10 MHz range
-		}
-	]
+	var jammer1 = Jammer.new()
+	jammer1.frequency = 1000.0
+	jammer1.power = 5.0
+	jammer1.height = 5.0
+	jammer1.global_position = Vector2(100, 0)
+	jammer1.jammer_bandwidth = 0
+	var jammer2 = Jammer.new()
+	jammer2.frequency = 1000.5
+	jammer2.power = 3.0
+	jammer2.height = 5.0
+	jammer2.global_position = Vector2(100, 0)
+	jammer2.jammer_bandwidth = 1
+
+	jammers = [jammer1, jammer2]
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
+
 	# Jammer 1: 1.875 * 1.0 = 1.875
 	# Jammer 2: calculate_received_power(3, 5, 5, 1000.5, 1, 1) ≈ 2.25 * 0.5 = 1.125
 	# Total ≈ 2.437
 	assert_approx(interference, 2.437, 0.01, "Multiple jammers: Got ~2.437")
 
+	jammer1.free()
+	jammer2.free()
 	print("\n")
 
 
