@@ -22,6 +22,7 @@ const C_DIM := Color("6b7594")
 var selected_entity: EntityType = EntityType.NONE
 var selected_entity_name: String = ""
 var selected_node: Node = null
+var _simulate_btn: Button = null
 
 # ── Node refs ─────────────────────────────────
 var _attr_header: Label
@@ -45,6 +46,7 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 	selected_entity_name = display_name
 	selected_node = node
 	_refresh_attribute_panel()
+	_update_simulate_button()
 
 
 # ════════════════════════════════════════════
@@ -77,6 +79,7 @@ func _build_header() -> PanelContainer:
 
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 8)
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_child(hbox)
 
 	var dot := ColorRect.new()
@@ -87,6 +90,43 @@ func _build_header() -> PanelContainer:
 	_animate_blink(dot)
 
 	hbox.add_child(_make_label("GEMS", C_GREEN, 25))
+
+	# Spacer to push button to the right
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(spacer)
+
+	var btn := Button.new()
+	btn.text = "SIMULATE"
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	btn.add_theme_font_size_override("font_size", 13)
+	btn.add_theme_color_override("font_color", C_BG_DARK)
+
+	var btn_style := StyleBoxFlat.new()
+	btn_style.bg_color = C_GREEN
+	btn_style.corner_radius_top_left = 3
+	btn_style.corner_radius_top_right = 3
+	btn_style.corner_radius_bottom_left = 3
+	btn_style.corner_radius_bottom_right = 3
+	btn_style.set_content_margin_all(8)
+	btn.add_theme_stylebox_override("normal", btn_style)
+
+	var btn_disabled_style := StyleBoxFlat.new()
+	btn_disabled_style.bg_color = C_BORDER
+	btn_disabled_style.corner_radius_top_left = 3
+	btn_disabled_style.corner_radius_top_right = 3
+	btn_disabled_style.corner_radius_bottom_left = 3
+	btn_disabled_style.corner_radius_bottom_right = 3
+	btn_disabled_style.set_content_margin_all(8)
+	btn.add_theme_stylebox_override("disabled", btn_disabled_style)
+
+	btn.pressed.connect(_on_simulate_pressed)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	hbox.add_child(btn)
+
+	_simulate_btn = btn
+	_update_simulate_button()
+
 	return panel
 
 
@@ -489,6 +529,21 @@ func _make_row_container() -> VBoxContainer:
 	vbox.add_theme_constant_override("separation", 8)
 	panel.add_child(vbox)
 	return vbox
+
+
+func _update_simulate_button() -> void:
+	if not _simulate_btn:
+		return
+	var has_units = (
+		get_tree().get_nodes_in_group("transceivers").size() > 0
+		or get_tree().get_nodes_in_group("jammers").size() > 0
+		or get_tree().get_nodes_in_group("sensors").size() > 0
+	)
+	_simulate_btn.disabled = not has_units
+
+
+func _on_simulate_pressed() -> void:
+	SimulationManager.simulate()
 
 
 # ════════════════════════════════════════════
