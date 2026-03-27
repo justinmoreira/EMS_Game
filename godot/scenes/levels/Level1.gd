@@ -10,12 +10,10 @@ var grid_overlay: ColorRect
 
 
 func _ready():
+	super._ready()
 	_generate_heightmap()
 	_setup_grid_overlay()
 	update_shader()
-
-	var sidebar = $CanvasLayer/Control/Sidebar
-	sidebar.select_entity(1, "Test Jammer")
 
 
 func _generate_heightmap():
@@ -65,13 +63,13 @@ func _setup_grid_overlay():
 
 	grid_layer.add_child(grid_overlay)
 	_resize_grid()
-	get_tree().get_root().size_changed.connect(_resize_grid)
 
 
 func _resize_grid():
 	if grid_overlay:
 		var vp = get_viewport_rect().size
-		grid_overlay.size = vp
+		grid_overlay.position = Vector2(sidebar_width, 0)
+		grid_overlay.size = Vector2(vp.x - sidebar_width, vp.y)
 
 
 func get_height_at(world_pos: Vector2) -> float:
@@ -84,8 +82,10 @@ func get_height_at(world_pos: Vector2) -> float:
 
 func update_shader():
 	super.update_shader()
+	_resize_grid()
 	if grid_overlay and grid_overlay.material:
-		var aspect = size.x / size.y
+		var map = get_map_size()
+		var aspect = map.x / map.y
 		grid_overlay.material.set_shader_parameter("zoom", zoom)
 		grid_overlay.material.set_shader_parameter("offset", offset)
 		grid_overlay.material.set_shader_parameter("aspect_ratio", aspect)

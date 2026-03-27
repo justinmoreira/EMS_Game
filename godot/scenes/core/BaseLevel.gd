@@ -6,6 +6,7 @@ var offset := Vector2.ZERO
 var dragging := false
 var last_mouse_pos := Vector2.ZERO
 var currently_selected_unit: Node = null
+var sidebar_width: float = 0.0
 
 @onready var background := $BackgroundTexture
 @onready var sidebar = get_tree().root.find_child("Sidebar", true, false)
@@ -13,11 +14,20 @@ var currently_selected_unit: Node = null
 
 func _ready():
 	get_tree().get_root().size_changed.connect(_on_window_resized)
+	if sidebar:
+		sidebar.resized.connect(_on_window_resized)
 	_on_window_resized()
+
+
+func get_map_size() -> Vector2:
+	return Vector2(size.x - sidebar_width, size.y)
 
 
 func _on_window_resized():
 	self.size = get_viewport_rect().size
+	sidebar_width = sidebar.size.x if sidebar else 0.0
+	if background:
+		background.offset_left = sidebar_width
 	update_shader()
 
 
@@ -26,12 +36,44 @@ func toggle_shader(enabled: bool):
 		background.material.set_shader_parameter("sensitivity", 1.0 if enabled else 0.0)
 
 
+func screen_to_world_uv(screen_pos: Vector2) -> Vector2:
+	var map = get_map_size()
+	var aspect = map.x / map.y
+	var uv = (screen_pos - Vector2(sidebar_width, 0)) / map - Vector2(0.5, 0.5)
+	if aspect > 1.0:
+		uv.x *= aspect
+	else:
+		uv.y *= 1.0 / aspect
+	return uv * zoom + Vector2(0.5, 0.5) + offset
+
+
+func world_uv_to_screen(world_uv: Vector2) -> Vector2:
+	var map = get_map_size()
+	var aspect = map.x / map.y
+	var uv = (world_uv - Vector2(0.5, 0.5) - offset) / zoom
+	if aspect > 1.0:
+		uv.x /= aspect
+	else:
+		uv.y *= aspect
+	return (uv + Vector2(0.5, 0.5)) * map + Vector2(sidebar_width, 0)
+
+
+func _reposition_units():
+	var unit_scale = 1.0 / zoom
+	for child in get_children():
+		if child is EMSUnit and child.has_meta("world_uv"):
+			child.position = world_uv_to_screen(child.get_meta("world_uv"))
+			child.scale = Vector2(unit_scale, unit_scale)
+
+
 func update_shader():
 	if background and background.material:
-		var aspect = size.x / size.y
+		var map = get_map_size()
+		var aspect = map.x / map.y
 		background.material.set_shader_parameter("zoom", zoom)
 		background.material.set_shader_parameter("offset", offset)
 		background.material.set_shader_parameter("aspect_ratio", aspect)
+	_reposition_units()
 
 
 func _clamp_offset():
@@ -41,6 +83,8 @@ func _clamp_offset():
 
 
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
+	if _at_position.x < sidebar_width:
+		return false
 	return data is Dictionary and data.has("scene_path")
 
 
@@ -49,7 +93,9 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	if scene == null:
 		return
 	var unit := scene.instantiate()
+	unit.set_meta("world_uv", screen_to_world_uv(at_position))
 	unit.position = at_position
+	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
 	add_child(unit)
 
 	# Connect the selection signal
@@ -103,32 +149,35 @@ func _show_attributes(component: Node) -> void:
 
 func _input(event):
 	if event is InputEventMouseButton:
+		if event.position.x < sidebar_width:
+			return
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			var old_zoom = zoom
 			zoom = clamp(zoom * 0.9, 0.1, 1.0)
-			# Zoom toward mouse position
-			var mouse_uv = event.position / get_viewport_rect().size - Vector2(0.5, 0.5)
+			var map = get_map_size()
+			var mouse_uv = (event.position - Vector2(sidebar_width, 0)) / map - Vector2(0.5, 0.5)
 			offset += mouse_uv * (old_zoom - zoom)
 			_clamp_offset()
 			update_shader()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
 			var old_zoom = zoom
 			zoom = clamp(zoom * 1.1, 0.1, 1.0)
-			var mouse_uv = event.position / get_viewport_rect().size - Vector2(0.5, 0.5)
+			var map = get_map_size()
+			var mouse_uv = (event.position - Vector2(sidebar_width, 0)) / map - Vector2(0.5, 0.5)
 			offset += mouse_uv * (old_zoom - zoom)
 			_clamp_offset()
 			update_shader()
-		elif event.button_index == MOUSE_BUTTON_LEFT:
-			if event.pressed:
-				# Check if we're clicking on a UI element first
-				if not get_viewport().gui_is_dragging():
-					dragging = true
-					last_mouse_pos = event.position
-			else:
-				dragging = false
 
+
+func _unhandled_input(event):
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			dragging = true
+			last_mouse_pos = event.position
+		else:
+			dragging = false
 	elif event is InputEventMouseMotion and dragging:
-		var delta = (event.position - last_mouse_pos) / get_viewport_rect().size
+		var delta = (event.position - last_mouse_pos) / get_map_size()
 		offset -= delta * zoom
 		_clamp_offset()
 		last_mouse_pos = event.position
