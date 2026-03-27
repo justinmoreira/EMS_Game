@@ -22,8 +22,9 @@ const C_DIM := Color("6b7594")
 var selected_entity: EntityType = EntityType.NONE
 var selected_entity_name: String = ""
 var selected_node: Node = null
-var _delete_btn: Button = null
+var _reset_btn: Button = null
 var _simulate_btn: Button = null
+var _delete_btn: Button = null
 
 # ── Node refs ─────────────────────────────────
 var _attr_header: Label
@@ -33,6 +34,7 @@ var _attr_placeholder: Label
 
 # ════════════════════════════════════════════
 func _ready() -> void:
+	GameEvents.units_changed.connect(_update_simulate_button)
 	_build_sidebar()
 	_refresh_attribute_panel()
 
@@ -92,10 +94,29 @@ func _build_header() -> PanelContainer:
 
 	hbox.add_child(_make_label("GEMS", C_GREEN, 25))
 
-	# Spacer to push button to the right
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(spacer)
+
+	var reset_btn := Button.new()
+	reset_btn.text = "RESET"
+	reset_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	reset_btn.add_theme_font_size_override("font_size", 13)
+	reset_btn.add_theme_color_override("font_color", C_BG_DARK)
+	reset_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
+	var reset_style := StyleBoxFlat.new()
+	reset_style.bg_color = C_RED
+	reset_style.corner_radius_top_left = 3
+	reset_style.corner_radius_top_right = 3
+	reset_style.corner_radius_bottom_left = 3
+	reset_style.corner_radius_bottom_right = 3
+	reset_style.set_content_margin_all(8)
+	reset_btn.add_theme_stylebox_override("normal", reset_style)
+
+	reset_btn.pressed.connect(_on_reset_pressed)
+	hbox.add_child(reset_btn)
+	_reset_btn = reset_btn
 
 	var btn := Button.new()
 	btn.text = "SIMULATE"
@@ -563,6 +584,29 @@ func _make_row_container() -> VBoxContainer:
 	return vbox
 
 
+func _on_reset_pressed() -> void:
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "Reset Scene"
+	dialog.dialog_text = "Remove all units from the scene?"
+	dialog.ok_button_text = "Reset"
+	dialog.cancel_button_text = "Cancel"
+	get_tree().root.add_child(dialog)
+	dialog.popup_centered()
+
+	dialog.confirmed.connect(
+		func():
+			for unit in get_tree().get_nodes_in_group("transceivers"):
+				unit.get_parent().queue_free()
+			for unit in get_tree().get_nodes_in_group("sensors"):
+				unit.get_parent().queue_free()
+			for unit in get_tree().get_nodes_in_group("jammers"):
+				unit.get_parent().queue_free()
+			select_entity(EntityType.NONE)
+			dialog.queue_free()
+	)
+	dialog.canceled.connect(func(): dialog.queue_free())
+
+
 func _on_delete_pressed() -> void:
 	if not selected_node:
 		return
@@ -586,14 +630,21 @@ func _on_delete_pressed() -> void:
 
 
 func _update_simulate_button() -> void:
-	if not _simulate_btn:
-		return
 	var has_units = (
 		get_tree().get_nodes_in_group("transceivers").size() > 0
 		or get_tree().get_nodes_in_group("jammers").size() > 0
 		or get_tree().get_nodes_in_group("sensors").size() > 0
 	)
-	_simulate_btn.disabled = not has_units
+	if _simulate_btn:
+		_simulate_btn.disabled = not has_units
+		_simulate_btn.mouse_default_cursor_shape = (
+			Control.CURSOR_POINTING_HAND if has_units else Control.CURSOR_ARROW
+		)
+	if _reset_btn:
+		_reset_btn.disabled = not has_units
+		_reset_btn.mouse_default_cursor_shape = (
+			Control.CURSOR_POINTING_HAND if has_units else Control.CURSOR_ARROW
+		)
 
 
 func _on_simulate_pressed() -> void:
