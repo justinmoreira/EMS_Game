@@ -114,7 +114,7 @@ code:
 
 [group('dev')]
 [doc('Start Astro dev server with auto Godot rebuild on changes')]
-dev:
+dev: _init_client
     #!/usr/bin/env bash
     echo "🔄 Watching godot/ for changes (auto rebuild)..."
     (watchexec -w godot -e gd,tscn,gdshader,tres -- just build_game &)

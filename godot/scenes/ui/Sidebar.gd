@@ -304,6 +304,13 @@ func _refresh_attribute_panel() -> void:
 				func(v): _write_node("height", int(v)),
 				true
 			)
+			_add_dropdown(
+				"Bandwidth",
+				["Narrow", "Medium", "Wide"],
+				_prop_int("transceiver_bandwidth", 1),
+				C_BLUE,
+				func(v): _write("transceiver_bandwidth", v)
+			)
 
 		EntityType.JAMMER:
 			_attr_header.text = "Jammer"
@@ -582,7 +589,11 @@ func _write(p: String, value) -> void:
 	if unit:
 		var scene_path = unit.scene_file_path
 		if scene_path:
-			ResourceSaver.save(unit, scene_path)
+			var packed_scene := PackedScene.new()
+			if packed_scene.pack(unit) == OK:
+				ResourceSaver.save(packed_scene, scene_path)
+			else:
+				push_error("Failed to pack unit")
 
 
 ## Read/write directly on the EMSUnit node (not the component child)

@@ -1,7 +1,5 @@
 extends Node
 
-#assign values to names, Low = 0, Medium =1, High =2
-enum FrequencyBand { FQ_LOW, FQ_MED, FQ_HIGH }
 enum Bandwidth { BW_NARROW, BW_MED, BW_WIDE }
 
 # This will map to 100 pixels -> 1 km
@@ -9,6 +7,8 @@ const PIXELS_PER_UNIT = 100.0
 
 # Prohibits communication at extreme distance with no power
 const NOISE_FLOOR = 0.5
+
+const BW_LOOKUP = ["Narrow", "Medium", "Wide"]
 
 # Different types of jammers (bandwidth power)
 const BANDWIDTH_POWER = {"Narrow": 1.0, "Medium": 0.5, "Wide": 0.3}  # 1 MHz  # 10 MHz  # 50 MHz
@@ -29,18 +29,6 @@ func calculate_distance_loss(dis: float) -> float:
 	return pow(dis + 1.0, 2.0)
 
 
-func frequency_check(emit: FrequencyBand, receiver: Bandwidth) -> bool:
-	match receiver:
-		Bandwidth.BW_NARROW:
-			return emit == FrequencyBand.FQ_LOW
-		Bandwidth.BW_MED:
-			return emit == FrequencyBand.FQ_MED or emit == FrequencyBand.FQ_LOW
-		Bandwidth.BW_WIDE:
-			return true
-		_:
-			return false
-
-
 func bandwidth_penalty(receiver: Bandwidth) -> float:
 	match receiver:
 		Bandwidth.BW_NARROW:
@@ -53,19 +41,8 @@ func bandwidth_penalty(receiver: Bandwidth) -> float:
 			return 0.0
 
 
-func calculate_srx(
-	ptx: float, height_tx: float, height_sensor: float, distance: float, terrain_loss: float = 1
-) -> float:
-	var p := clampf(ptx, 0.0, 10.0)
-
-	var hf = calculate_height_factor(height_tx, height_sensor)
-	var dl = calculate_distance_loss(distance)
-
-	return (p * hf) / (dl * terrain_loss)
-
-
 func is_detected(
-	emit: FrequencyBand,
+	frequency: float,
 	receiver: Bandwidth,
 	sensitivity: float,
 	ptx: float,
@@ -74,12 +51,9 @@ func is_detected(
 	dis: float,
 	terrain_loss: float = 1
 ) -> bool:
-	if not frequency_check(emit, receiver):
-		return false
-
 	var threshold = sensitivity + bandwidth_penalty(receiver)
 
-	var srx = calculate_srx(ptx, height_tx, height_sensor, dis, terrain_loss)
+	var srx = calculate_received_power(ptx, height_tx, height_sensor, frequency, dis, terrain_loss)
 
 	return srx > threshold
 
@@ -123,7 +97,7 @@ func calculate_received_power(
 
 
 func calculate_interference(
-	_rx_frequency: float, rx_height: float, _rx_pos: Vector2, jammers: Array
+	rx_frequency: float, rx_height: float, rx_pos: Vector2, jammers: Array
 ) -> float:
 	"""
 	Calculates the total interference power from all jammers
@@ -147,23 +121,23 @@ func calculate_interference(
 	var total_interference = 0.0
 	for jammer in jammers:
 		# Check if jammer is within receiver's bandwidth
-		var frequency_diff = abs(_rx_frequency - jammer.frequency)
-		var bandwidth_half = BANDWIDTH_VALUES.get(jammer.bandwidth, 1.0) / 2.0
+		var frequency_diff = abs(rx_frequency - jammer.frequency)
+		var bw_key = BW_LOOKUP[jammer.jammer_bandwidth]
+		var bandwidth_half = BANDWIDTH_VALUES.get(bw_key, 1.0) / 2.0
 
 		# Only add interference if frequencies are close enough
-		if frequency_diff < bandwidth_half:
+		if frequency_diff <= bandwidth_half:
 			# Calculate jammer's power at receiver
 			var jammer_power_at_rx = calculate_received_power(
 				jammer.power,
 				jammer.height,
 				rx_height,
 				jammer.frequency,
-				calculate_distance(jammer.position, _rx_pos),
+				calculate_distance(jammer.global_position, rx_pos),
 				1.0  # terrain_loss
 			)
-
 			# Get bandwidth penalty for this jammer type
-			var bandwidth_power = BANDWIDTH_POWER.get(jammer.bandwidth, 1.0)
+			var bandwidth_power = BANDWIDTH_POWER.get(bw_key, 1.0)
 
 			# Add to total interference
 			total_interference += (jammer_power_at_rx * bandwidth_power)
