@@ -121,18 +121,41 @@ func calculate_interference(
 	var total_interference := 0.0
 
 	for jammer in jammers:
-		var jammer_frequency = jammer.get("frequency", 0.0)
-		var jammer_bandwidth = jammer.get("bandwidth", "Narrow")
-		var jammer_power = jammer.get("power", 0.0)
-		var jammer_height = jammer.get("height", 0.0)
-		var jammer_position = jammer.get("position", Vector2.ZERO)
+		var jammer_frequency: float
+		var jammer_bandwidth
+		var jammer_power: float
+		var jammer_height: float
+		var jammer_position: Vector2
 
-		# Check if jammer is within receiver's bandwidth
+		if jammer is Dictionary:
+			jammer_frequency = jammer.get("frequency", 0.0)
+			jammer_bandwidth = jammer.get("bandwidth", "Narrow")
+			jammer_power = jammer.get("power", 0.0)
+			jammer_height = jammer.get("height", 0.0)
+			jammer_position = jammer.get("position", Vector2.ZERO)
+		else:
+			jammer_frequency = jammer.frequency
+			jammer_bandwidth = jammer.jammer_bandwidth
+			jammer_power = jammer.power
+			jammer_height = jammer.height
+
+			if "global_position" in jammer:
+				jammer_position = jammer.global_position
+			else:
+				jammer_position = jammer.position
+
+		var bw_key: String
+		if jammer_bandwidth is int:
+			if jammer_bandwidth >= 0 and jammer_bandwidth < BW_LOOKUP.size():
+				bw_key = BW_LOOKUP[jammer_bandwidth]
+			else:
+				bw_key = "Narrow"
+		else:
+			bw_key = str(jammer_bandwidth)
+
 		var frequency_diff = abs(rx_frequency - jammer_frequency)
-		var bw_key = BW_LOOKUP[jammer_bandwidth] if BW_LOOKUP.has(jammer_bandwidth) else "Narrow"
 		var bandwidth_half = BANDWIDTH_VALUES.get(bw_key, 1.0) / 2.0
 
-		# Only add interference if frequencies are close enough
 		if frequency_diff <= bandwidth_half:
 			var jammer_power_at_rx = calculate_received_power(
 				jammer_power,
