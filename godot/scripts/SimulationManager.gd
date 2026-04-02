@@ -318,6 +318,14 @@ func set_transmission_speed(frequency: float) -> void:
 	timer.wait_time = delay
 
 
+func send_message():
+	timer.start()
+
+
+func _on_timer_timeout():
+	pass
+
+
 func _input(event):
 	if event is InputEventKey and event.pressed and event.keycode == KEY_T:
 		links_visible = !links_visible
