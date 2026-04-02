@@ -313,6 +313,11 @@ func setup_timer():
 	add_child(timer)
 
 
+func set_transmission_speed(frequency: float) -> void:
+	var delay = remap(frequency, 30, 3000, 10.0, 0.1)
+	timer.wait_time = delay
+
+
 func _input(event):
 	if event is InputEventKey and event.pressed and event.keycode == KEY_T:
 		links_visible = !links_visible
