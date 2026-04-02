@@ -154,10 +154,10 @@ func _deselect_unit() -> void:
 		if prev_visual:
 			if prev_visual.has_method("set_selected"):
 				prev_visual.set_selected(false)
-	
+
 	# Clear the selection
 	currently_selected_unit = null
-	
+
 	# Reset sidebar to show placeholder
 	if sidebar:
 		sidebar.select_entity(sidebar.EntityType.NONE)
@@ -194,7 +194,7 @@ func _unhandled_input(event):
 				# If no unit handles the input, we deselect
 				var mouse_pos = get_global_mouse_position()
 				var clicked_unit = false
-				
+
 				# Check all units to see if one is under the cursor
 				for child in get_children():
 					if child is EMSUnit:
@@ -202,11 +202,11 @@ func _unhandled_input(event):
 						if distance < 100:  # Matches the selection radius in EMSUnit.gd
 							clicked_unit = true
 							break
-				
+
 				# If no unit was clicked, deselect
 				if not clicked_unit:
 					_deselect_unit()
-			
+
 			dragging = true
 			last_mouse_pos = event.position
 		else:

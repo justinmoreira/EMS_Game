@@ -74,22 +74,38 @@ func _draw() -> void:
 		var offset := RADIUS
 		var color := Color.YELLOW
 		var thickness := 2.0
-		
+
 		# Top-left corner
-		draw_line(Vector2(-offset, -offset), Vector2(-offset + corner_length, -offset), color, thickness)
-		draw_line(Vector2(-offset, -offset), Vector2(-offset, -offset + corner_length), color, thickness)
-		
+		draw_line(
+			Vector2(-offset, -offset), Vector2(-offset + corner_length, -offset), color, thickness
+		)
+		draw_line(
+			Vector2(-offset, -offset), Vector2(-offset, -offset + corner_length), color, thickness
+		)
+
 		# Top-right corner
-		draw_line(Vector2(offset, -offset), Vector2(offset - corner_length, -offset), color, thickness)
-		draw_line(Vector2(offset, -offset), Vector2(offset, -offset + corner_length), color, thickness)
-		
+		draw_line(
+			Vector2(offset, -offset), Vector2(offset - corner_length, -offset), color, thickness
+		)
+		draw_line(
+			Vector2(offset, -offset), Vector2(offset, -offset + corner_length), color, thickness
+		)
+
 		# Bottom-left corner
-		draw_line(Vector2(-offset, offset), Vector2(-offset + corner_length, offset), color, thickness)
-		draw_line(Vector2(-offset, offset), Vector2(-offset, offset - corner_length), color, thickness)
-		
+		draw_line(
+			Vector2(-offset, offset), Vector2(-offset + corner_length, offset), color, thickness
+		)
+		draw_line(
+			Vector2(-offset, offset), Vector2(-offset, offset - corner_length), color, thickness
+		)
+
 		# Bottom-right corner
-		draw_line(Vector2(offset, offset), Vector2(offset - corner_length, offset), color, thickness)
-		draw_line(Vector2(offset, offset), Vector2(offset, offset - corner_length), color, thickness)
+		draw_line(
+			Vector2(offset, offset), Vector2(offset - corner_length, offset), color, thickness
+		)
+		draw_line(
+			Vector2(offset, offset), Vector2(offset, offset - corner_length), color, thickness
+		)
 
 	if not _animated_sprite:
 		draw_circle(Vector2.ZERO, RADIUS, Color(circle_color, 0.8))
