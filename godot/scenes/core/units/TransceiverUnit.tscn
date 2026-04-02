@@ -9,9 +9,9 @@
 radius = 32.0
 
 [node name="@Area2D@152" type="Area2D" unique_id=2117697803]
-position = Vector2(1091.1367, 181.16776)
+position = Vector2(998.03973, 238.2206)
 script = ExtResource("1_8mgq0")
-metadata/world_uv = Vector2(0.482534, 0.16774791)
+metadata/world_uv = Vector2(0.39633307, 0.22057462)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_8fr1l")

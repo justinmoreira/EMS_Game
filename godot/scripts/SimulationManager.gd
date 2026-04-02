@@ -281,7 +281,7 @@ func _gather_jammers() -> Array:
 
 
 func _make_key(a: Node, b: Node) -> String:
-	return str(a.get_instance_id()) + "_to_" + str(b.get_instance_id())
+	return a.name + str(a.get_instance_id()) + "_to_" + b.name + str(b.get_instance_id())
 
 
 func _free_link_nodes(data: Dictionary) -> void:
