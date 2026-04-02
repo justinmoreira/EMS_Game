@@ -22,6 +22,9 @@ const C_DIM := Color("6b7594")
 var selected_entity: EntityType = EntityType.NONE
 var selected_entity_name: String = ""
 var selected_node: Node = null
+var _reset_btn: Button = null
+var _simulate_btn: Button = null
+var _delete_btn: Button = null
 
 # ── Node refs ─────────────────────────────────
 var _attr_header: Label
@@ -29,15 +32,10 @@ var _attr_body: VBoxContainer
 var _attr_placeholder: Label
 
 
-# ════════════════════════════════════════════
 func _ready() -> void:
+	GameEvents.units_changed.connect(_update_simulate_button)
 	_build_sidebar()
 	_refresh_attribute_panel()
-
-
-# ════════════════════════════════════════════
-#  PUBLIC API
-# ════════════════════════════════════════════
 
 
 func select_entity(type: EntityType, display_name: String = "", node: Node = null) -> void:
@@ -45,11 +43,7 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 	selected_entity_name = display_name
 	selected_node = node
 	_refresh_attribute_panel()
-
-
-# ════════════════════════════════════════════
-#  BUILD
-# ════════════════════════════════════════════
+	_update_simulate_button()
 
 
 func _build_sidebar() -> void:
@@ -77,6 +71,7 @@ func _build_header() -> PanelContainer:
 
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 8)
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_child(hbox)
 
 	var dot := ColorRect.new()
@@ -87,6 +82,62 @@ func _build_header() -> PanelContainer:
 	_animate_blink(dot)
 
 	hbox.add_child(_make_label("GEMS", C_GREEN, 25))
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(spacer)
+
+	var reset_btn := Button.new()
+	reset_btn.text = "RESET"
+	reset_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	reset_btn.add_theme_font_size_override("font_size", 13)
+	reset_btn.add_theme_color_override("font_color", C_BG_DARK)
+	reset_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
+	var reset_style := StyleBoxFlat.new()
+	reset_style.bg_color = C_RED
+	reset_style.corner_radius_top_left = 3
+	reset_style.corner_radius_top_right = 3
+	reset_style.corner_radius_bottom_left = 3
+	reset_style.corner_radius_bottom_right = 3
+	reset_style.set_content_margin_all(8)
+	reset_btn.add_theme_stylebox_override("normal", reset_style)
+
+	reset_btn.pressed.connect(_on_reset_pressed)
+	hbox.add_child(reset_btn)
+	_reset_btn = reset_btn
+
+	var btn := Button.new()
+	btn.text = "SIMULATE"
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	btn.add_theme_font_size_override("font_size", 13)
+	btn.add_theme_color_override("font_color", C_BG_DARK)
+
+	var btn_style := StyleBoxFlat.new()
+	btn_style.bg_color = C_GREEN
+	btn_style.corner_radius_top_left = 3
+	btn_style.corner_radius_top_right = 3
+	btn_style.corner_radius_bottom_left = 3
+	btn_style.corner_radius_bottom_right = 3
+	btn_style.set_content_margin_all(8)
+	btn.add_theme_stylebox_override("normal", btn_style)
+
+	var btn_disabled_style := StyleBoxFlat.new()
+	btn_disabled_style.bg_color = C_BORDER
+	btn_disabled_style.corner_radius_top_left = 3
+	btn_disabled_style.corner_radius_top_right = 3
+	btn_disabled_style.corner_radius_bottom_left = 3
+	btn_disabled_style.corner_radius_bottom_right = 3
+	btn_disabled_style.set_content_margin_all(8)
+	btn.add_theme_stylebox_override("disabled", btn_disabled_style)
+
+	btn.pressed.connect(_on_simulate_pressed)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	hbox.add_child(btn)
+
+	_simulate_btn = btn
+	_update_simulate_button()
+
 	return panel
 
 
@@ -184,7 +235,36 @@ func _build_attr_section() -> PanelContainer:
 	content.add_theme_constant_override("separation", 12)
 	panel.add_child(content)
 
-	content.add_child(_make_label("ATTRIBUTES", C_DIM, 15))
+	var attr_header_row := HBoxContainer.new()
+	attr_header_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_child(attr_header_row)
+
+	attr_header_row.add_child(_make_label("ATTRIBUTES", C_DIM, 15))
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	attr_header_row.add_child(spacer)
+
+	var delete_btn := Button.new()
+	delete_btn.text = "DELETE UNIT"
+	delete_btn.add_theme_font_size_override("font_size", 12)
+	delete_btn.add_theme_color_override("font_color", C_BG_DARK)
+	delete_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
+	var del_style := StyleBoxFlat.new()
+	del_style.bg_color = C_RED
+	del_style.corner_radius_top_left = 3
+	del_style.corner_radius_top_right = 3
+	del_style.corner_radius_bottom_left = 3
+	del_style.corner_radius_bottom_right = 3
+	del_style.set_content_margin_all(8)
+	delete_btn.add_theme_stylebox_override("normal", del_style)
+	delete_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	delete_btn.pressed.connect(_on_delete_pressed)
+	delete_btn.visible = false
+
+	attr_header_row.add_child(delete_btn)
+	_delete_btn = delete_btn
 
 	_attr_header = _make_label("", C_TEXT, 20)
 	content.add_child(_attr_header)
@@ -200,7 +280,6 @@ func _build_attr_section() -> PanelContainer:
 	_attr_body.add_theme_constant_override("separation", 10)
 	scroll.add_child(_attr_body)
 
-	# Placeholder lives outside the scroll so it can center properly
 	_attr_placeholder = _make_label("— select a unit to configure —", C_DIM, 15)
 	_attr_placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_attr_placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -220,14 +299,12 @@ func _build_divider() -> HSeparator:
 	return sep
 
 
-# ════════════════════════════════════════════
-#  REFRESH
-# ════════════════════════════════════════════
-
-
 func _refresh_attribute_panel() -> void:
 	for child in _attr_body.get_children():
 		child.queue_free()
+
+	if _delete_btn:
+		_delete_btn.visible = selected_entity != EntityType.NONE and selected_node != null
 
 	if selected_entity == EntityType.NONE:
 		_attr_header.visible = false
@@ -271,6 +348,13 @@ func _refresh_attribute_panel() -> void:
 				C_BLUE,
 				func(v): _write_node("height", int(v)),
 				true
+			)
+			_add_dropdown(
+				"Bandwidth",
+				["Narrow", "Medium", "Wide"],
+				_prop_int("transceiver_bandwidth", 1),
+				C_BLUE,
+				func(v): _write("transceiver_bandwidth", v)
 			)
 
 		EntityType.JAMMER:
@@ -354,11 +438,6 @@ func _refresh_attribute_panel() -> void:
 			)
 
 
-# ════════════════════════════════════════════
-#  CONTROL BUILDERS
-# ════════════════════════════════════════════
-
-
 func _add_accent_bar(accent: Color) -> void:
 	var bar := ColorRect.new()
 	bar.color = accent
@@ -378,7 +457,6 @@ func _add_slider(
 ) -> void:
 	var vbox := _make_row_container()
 
-	# Top row: label + spinbox
 	var top := HBoxContainer.new()
 	top.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_theme_constant_override("separation", 8)
@@ -398,7 +476,6 @@ func _add_slider(
 	spin.add_theme_color_override("font_color", accent)
 	top.add_child(spin)
 
-	# Bottom row: full-width slider
 	var slider := HSlider.new()
 	slider.min_value = min_v
 	slider.max_value = max_v
@@ -470,7 +547,6 @@ func _add_toggle(label: String, current: bool, accent: Color, on_change: Callabl
 	hbox.add_child(toggle)
 
 
-## Creates a styled card container, adds it to _attr_body, returns inner VBoxContainer
 func _make_row_container() -> VBoxContainer:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_LIGHT, 10))
@@ -484,9 +560,74 @@ func _make_row_container() -> VBoxContainer:
 	return vbox
 
 
-# ════════════════════════════════════════════
-#  NODE PROPERTY HELPERS
-# ════════════════════════════════════════════
+func _on_reset_pressed() -> void:
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "Reset Scene"
+	dialog.dialog_text = "Remove all units from the scene?"
+	dialog.ok_button_text = "Reset"
+	dialog.cancel_button_text = "Cancel"
+	get_tree().root.add_child(dialog)
+	dialog.popup_centered()
+
+	dialog.confirmed.connect(
+		func():
+			for unit in get_tree().get_nodes_in_group("transceivers"):
+				unit.get_parent().queue_free()
+			for unit in get_tree().get_nodes_in_group("sensors"):
+				unit.get_parent().queue_free()
+			for unit in get_tree().get_nodes_in_group("jammers"):
+				unit.get_parent().queue_free()
+			select_entity(EntityType.NONE)
+			SimulationManager.clear_all_links()
+			dialog.queue_free()
+	)
+	dialog.canceled.connect(func(): dialog.queue_free())
+
+
+func _on_delete_pressed() -> void:
+	if not selected_node:
+		return
+
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "Delete Unit"
+	dialog.dialog_text = "Delete %s from the scene?" % selected_entity_name
+	dialog.ok_button_text = "Delete"
+	dialog.cancel_button_text = "Cancel"
+	get_tree().root.add_child(dialog)
+	dialog.popup_centered()
+
+	dialog.confirmed.connect(
+		func():
+			selected_node.get_parent().queue_free()
+			select_entity(EntityType.NONE)
+			SimulationManager.clear_all_links()
+			dialog.queue_free()
+	)
+	dialog.canceled.connect(func(): dialog.queue_free())
+
+
+func _update_simulate_button() -> void:
+	var has_units = (
+		get_tree().get_nodes_in_group("transceivers").size() > 0
+		or get_tree().get_nodes_in_group("jammers").size() > 0
+		or get_tree().get_nodes_in_group("sensors").size() > 0
+	)
+
+	if _simulate_btn:
+		_simulate_btn.disabled = not has_units
+		_simulate_btn.mouse_default_cursor_shape = (
+			Control.CURSOR_POINTING_HAND if has_units else Control.CURSOR_ARROW
+		)
+
+	if _reset_btn:
+		_reset_btn.disabled = not has_units
+		_reset_btn.mouse_default_cursor_shape = (
+			Control.CURSOR_POINTING_HAND if has_units else Control.CURSOR_ARROW
+		)
+
+
+func _on_simulate_pressed() -> void:
+	SimulationManager.simulate()
 
 
 func _component() -> Node:
@@ -527,26 +668,15 @@ func _write(p: String, value) -> void:
 	if unit == null:
 		return
 
-	var sim_manager = get_node_or_null("/root/SimulationManager")
-	if sim_manager == null:
-		return
-	# remove old link from unit
-	if sim_manager.has_method("reset_links_for_unit"):
-		sim_manager.reset_links_for_unit(unit)
-	# recreate links between the units
-	var parent_level = unit.get_parent()
-	if parent_level == null:
-		return
-	for other_unit in parent_level.get_children():
-		if other_unit == unit:
-			continue
-
-		if _is_transceiver_unit(other_unit) and _is_transceiver_unit(unit):
-			sim_manager.send_message(unit, other_unit)
-			sim_manager.send_message(other_unit, unit)
+	var scene_path = unit.scene_file_path
+	if scene_path:
+		var packed_scene := PackedScene.new()
+		if packed_scene.pack(unit) == OK:
+			ResourceSaver.save(packed_scene, scene_path)
+		else:
+			push_error("Failed to pack unit")
 
 
-# helper function to check for transceiver units
 func _is_transceiver_unit(unit: Node) -> bool:
 	if unit == null:
 		return false
@@ -558,7 +688,6 @@ func _is_transceiver_unit(unit: Node) -> bool:
 	return false
 
 
-## Read/write directly on the EMSUnit node (not the component child)
 func _node_int(p: String, fallback: int) -> int:
 	return int(selected_node.get(p)) if selected_node and p in selected_node else fallback
 
@@ -567,13 +696,15 @@ func _write_node(p: String, value) -> void:
 	if selected_node and p in selected_node:
 		selected_node.set(p, value)
 
+		var scene_path = selected_node.scene_file_path
+		if scene_path:
+			var packed_scene := PackedScene.new()
+			if packed_scene.pack(selected_node) == OK:
+				ResourceSaver.save(packed_scene, scene_path)
+			else:
+				push_error("Failed to pack unit")
 
-# ════════════════════════════════════════════
-#  STYLE HELPERS
-# ════════════════════════════════════════════
 
-
-## Shorthand for a basic StyleBoxFlat with bg color and uniform padding
 func _flat_style(bg: Color, padding: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
@@ -585,7 +716,6 @@ func _flat_style(bg: Color, padding: int) -> StyleBoxFlat:
 	return s
 
 
-## Apply border styling directly to a control's panel stylebox
 func _apply_style(
 	control: Control, bg: Color, border: Color, top: int, bottom: int, left: int, right: int
 ) -> void:
@@ -599,7 +729,6 @@ func _apply_style(
 	control.add_theme_stylebox_override("panel", s)
 
 
-## Shorthand label factory
 func _make_label(text: String, color: Color, size: int, expand: bool = false) -> Label:
 	var lbl := Label.new()
 	lbl.text = text

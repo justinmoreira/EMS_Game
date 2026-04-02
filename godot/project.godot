@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 PhysicsEngine="*res://scripts/PhysicsEngine.gd"
 SimulationManager="*res://scripts/SimulationManager.gd"
+GameEvents="*uid://bcnbnt4bw4gcn"
 
 [display]
 

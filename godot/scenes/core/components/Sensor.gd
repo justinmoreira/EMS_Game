@@ -1,11 +1,11 @@
 class_name Sensor
-extends Node
+extends Node2D
 
 @export_group("Settings")
+@export_range(0, 10) var height: int = 5
 @export_range(0, 10) var sensitivity: int = 3
 @export_enum("Narrow", "Medium", "Wide") var sensor_bandwidth: int = 1
 @export var is_scanning: bool = true
-
 @export_group("Visual")
 @export var unit_label: String = "S"
 @export var circle_color: Color = Color("ff5c5c")
@@ -18,6 +18,7 @@ var _unit_visual: Node2D
 
 
 func _ready() -> void:
+	add_to_group("sensors")
 	_unit_visual = UnitVisual.new()
 	_unit_visual.unit_label = unit_label
 	_unit_visual.circle_color = circle_color
