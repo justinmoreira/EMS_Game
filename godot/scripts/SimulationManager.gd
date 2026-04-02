@@ -1,6 +1,6 @@
 extends Node2D
 
-enum LinkState { CONNECTING, SUCCESS, FAILED_OUT_OF_RANGE, FAILED_JAMMED }
+enum LinkState {CONNECTING, SUCCESS, FAILED_OUT_OF_RANGE, FAILED_JAMMED}
 
 # Visual Constants
 const C_SUCCESS := Color.GREEN
@@ -79,7 +79,8 @@ func simulate() -> void:
 				continue
 
 			var detected = calculate_detection(sensor, sensor_unit, tx, tx_unit)
-			detect_results[str(sensor_unit.get_instance_id()) + "_detects_" + str(tx_unit.get_instance_id())] = detected
+			detect_results[str(sensor_unit.get_instance_id()) +
+			"_detects_" + str(tx_unit.get_instance_id())] = detected
 
 	# 3. Update Visuals
 	_draw_links_from_results(transceivers)
