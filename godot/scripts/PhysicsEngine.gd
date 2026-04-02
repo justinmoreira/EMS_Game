@@ -118,29 +118,33 @@ func calculate_interference(
 	Returns:
 		Totalinterferencepower as a grep -B 2 "var jammer_power_at_rx" godot/scripts/PhysicsEngine.gdfloat
 	"""
-	var total_interference = 0.0
+	var total_interference := 0.0
+
 	for jammer in jammers:
+		var jammer_frequency = jammer.get("frequency", 0.0)
+		var jammer_bandwidth = jammer.get("bandwidth", "Narrow")
+		var jammer_power = jammer.get("power", 0.0)
+		var jammer_height = jammer.get("height", 0.0)
+		var jammer_position = jammer.get("position", Vector2.ZERO)
+
 		# Check if jammer is within receiver's bandwidth
-		var frequency_diff = abs(rx_frequency - jammer.frequency)
-		var bw_key = BW_LOOKUP[jammer.jammer_bandwidth]
+		var frequency_diff = abs(rx_frequency - jammer_frequency)
+		var bw_key = BW_LOOKUP[jammer_bandwidth] if BW_LOOKUP.has(jammer_bandwidth) else "Narrow"
 		var bandwidth_half = BANDWIDTH_VALUES.get(bw_key, 1.0) / 2.0
 
 		# Only add interference if frequencies are close enough
 		if frequency_diff <= bandwidth_half:
-			# Calculate jammer's power at receiver
 			var jammer_power_at_rx = calculate_received_power(
-				jammer.power,
-				jammer.height,
+				jammer_power,
+				jammer_height,
 				rx_height,
-				jammer.frequency,
-				calculate_distance(jammer.global_position, rx_pos),
-				1.0  # terrain_loss
+				jammer_frequency,
+				calculate_distance(jammer_position, rx_pos),
+				1.0
 			)
-			# Get bandwidth penalty for this jammer type
-			var bandwidth_power = BANDWIDTH_POWER.get(bw_key, 1.0)
 
-			# Add to total interference
-			total_interference += (jammer_power_at_rx * bandwidth_power)
+			var bandwidth_power = BANDWIDTH_POWER.get(bw_key, 1.0)
+			total_interference += jammer_power_at_rx * bandwidth_power
 
 	return total_interference
 
