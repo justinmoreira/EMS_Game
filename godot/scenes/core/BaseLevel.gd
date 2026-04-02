@@ -147,6 +147,22 @@ func _show_attributes(component: Node) -> void:
 			sidebar.select_entity(sidebar.EntityType.SENSOR, "Sensor", component)
 
 
+func _deselect_unit() -> void:
+	# Deselect the visual
+	if currently_selected_unit:
+		var prev_visual = currently_selected_unit.find_child("Visual")
+		if prev_visual:
+			if prev_visual.has_method("set_selected"):
+				prev_visual.set_selected(false)
+	
+	# Clear the selection
+	currently_selected_unit = null
+	
+	# Reset sidebar to show placeholder
+	if sidebar:
+		sidebar.select_entity(sidebar.EntityType.NONE)
+
+
 func _input(event):
 	if event is InputEventMouseButton:
 		if event.position.x < sidebar_width:
@@ -172,6 +188,25 @@ func _input(event):
 func _unhandled_input(event):
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
+			# Check if click is on empty map (not on sidebar)
+			if event.position.x > sidebar_width:
+				# Check if any unit was clicked by seeing if any unit emits "selected"
+				# If no unit handles the input, we deselect
+				var mouse_pos = get_global_mouse_position()
+				var clicked_unit = false
+				
+				# Check all units to see if one is under the cursor
+				for child in get_children():
+					if child is EMSUnit:
+						var distance = child.global_position.distance_to(mouse_pos)
+						if distance < 100:  # Matches the selection radius in EMSUnit.gd
+							clicked_unit = true
+							break
+				
+				# If no unit was clicked, deselect
+				if not clicked_unit:
+					_deselect_unit()
+			
 			dragging = true
 			last_mouse_pos = event.position
 		else:

@@ -68,9 +68,28 @@ func set_selected(selected: bool) -> void:
 
 
 func _draw() -> void:
-	# Draw selection ring if selected
+	# Draw selection corners if selected
 	if is_selected:
-		draw_arc(Vector2.ZERO, RADIUS + 15, 0, TAU, 32, Color.YELLOW, 3.0)
+		var corner_length := 8.0
+		var offset := RADIUS
+		var color := Color.YELLOW
+		var thickness := 2.0
+		
+		# Top-left corner
+		draw_line(Vector2(-offset, -offset), Vector2(-offset + corner_length, -offset), color, thickness)
+		draw_line(Vector2(-offset, -offset), Vector2(-offset, -offset + corner_length), color, thickness)
+		
+		# Top-right corner
+		draw_line(Vector2(offset, -offset), Vector2(offset - corner_length, -offset), color, thickness)
+		draw_line(Vector2(offset, -offset), Vector2(offset, -offset + corner_length), color, thickness)
+		
+		# Bottom-left corner
+		draw_line(Vector2(-offset, offset), Vector2(-offset + corner_length, offset), color, thickness)
+		draw_line(Vector2(-offset, offset), Vector2(-offset, offset - corner_length), color, thickness)
+		
+		# Bottom-right corner
+		draw_line(Vector2(offset, offset), Vector2(offset - corner_length, offset), color, thickness)
+		draw_line(Vector2(offset, offset), Vector2(offset, offset - corner_length), color, thickness)
 
 	if not _animated_sprite:
 		draw_circle(Vector2.ZERO, RADIUS, Color(circle_color, 0.8))
