@@ -18,6 +18,7 @@ func _ready() -> void:
 	selection_area = Area2D.new()
 	selection_area.name = "SelectionArea"
 	selection_area.input_pickable = true
+	add_child(selection_area)
 
 	var collision = CollisionShape2D.new()
 	var circle = CircleShape2D.new()
@@ -25,7 +26,7 @@ func _ready() -> void:
 	collision.shape = circle
 
 	selection_area.add_child(collision)
-	add_child(selection_area)
+	#add_child(selection_area)
 
 
 func _input(event: InputEvent) -> void:

@@ -101,6 +101,8 @@ func _clamp_offset() -> void:
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 	if _at_position.x < sidebar_width:
 		return false
+	if _at_position.x < sidebar_width:
+		return false
 	return data is Dictionary and data.has("scene_path")
 
 
@@ -116,6 +118,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	# Set position and scale based on current camera zoom/offset
 	unit.set_meta("world_uv", screen_to_world_uv(at_position))
 	unit.position = at_position
+	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
 	add_child(unit)
 

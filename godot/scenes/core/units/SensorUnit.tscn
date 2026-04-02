@@ -1,19 +1,24 @@
-[gd_scene format=3 uid="uid://d3ikpb8okvbey"]
+[gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://cn221t4cpxfpm" path="res://scenes/core/EMSUnit.gd" id="1_dem8i"]
-[ext_resource type="PackedScene" uid="uid://di5qvuuy8oj2u" path="res://scenes/core/components/Sensor.tscn" id="2_xbxfc"]
-[ext_resource type="Script" uid="uid://ck42ox5aq2g2o" path="res://scenes/core/components/UnitVisual.gd" id="3_tm6hg"]
+[ext_resource type="Script" path="res://scenes/core/EMSUnit.gd" id="1_dem8i"]
+[ext_resource type="PackedScene" path="res://scenes/core/components/Sensor.tscn" id="2_xbxfc"]
+[ext_resource type="Script" path="res://scenes/core/components/Sensor.gd" id="3_7nrp4"]
+[ext_resource type="Script" path="res://scenes/core/components/UnitVisual.gd" id="3_tm6hg"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_o81bo"]
 radius = 32.0
 
 [node name="EMSUnit - Sensor" type="Area2D" unique_id=864604190]
+position = Vector2(844, 495)
 script = ExtResource("1_dem8i")
+metadata/world_uv = Vector2(0.2537037, 0.45833334)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_o81bo")
 
-[node name="Sensor" parent="." unique_id=2031422171 instance=ExtResource("2_xbxfc")]
+[node name="Sensor" type="Node2D" parent="." unique_id=2031422171 instance=ExtResource("2_xbxfc")]
+script = ExtResource("3_7nrp4")
+sensitivity = 5
 
 [node name="Visual" type="Node2D" parent="." unique_id=1094016982]
 script = ExtResource("3_tm6hg")

@@ -19,6 +19,7 @@ var _unit_visual: Node2D
 
 func _ready() -> void:
 	add_to_group("transceivers")
+	GameEvents.units_changed.emit()
 	_unit_visual = UnitVisual.new()
 	_unit_visual.unit_label = unit_label
 	_unit_visual.circle_color = circle_color
@@ -27,3 +28,7 @@ func _ready() -> void:
 	_unit_visual.frame_height = frame_height
 	_unit_visual.animation_speed = animation_speed
 	add_child(_unit_visual)
+
+
+func _exit_tree() -> void:
+	GameEvents.units_changed.emit.call_deferred()
