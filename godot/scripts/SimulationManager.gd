@@ -96,7 +96,7 @@ func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> bool:
 	var bw_key = PhysicsEngine.BW_LOOKUP[rx.transceiver_bandwidth]
 	var bandwidth_half = PhysicsEngine.BANDWIDTH_VALUES.get(bw_key, 1.0) / 2.0
 
-	if frequency_diff >= bandwidth_half:
+	if frequency_diff > bandwidth_half:
 		return false
 
 	var dist = PhysicsEngine.calculate_distance(unit_tx.global_position, unit_rx.global_position)
@@ -109,8 +109,9 @@ func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> bool:
 		rx.frequency, rx.height, unit_rx.global_position, jammers
 	)
 
-	var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER.get(bw_key, 1.0)
-	return PhysicsEngine.jamming_check(received_power * bandwidth_penalty, interference)
+	#var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER.get(bw_key, 1.0)
+	#return PhysicsEngine.jamming_check(received_power * bandwidth_penalty, interference)
+	return PhysicsEngine.jamming_check(received_power, interference)
 
 
 func calculate_detection(sensor, s_unit: Node2D, tx: Transceiver, t_unit: Node2D) -> bool:

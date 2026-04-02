@@ -1,5 +1,5 @@
 class_name EMSUnit
-extends Node2D
+extends Area2D
 
 signal selected(unit: Node)
 
