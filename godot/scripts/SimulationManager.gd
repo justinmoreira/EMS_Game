@@ -306,15 +306,14 @@ func _apply_visibility_for_key(key: String) -> void:
 
 
 func setup_timer():
-	if timer:
-		return
 	timer = Timer.new()
 	timer.one_shot = true
+	timer.timeout.connect(_on_timer_timeout)
 	add_child(timer)
 
 
 func set_transmission_speed(frequency: float) -> void:
-	var delay = remap(frequency, 30, 3000, 10.0, 0.1)
+	var delay = remap(frequency, 30.0, 3000.0, 10.0, 0.1)
 	timer.wait_time = delay
 
 
