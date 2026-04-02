@@ -9,16 +9,16 @@
 radius = 32.0
 
 [node name="@Area2D@152" type="Area2D" unique_id=2117697803]
-position = Vector2(794.828, 294.2725)
+position = Vector2(1091.1367, 181.16776)
 script = ExtResource("1_8mgq0")
-metadata/world_uv = Vector2(0.20817411, 0.27247453)
+metadata/world_uv = Vector2(0.482534, 0.16774791)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_8fr1l")
 
 [node name="Transceiver" type="Node2D" parent="." unique_id=948404429 instance=ExtResource("2_qfeqd")]
 script = ExtResource("3_n06sf")
-power = 2
+power = 10
 
 [node name="Visual" type="Node2D" parent="." unique_id=1739282174]
 script = ExtResource("3_2w5d4")
