@@ -101,8 +101,6 @@ func _clamp_offset() -> void:
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 	if _at_position.x < sidebar_width:
 		return false
-	if _at_position.x < sidebar_width:
-		return false
 	return data is Dictionary and data.has("scene_path")
 
 
@@ -118,7 +116,6 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	# Set position and scale based on current camera zoom/offset
 	unit.set_meta("world_uv", screen_to_world_uv(at_position))
 	unit.position = at_position
-	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
 	add_child(unit)
 
@@ -150,6 +147,9 @@ func _deselect_current_unit() -> void:
 		return
 	_set_unit_selected_visual(currently_selected_unit, false)
 	currently_selected_unit = null
+	# Reset sidebar to show placeholder
+	if sidebar_node:
+		sidebar_node.select_entity(sidebar_node.EntityType.NONE)
 
 
 func _set_unit_selected_visual(unit: Node, selected: bool) -> void:
@@ -186,7 +186,7 @@ func _show_attributes(component: Node) -> void:
 			sidebar_node.select_entity(sidebar_node.EntityType.SENSOR, "Sensor", component)
 
 
-# --- Inputs (Camera Control) ---
+# --- Input (Camera Zoom) ---
 
 
 func _input(event: InputEvent) -> void:
@@ -194,7 +194,7 @@ func _input(event: InputEvent) -> void:
 		if event.position.x < sidebar_width:
 			return
 
-		# Zooming In/Out
+		# Zooming in/out toward the mouse position
 		if event.pressed:
 			var old_zoom = zoom
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -212,6 +212,9 @@ func _input(event: InputEvent) -> void:
 			update_shader()
 
 
+# --- Unhandled Input (Camera Pan + Click-to-Deselect) ---
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.position.x < sidebar_width:
@@ -222,6 +225,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			if not get_viewport().gui_is_dragging():
 				dragging = true
 				last_mouse_pos = event.position
+
+			# Deselect if the click didn't land on any unit
+			var mouse_pos = get_global_mouse_position()
+			var clicked_unit = false
+			for child in get_children():
+				if child is EMSUnit:
+					if child.global_position.distance_to(mouse_pos) < 100:
+						clicked_unit = true
+						break
+			if not clicked_unit:
+				_deselect_current_unit()
 		else:
 			dragging = false
 

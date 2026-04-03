@@ -45,10 +45,10 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 	_refresh_attribute_panel()
 	_update_simulate_button()
 
+
 # ════════════════════════════════════════════
 #  BUILD
 # ════════════════════════════════════════════
-	_update_simulate_button()
 
 
 func _build_sidebar() -> void:
@@ -76,7 +76,6 @@ func _build_header() -> PanelContainer:
 
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 8)
-	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_child(hbox)
 
@@ -354,13 +353,6 @@ func _refresh_attribute_panel() -> void:
 				C_BLUE,
 				func(v): _write_node("height", int(v)),
 				true
-			)
-			_add_dropdown(
-				"Bandwidth",
-				["Narrow", "Medium", "Wide"],
-				_prop_int("transceiver_bandwidth", 1),
-				C_BLUE,
-				func(v): _write("transceiver_bandwidth", v)
 			)
 			_add_dropdown(
 				"Bandwidth",
