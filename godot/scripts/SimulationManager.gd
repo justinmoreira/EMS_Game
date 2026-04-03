@@ -58,7 +58,8 @@ func simulate() -> void:
 	for sensor in sensors:
 		for tx in transceivers:
 			var detected := calculate_detection(sensor, tx)
-			detect_results[str(sensor.get_instance_id()) + "_detects_" + str(tx.get_instance_id())] = detected
+			var d_key := str(sensor.get_instance_id()) + "_detects_" + str(tx.get_instance_id())
+			detect_results[d_key] = detected
 
 	_draw_links_from_results(transceivers)
 
