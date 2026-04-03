@@ -34,7 +34,7 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	var mouse_pos = get_global_mouse_position()
 	var distance = global_position.distance_to(mouse_pos)
-	
+
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if distance < 32:  # Within the 32 radius
 			if event.pressed:
@@ -48,22 +48,22 @@ func _input(event: InputEvent) -> void:
 				if drag_distance < 5.0:  # Click threshold
 					# This was a click - select the unit
 					selected.emit(self)
-				
+
 				is_being_dragged = false
 				get_tree().root.set_input_as_handled()
-	
+
 	elif event is InputEventMouseMotion and is_being_dragged:
 		if distance < 32:
 			# Update position while dragging
 			global_position = mouse_pos
 			drag_distance = drag_start_pos.distance_to(mouse_pos)
-			
+
 			# Update the world_uv metadata
 			if has_meta("world_uv"):
 				var base_level = get_parent()
 				if base_level and base_level.has_method("screen_to_world_uv"):
 					set_meta("world_uv", base_level.screen_to_world_uv(mouse_pos))
-			
+
 			get_tree().root.set_input_as_handled()
 
 
