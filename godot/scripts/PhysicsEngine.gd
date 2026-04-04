@@ -121,53 +121,22 @@ func calculate_interference(
 	var total_interference := 0.0
 
 	for jammer in jammers:
-		var jammer_frequency: float
-		var jammer_bandwidth
-		var jammer_power: float
-		var jammer_height: float
-		var jammer_position: Vector2
-
-		if jammer is Dictionary:
-			jammer_frequency = jammer.get("frequency", 0.0)
-			jammer_bandwidth = jammer.get("bandwidth", "Narrow")
-			jammer_power = jammer.get("power", 0.0)
-			jammer_height = jammer.get("height", 0.0)
-			jammer_position = jammer.get("position", Vector2.ZERO)
-		else:
-			jammer_frequency = jammer.frequency
-			jammer_bandwidth = jammer.jammer_bandwidth
-			jammer_power = jammer.power
-			jammer_height = jammer.height
-
-			if "global_position" in jammer:
-				jammer_position = jammer.global_position
-			else:
-				jammer_position = jammer.position
-
-		var bw_key: String
-		if jammer_bandwidth is int:
-			if jammer_bandwidth >= 0 and jammer_bandwidth < BW_LOOKUP.size():
-				bw_key = BW_LOOKUP[jammer_bandwidth]
-			else:
-				bw_key = "Narrow"
-		else:
-			bw_key = str(jammer_bandwidth)
-
-		var frequency_diff = abs(rx_frequency - jammer_frequency)
+		var frequency_diff = abs(rx_frequency - jammer.frequency)
+		var bw_key = BW_LOOKUP[jammer.jammer_bandwidth]
 		var bandwidth_half = BANDWIDTH_VALUES.get(bw_key, 1.0) / 2.0
 
 		if frequency_diff <= bandwidth_half:
 			var jammer_power_at_rx = calculate_received_power(
-				jammer_power,
-				jammer_height,
+				jammer.power,
+				jammer.height,
 				rx_height,
-				jammer_frequency,
-				calculate_distance(jammer_position, rx_pos),
+				jammer.frequency,
+				calculate_distance(jammer.global_position, rx_pos),
 				1.0
 			)
 
 			var bandwidth_power = BANDWIDTH_POWER.get(bw_key, 1.0)
-			total_interference += jammer_power_at_rx * bandwidth_power
+			total_interference += (jammer_power_at_rx * bandwidth_power)
 
 	return total_interference
 
@@ -197,3 +166,19 @@ func jamming_check(received_power: float, interference_power: float) -> bool:
 		true if linksuccessful(signal beatsinterference), false if jammed
 	"""
 	return received_power > (interference_power + NOISE_FLOOR)
+
+
+func bandwidth_penalty_check(received_power: float, bandwidth_penalty: float) -> bool:
+	"""
+	Checks if receivedpowerovercomesbandwidthpenalty and noisefloor
+
+	Args:
+		received_power: Thecalculatedreceivedpower
+		bandwidth_penalty: Penaltybasedonreceiverbandwidth
+
+	Returns:
+		true if linksuccessful(signal beatsbandwidthpenalty), false if failed due to bandwidth
+	"""
+	if received_power > (NOISE_FLOOR) && (received_power * bandwidth_penalty) < NOISE_FLOOR:
+		return true
+	return false

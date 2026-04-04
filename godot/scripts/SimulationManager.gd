@@ -1,12 +1,16 @@
 extends Node2D
 
-enum LinkState { CONNECTING, SUCCESS, FAILED_OUT_OF_RANGE, FAILED_JAMMED }
+enum LinkState {
+	CONNECTING, SUCCESS, FAILED_OUT_OF_RANGE, FAILED_JAMMED, FREQUENCY_DIFF, BANDWIDTH_PENALTY
+}
 
 # Visual Constants
 const C_SUCCESS := Color.GREEN
 const C_CONNECTING := Color.YELLOW
-const C_OUT_OF_RANGE := Color.RED
-const C_JAMMED := Color.DARK_ORANGE
+const C_OUT_OF_RANGE := Color.DARK_ORANGE
+const C_JAMMED := Color.RED
+const C_FREQUENCY_DIFF := Color.CYAN
+const C_BANDWIDTH_PENALTY := Color.MAGENTA
 
 const LINE_WIDTH := 4.0
 const ARROW_SIZE := 14.0
@@ -40,7 +44,7 @@ func simulate() -> void:
 	detect_results.clear()
 
 	var transceivers = get_tree().get_nodes_in_group("transceivers")
-	var jammers = _gather_jammers()
+	var jammers = get_tree().get_nodes_in_group("jammers")
 	var sensors = get_tree().get_nodes_in_group("sensors")
 
 	for i in range(transceivers.size()):
@@ -66,13 +70,13 @@ func simulate() -> void:
 
 # tx is the transmitter, rx is the receiver — asymmetric by design.
 # Different power/height/bandwidth on each side means A->B != B->A.
-func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> bool:
+func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> int:
 	var frequency_diff = abs(tx.frequency - rx.frequency)
 	var bw_key = PhysicsEngine.BW_LOOKUP[rx.transceiver_bandwidth]
 	var bandwidth_half = PhysicsEngine.BANDWIDTH_VALUES.get(bw_key, 1.0) / 2.0
 
 	if frequency_diff > bandwidth_half:
-		return false
+		return LinkState.FREQUENCY_DIFF
 
 	var dist = PhysicsEngine.calculate_distance(tx.global_position, rx.global_position)
 
@@ -86,7 +90,14 @@ func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> bool:
 	)
 
 	var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER.get(bw_key, 1.0)
-	return PhysicsEngine.jamming_check(received_power * bandwidth_penalty, interference)
+
+	if !PhysicsEngine.range_check(received_power):
+		return LinkState.FAILED_OUT_OF_RANGE
+	if PhysicsEngine.bandwidth_penalty_check(received_power, bandwidth_penalty):
+		return LinkState.BANDWIDTH_PENALTY
+	if !PhysicsEngine.jamming_check(received_power * bandwidth_penalty, interference):
+		return LinkState.FAILED_JAMMED
+	return LinkState.SUCCESS
 
 
 func calculate_detection(sensor, tx: Transceiver) -> bool:
@@ -113,10 +124,7 @@ func _draw_links_from_results(transceivers: Array) -> void:
 			var key = _vis_key(src_tx, tgt_tx)
 			if link_results.has(key):
 				current_sim_keys.append(key)
-				var state = (
-					LinkState.SUCCESS if link_results[key] else LinkState.FAILED_OUT_OF_RANGE
-				)
-				_draw_directional_link(src_tx, tgt_tx, state)
+				_draw_directional_link(src_tx, tgt_tx, link_results[key])
 
 	## Remove any arrows that belong to pairs no longer in the simulation
 	var keys_to_purge = []
@@ -214,6 +222,10 @@ func _set_link_visual_state(key: String, state: int) -> void:
 			color = C_OUT_OF_RANGE
 		LinkState.FAILED_JAMMED:
 			color = C_JAMMED
+		LinkState.FREQUENCY_DIFF:
+			color = C_FREQUENCY_DIFF
+		LinkState.BANDWIDTH_PENALTY:
+			color = C_BANDWIDTH_PENALTY
 	if is_instance_valid(data.line):
 		data.line.default_color = color
 	if is_instance_valid(data.arrow):
@@ -239,21 +251,6 @@ func _update_active_link_visuals() -> void:
 	for k in dead_keys:
 		_free_link_nodes(active_links[k])
 		active_links.erase(k)
-
-
-func _gather_jammers() -> Array:
-	var jammers = []
-	for j in get_tree().get_nodes_in_group("jammers"):
-		jammers.append(
-			{
-				"position": j.global_position,
-				"power": j.power,
-				"frequency": j.frequency,
-				"bandwidth": j.jammer_bandwidth,
-				"height": j.height
-			}
-		)
-	return jammers
 
 
 func _vis_key(a: Transceiver, b: Transceiver) -> String:
