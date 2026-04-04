@@ -199,7 +199,7 @@ func _unhandled_input(event):
 				for child in get_children():
 					if child is EMSUnit:
 						var distance = child.global_position.distance_to(mouse_pos)
-						if distance < 100:  # Matches the selection radius in EMSUnit.gd
+						if distance < 32:  # Matches the selection radius in EMSUnit.gd
 							clicked_unit = true
 							break
 
