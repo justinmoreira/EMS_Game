@@ -8,17 +8,16 @@
 [sub_resource type="CircleShape2D" id="CircleShape2D_8fr1l"]
 radius = 32.0
 
-[node name="@Area2D@290" type="Area2D" unique_id=2117697803]
-position = Vector2(710.75916, 201.64224)
+[node name="@Area2D@214" type="Area2D" unique_id=2117697803]
+position = Vector2(1144.192, 349.3235)
 script = ExtResource("1_8mgq0")
-metadata/world_uv = Vector2(0.13033253, 0.18670577)
+metadata/world_uv = Vector2(0.53165925, 0.32344767)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_8fr1l")
 
 [node name="Transceiver" type="Node2D" parent="." unique_id=948404429 instance=ExtResource("2_qfeqd")]
 script = ExtResource("3_n06sf")
-power = 8
 
 [node name="Visual" type="Node2D" parent="." unique_id=1739282174]
 script = ExtResource("3_2w5d4")

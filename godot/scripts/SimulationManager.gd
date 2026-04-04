@@ -150,11 +150,12 @@ func _draw_directional_link(source: Transceiver, target: Transceiver, final_stat
 
 # Instantiates the Line2D and arrowhead Polygon2D for a new link entry.
 func _create_link_nodes(source: Transceiver, target: Transceiver, key: String) -> void:
+	var scene = get_tree().current_scene
 	var line = Line2D.new()
 	line.width = LINE_WIDTH
 	line.antialiased = true
 	line.z_index = 100
-	add_child(line)
+	scene.add_child(line)
 
 	var arrow = Polygon2D.new()
 	arrow.polygon = PackedVector2Array(
@@ -165,7 +166,7 @@ func _create_link_nodes(source: Transceiver, target: Transceiver, key: String) -
 		]
 	)
 	arrow.z_index = 101
-	add_child(arrow)
+	scene.add_child(arrow)
 
 	active_links[key] = {
 		"source": source,
