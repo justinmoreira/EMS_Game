@@ -186,7 +186,7 @@ func _show_attributes(component: Node) -> void:
 			sidebar_node.select_entity(sidebar_node.EntityType.SENSOR, "Sensor", component)
 
 
-# --- Input (Camera Zoom) ---
+# --- Inputs (Camera Control) ---
 
 
 func _input(event: InputEvent) -> void:
