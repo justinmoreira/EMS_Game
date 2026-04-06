@@ -66,16 +66,18 @@ func run_sim_test():
 	print("\nStarting SimulationManager Validation...")
 
 	var jammers = [jammer]
-	
 	var result = manager.calculate_link(transceiver1, transceiver2, jammers)
 
-	assert_true(result == SimulationManager.LinkState.FAILED_JAMMED, "Link correctly identified as JAMMED.")
+	assert_true(
+		result == SimulationManager.LinkState.FAILED_JAMMED, "Link correctly identified as JAMMED."
+	)
 
 	jammer.global_position = Vector2(1500, 1500)
-	
 	var result2 = manager.calculate_link(transceiver1, transceiver2, jammers)
 
-	assert_true(result2 == SimulationManager.LinkState.SUCCESS, "Link correctly identified as CLEAR.")
+	assert_true(
+		result2 == SimulationManager.LinkState.SUCCESS, "Link correctly identified as CLEAR."
+	)
 
 	manager.queue_free()
 	demo_scene.queue_free()
