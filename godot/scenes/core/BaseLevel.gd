@@ -238,7 +238,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 				# If no unit was clicked, deselect
 				if not clicked_unit:
-					_deselect_unit()
+					_deselect_current_unit()
 
 			dragging = true
 			last_mouse_pos = event.position
