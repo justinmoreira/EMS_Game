@@ -1,12 +1,15 @@
 class_name BaseLevel
 extends Control
 
+const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
+
 var zoom := 1.0
 var offset := Vector2.ZERO
 var dragging := false
 var last_mouse_pos := Vector2.ZERO
 var currently_selected_unit: Node = null
 var sidebar_width: float = 0.0
+var intro_popup_open := false
 
 @onready var background := $BackgroundTexture
 @onready var sidebar = get_tree().root.find_child("Sidebar", true, false)
@@ -17,6 +20,27 @@ func _ready():
 	if sidebar:
 		sidebar.resized.connect(_on_window_resized)
 	_on_window_resized()
+	_show_sandbox_intro_popup()
+
+
+#display the popup on top of the game
+func _show_sandbox_intro_popup() -> void:
+	if intro_popup_open:
+		return
+
+	var popup := SANDBOX_INTRO_POPUP.instantiate()
+	intro_popup_open = true
+
+	$CanvasLayer.add_child(popup)
+
+	# listen for the continue button to be clicked
+	if popup.has_signal("continued"):
+		popup.continued.connect(_on_intro_popup_closed)
+
+
+# allow player to start playing game after clicking continue button
+func _on_intro_popup_closed() -> void:
+	intro_popup_open = false
 
 
 func get_map_size() -> Vector2:
@@ -164,6 +188,10 @@ func _deselect_unit() -> void:
 
 
 func _input(event):
+	#prevent gameplay after popup is open
+	if intro_popup_open:
+		return
+
 	if event is InputEventMouseButton:
 		if event.position.x < sidebar_width:
 			return
@@ -186,6 +214,10 @@ func _input(event):
 
 
 func _unhandled_input(event):
+	# prevent map interaction when popup is active
+	if intro_popup_open:
+		return
+
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			# Check if click is on empty map (not on sidebar)
