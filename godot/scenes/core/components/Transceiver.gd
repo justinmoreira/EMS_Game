@@ -23,7 +23,7 @@ func _ready() -> void:
 	frequency = 1000.0
 	height = 5
 	transceiver_bandwidth = 1
-	
+
 	add_to_group("transceivers")
 	GameEvents.units_changed.emit()
 	_unit_visual = UnitVisual.new()

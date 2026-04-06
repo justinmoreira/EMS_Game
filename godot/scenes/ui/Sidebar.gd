@@ -50,11 +50,11 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 	# If switching to a different entity type, clear old pending attributes
 	if type != EntityType.NONE and type != pending_entity_type:
 		pending_attributes.clear()
-	
+
 	selected_entity = type
 	selected_entity_name = display_name
 	selected_node = node
-	
+
 	# If selecting a new entity type from sidebar without a placed unit
 	if node == null and type != EntityType.NONE:
 		pending_entity_type = type
@@ -62,7 +62,7 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 		# Selecting a placed unit, clear pending
 		pending_entity_type = EntityType.NONE
 		pending_attributes.clear()
-	
+
 	_refresh_attribute_panel()
 	_update_simulate_button()
 
@@ -245,9 +245,10 @@ func _build_entity_card(
 		C_BG_LIGHT.lightened(0.08),
 		sprite_path
 	)
-	card.pressed.connect(func():
-		_clear_selection()
-		select_entity(type, label, null)
+	card.pressed.connect(
+		func():
+			_clear_selection()
+			select_entity(type, label, null)
 	)
 	return card
 
@@ -706,7 +707,7 @@ func _write(p: String, value) -> void:
 	var invalid_props = ["script", "name", "owner", "unique_name_in_owner"]
 	if p in invalid_props:
 		return
-	
+
 	var c := _component()
 	if not c:
 		# If no component is selected, this is a pending entity being configured

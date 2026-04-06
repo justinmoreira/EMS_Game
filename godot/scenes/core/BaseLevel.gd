@@ -97,7 +97,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	unit.position = at_position
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
 	add_child(unit)
-	
+
 	# Apply any pending attribute changes from the sidebar
 	if sidebar and sidebar.pending_attributes.size() > 0:
 		var component: Node = null
@@ -105,23 +105,31 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 			if child.name in ["Transceiver", "Jammer", "Sensor"]:
 				component = child
 				break
-		
+
 		if component:
 			# Get the component's original script before applying attributes
 			var original_script = component.get_script()
-			
+
 			# Only apply valid attributes, skip script and internal properties
-			var valid_attributes = ["power", "frequency", "height", "transceiver_bandwidth", 
-									  "jammer_bandwidth", "sensitivity", "sensor_bandwidth", "is_scanning"]
-			
+			var valid_attributes = [
+				"power",
+				"frequency",
+				"height",
+				"transceiver_bandwidth",
+				"jammer_bandwidth",
+				"sensitivity",
+				"sensor_bandwidth",
+				"is_scanning"
+			]
+
 			for attr_name in sidebar.pending_attributes:
 				if attr_name in valid_attributes:
 					component.set(attr_name, sidebar.pending_attributes[attr_name])
-					
+
 			# Restore the original script if it was somehow changed
 			if component.get_script() != original_script:
 				component.set_script(original_script)
-		
+
 		sidebar.pending_attributes.clear()
 
 	# Connect the selection signal

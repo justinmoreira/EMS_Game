@@ -23,7 +23,7 @@ func _ready() -> void:
 	frequency = 1000.0
 	height = 5
 	jammer_bandwidth = 1
-	
+
 	add_to_group("jammers")
 	GameEvents.units_changed.emit()
 	_unit_visual = UnitVisual.new()
