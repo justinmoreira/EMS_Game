@@ -22,11 +22,11 @@ const C_DIM := Color("6b7594")
 var selected_entity: EntityType = EntityType.NONE
 var selected_entity_name: String = ""
 var selected_node: Node = null
+var pending_attributes: Dictionary = {}
+var pending_entity_type: EntityType = EntityType.NONE
 var _reset_btn: Button = null
 var _simulate_btn: Button = null
 var _delete_btn: Button = null
-var pending_attributes: Dictionary = {}
-var pending_entity_type: EntityType = EntityType.NONE
 
 # ── Node refs ─────────────────────────────────
 var _attr_header: Label
