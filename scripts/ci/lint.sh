@@ -18,7 +18,7 @@ else
     echo "🔍 Linting TypeScript/Astro (Biome)..."
     (cd "$CLIENT_PATH" && bun run lint) || exit_code=$?
     echo "🔍 Linting GDScript (gdlint)..."
-    find "$PROJECT_PATH" -name "*.gd" | xargs gdlint || exit_code=$?
+    find "$PROJECT_PATH" -name "*.gd" -not -path "*/addons/*" | xargs gdlint || exit_code=$?
     echo "🔍 Checking GDScript format (gdformat)..."
     find "$PROJECT_PATH" -name "*.gd" | xargs gdformat --diff --check || exit_code=$?
     [ $exit_code -eq 0 ] && echo "✅ All lint checks passed!" || echo "❌ Lint errors found."

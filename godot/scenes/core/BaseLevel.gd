@@ -221,21 +221,27 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 		if event.pressed:
-			# Only drag if we aren't clicking a UI element or dragging a unit
-			if not get_viewport().gui_is_dragging():
-				dragging = true
-				last_mouse_pos = event.position
+			# Check if click is on empty map (not on sidebar)
+			if event.position.x > sidebar_width:
+				# Check if any unit was clicked by seeing if any unit emits "selected"
+				# If no unit handles the input, we deselect
+				var mouse_pos = get_global_mouse_position()
+				var clicked_unit = false
 
-			# Deselect if the click didn't land on any unit
-			var mouse_pos = get_global_mouse_position()
-			var clicked_unit = false
-			for child in get_children():
-				if child is EMSUnit:
-					if child.global_position.distance_to(mouse_pos) < 100:
-						clicked_unit = true
-						break
-			if not clicked_unit:
-				_deselect_current_unit()
+				# Check all units to see if one is under the cursor
+				for child in get_children():
+					if child is EMSUnit:
+						var distance = child.global_position.distance_to(mouse_pos)
+						if distance < 32:  # Matches the selection radius in EMSUnit.gd
+							clicked_unit = true
+							break
+
+				# If no unit was clicked, deselect
+				if not clicked_unit:
+					_deselect_unit()
+
+			dragging = true
+			last_mouse_pos = event.position
 		else:
 			dragging = false
 

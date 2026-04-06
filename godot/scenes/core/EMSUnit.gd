@@ -5,6 +5,9 @@ signal selected(unit: Node)
 
 var component: Node
 var selection_area: Area2D
+var is_being_dragged: bool = false
+var drag_start_pos: Vector2 = Vector2.ZERO
+var drag_distance: float = 0.0
 
 
 func _ready() -> void:
@@ -14,14 +17,14 @@ func _ready() -> void:
 			component = child
 			break
 
-	# Create the selection area with a bigger collision radius
+	# Create the selection area with a same collision radius as entity
 	selection_area = Area2D.new()
 	selection_area.name = "SelectionArea"
 	selection_area.input_pickable = true
 
 	var collision = CollisionShape2D.new()
 	var circle = CircleShape2D.new()
-	circle.radius = 100
+	circle.radius = 32
 	collision.shape = circle
 
 	selection_area.add_child(collision)
@@ -29,12 +32,38 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var mouse_pos = get_global_mouse_position()
-		var distance = global_position.distance_to(mouse_pos)
+	var mouse_pos = get_global_mouse_position()
+	var distance = global_position.distance_to(mouse_pos)
 
-		if distance < 100:  # Within the 100 radius
-			selected.emit(self)
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if distance < 32:  # Within the 32 radius
+			if event.pressed:
+				# Start drag
+				is_being_dragged = true
+				drag_start_pos = mouse_pos
+				drag_distance = 0.0
+				get_tree().root.set_input_as_handled()
+			else:
+				# On release
+				if drag_distance < 5.0:  # Click threshold
+					# This was a click - select the unit
+					selected.emit(self)
+
+				is_being_dragged = false
+				get_tree().root.set_input_as_handled()
+
+	elif event is InputEventMouseMotion and is_being_dragged:
+		if distance < 32:
+			# Update position while dragging
+			global_position = mouse_pos
+			drag_distance = drag_start_pos.distance_to(mouse_pos)
+
+			# Update the world_uv metadata
+			if has_meta("world_uv"):
+				var base_level = get_parent()
+				if base_level and base_level.has_method("screen_to_world_uv"):
+					set_meta("world_uv", base_level.screen_to_world_uv(mouse_pos))
+
 			get_tree().root.set_input_as_handled()
 
 
