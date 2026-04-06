@@ -1,31 +1,22 @@
-[gd_scene format=3 uid="uid://h00cut4tnb2p"]
+[gd_scene format=3 uid="uid://d04wswemiv8kc"]
 
 [ext_resource type="Script" uid="uid://cn221t4cpxfpm" path="res://scenes/core/EMSUnit.gd" id="1_8mgq0"]
-[ext_resource type="PackedScene" uid="uid://jwf2rfhtgkhc" path="res://scenes/core/components/Jammer.tscn" id="2_2w5d4"]
+[ext_resource type="PackedScene" uid="uid://b8xfcwwiy6mas" path="res://scenes/core/components/Transceiver.tscn" id="2_qfeqd"]
 [ext_resource type="Script" uid="uid://ck42ox5aq2g2o" path="res://scenes/core/components/UnitVisual.gd" id="3_2w5d4"]
-[ext_resource type="Script" uid="uid://bxatk7pufxq8k" path="res://scenes/core/components/Transceiver.gd" id="3_n06sf"]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_w5soc"]
+[sub_resource type="CircleShape2D" id="CircleShape2D_8fr1l"]
 radius = 32.0
 
-[node name="EMSUnit - Transceiver" type="Area2D" unique_id=1423769516]
-position = Vector2(1420.721, 414.28845)
+[node name="_Area2D_1086" type="Area2D" unique_id=2117697803]
+position = Vector2(1157, 391)
 script = ExtResource("1_8mgq0")
-metadata/world_uv = Vector2(0.77196383, 0.3836004)
+metadata/world_uv = Vector2(0.5435185, 0.36203703)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
-shape = SubResource("CircleShape2D_w5soc")
+shape = SubResource("CircleShape2D_8fr1l")
 
-[node name="Transceiver" parent="." unique_id=1057677908 instance=ExtResource("2_2w5d4")]
-script = ExtResource("3_n06sf")
-power = 5
-height = 5
-frequency = 1000.0
-transceiver_bandwidth = 1
-sprite_sheet_path = "res://assets/sprites/transceiverAni.png"
+[node name="Transceiver" parent="." unique_id=948404429 instance=ExtResource("2_qfeqd")]
 
-[node name="Visual" type="Node2D" parent="." unique_id=413501508]
+[node name="Visual" type="Node2D" parent="." unique_id=1739282174]
 script = ExtResource("3_2w5d4")
-unit_label = "J"
-circle_color = Color(1, 0.7019608, 0.2784314, 1)
-sprite_sheet_path = "res://assets/sprites/jammerAni.png"
+sprite_sheet_path = "res://assets/sprites/transceiverAni.png"

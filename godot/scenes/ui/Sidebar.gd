@@ -47,6 +47,10 @@ func _ready() -> void:
 
 
 func select_entity(type: EntityType, display_name: String = "", node: Node = null) -> void:
+	# If switching to a different entity type, clear old pending attributes
+	if type != EntityType.NONE and type != pending_entity_type:
+		pending_attributes.clear()
+	
 	selected_entity = type
 	selected_entity_name = display_name
 	selected_node = node
@@ -54,7 +58,6 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 	# If selecting a new entity type from sidebar without a placed unit
 	if node == null and type != EntityType.NONE:
 		pending_entity_type = type
-		pending_attributes.clear()
 	else:
 		# Selecting a placed unit, clear pending
 		pending_entity_type = EntityType.NONE
