@@ -1,27 +1,33 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dpsj62xws7qwh"]
 
-[ext_resource type="Script" path="res://scenes/core/EMSUnit.gd" id="1_dem8i"]
-[ext_resource type="PackedScene" path="res://scenes/core/components/Sensor.tscn" id="2_xbxfc"]
-[ext_resource type="Script" path="res://scenes/core/components/Sensor.gd" id="3_7nrp4"]
-[ext_resource type="Script" path="res://scenes/core/components/UnitVisual.gd" id="3_tm6hg"]
+[ext_resource type="Script" uid="uid://cn221t4cpxfpm" path="res://scenes/core/EMSUnit.gd" id="1_dem8i"]
+[ext_resource type="PackedScene" uid="uid://jwf2rfhtgkhc" path="res://scenes/core/components/Jammer.tscn" id="2_tm6hg"]
+[ext_resource type="Script" uid="uid://drja1ty1kv8fq" path="res://scenes/core/components/Sensor.gd" id="3_7nrp4"]
+[ext_resource type="Script" uid="uid://ck42ox5aq2g2o" path="res://scenes/core/components/UnitVisual.gd" id="3_tm6hg"]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_o81bo"]
+[sub_resource type="CircleShape2D" id="CircleShape2D_w5soc"]
 radius = 32.0
 
-[node name="EMSUnit - Sensor" type="Area2D" unique_id=864604190]
-position = Vector2(998.37195, 428.53915)
+[node name="EMSUnit - Sensor" type="Area2D" unique_id=1423769516]
+position = Vector2(1420.721, 414.28845)
 script = ExtResource("1_dem8i")
-metadata/world_uv = Vector2(0.38089994, 0.3967955)
+metadata/world_uv = Vector2(0.77196383, 0.3836004)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
-shape = SubResource("CircleShape2D_o81bo")
+shape = SubResource("CircleShape2D_w5soc")
 
-[node name="Sensor" type="Node2D" parent="." unique_id=2031422171 instance=ExtResource("2_xbxfc")]
+[node name="Sensor" parent="." unique_id=1057677908 instance=ExtResource("2_tm6hg")]
 script = ExtResource("3_7nrp4")
-sensitivity = 7
-
-[node name="Visual" type="Node2D" parent="." unique_id=1094016982]
-script = ExtResource("3_tm6hg")
+height = 5
+sensitivity = 3
+sensor_bandwidth = 1
+is_scanning = true
 unit_label = "S"
 circle_color = Color(1, 0.36078432, 0.36078432, 1)
 sprite_sheet_path = "res://assets/sprites/sensorAni.png"
+
+[node name="Visual" type="Node2D" parent="." unique_id=413501508]
+script = ExtResource("3_tm6hg")
+unit_label = "J"
+circle_color = Color(1, 0.7019608, 0.2784314, 1)
+sprite_sheet_path = "res://assets/sprites/jammerAni.png"

@@ -18,6 +18,12 @@ var _unit_visual: Node2D
 
 
 func _ready() -> void:
+	# Enforce defaults
+	sensitivity = 3
+	height = 5
+	sensor_bandwidth = 1
+	is_scanning = true
+	
 	add_to_group("sensors")
 	GameEvents.units_changed.emit()
 	_unit_visual = UnitVisual.new()

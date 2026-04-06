@@ -25,6 +25,8 @@ var selected_node: Node = null
 var _reset_btn: Button = null
 var _simulate_btn: Button = null
 var _delete_btn: Button = null
+var pending_attributes: Dictionary = {}
+var pending_entity_type: EntityType = EntityType.NONE
 
 # ── Node refs ─────────────────────────────────
 var _attr_header: Label
@@ -48,6 +50,16 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 	selected_entity = type
 	selected_entity_name = display_name
 	selected_node = node
+	
+	# If selecting a new entity type from sidebar without a placed unit
+	if node == null and type != EntityType.NONE:
+		pending_entity_type = type
+		pending_attributes.clear()
+	else:
+		# Selecting a placed unit, clear pending
+		pending_entity_type = EntityType.NONE
+		pending_attributes.clear()
+	
 	_refresh_attribute_panel()
 	_update_simulate_button()
 
@@ -230,7 +242,10 @@ func _build_entity_card(
 		C_BG_LIGHT.lightened(0.08),
 		sprite_path
 	)
-	card.pressed.connect(func(): select_entity(type, label, selected_node))
+	card.pressed.connect(func():
+		_clear_selection()
+		select_entity(type, label, null)
+	)
 	return card
 
 
@@ -684,8 +699,16 @@ func _prop_bool(p: String, fallback: bool) -> bool:
 
 
 func _write(p: String, value) -> void:
+	# Don't write properties that aren't actual component attributes
+	var invalid_props = ["script", "name", "owner", "unique_name_in_owner"]
+	if p in invalid_props:
+		return
+	
 	var c := _component()
 	if not c:
+		# If no component is selected, this is a pending entity being configured
+		# Store the attribute for when it's placed
+		pending_attributes[p] = value
 		return
 
 	c.set(p, value)
@@ -710,6 +733,14 @@ func _node_int(p: String, fallback: int) -> int:
 func _write_node(p: String, value) -> void:
 	if selected_node and p in selected_node:
 		selected_node.set(p, value)
+
+
+func _clear_selection() -> void:
+	# When clicking a sidebar entity type, deselect any currently viewed unit
+	# so we show fresh defaults instead of the previous unit's values
+	selected_node = null
+	selected_entity_name = ""
+	_refresh_attribute_panel()
 
 
 # ════════════════════════════════════════════
