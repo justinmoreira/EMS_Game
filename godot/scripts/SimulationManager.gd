@@ -56,8 +56,6 @@ func simulate() -> void:
 			var result = calculate_link(unit_a, unit_b, jammers)
 			# Instance ID key drives visuals (always unique)
 			link_results[_vis_key(unit_a, unit_b)] = result
-			# Name key alias for test suite
-			link_results[unit_a.name + "_to_" + unit_b.name] = result
 
 	for sensor in sensors:
 		for tx in transceivers:
