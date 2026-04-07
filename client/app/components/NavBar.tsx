@@ -29,6 +29,7 @@ export default function NavBar() {
         </div>
         <div class="flex items-center gap-4">
           <button
+            type="button"
             onClick={() => {
               localStorage.removeItem("tutorial_complete");
               window.location.reload();

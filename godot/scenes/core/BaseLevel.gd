@@ -5,8 +5,11 @@ const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
 const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
 
 enum TutorialStep { WELCOME, PLACE_TRANSCEIVER, DONE }
-var _tutorial_step: TutorialStep = TutorialStep.WELCOME
 
+@onready var background := $BackgroundTexture
+@onready var sidebar = get_tree().root.find_child("Sidebar", true, false)
+
+var _tutorial_step: TutorialStep = TutorialStep.WELCOME
 var zoom := 1.0
 var offset := Vector2.ZERO
 var dragging := false
@@ -14,9 +17,6 @@ var last_mouse_pos := Vector2.ZERO
 var currently_selected_unit: Node = null
 var sidebar_width: float = 0.0
 var intro_popup_open := false
-
-@onready var background := $BackgroundTexture
-@onready var sidebar = get_tree().root.find_child("Sidebar", true, false)
 
 
 func _ready():
