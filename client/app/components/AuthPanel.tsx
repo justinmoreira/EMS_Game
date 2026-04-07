@@ -1,6 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { createPortal } from "preact/compat";
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { authLoading, authUser } from "@/lib/auth";
 import { setProgress } from "@/lib/progress";
 import { supabase } from "@/lib/supabase";
@@ -84,6 +84,7 @@ function ProfileView({ user }: { user: User }) {
     setDisplayName(currentName);
     setEditing(false);
   };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
   };
@@ -159,7 +160,17 @@ export default function AccountModal({
   serverUser?: User | null;
 }) {
   const [open, setOpen] = useState(false);
-  const user = authUser.value ?? serverUser;
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+  const user = hydrated ? authUser.value : (authUser.value ?? serverUser);
 
   return (
     <>
@@ -175,7 +186,8 @@ export default function AccountModal({
       </button>
       {open &&
         createPortal(
-          <div
+          <button
+            type="button"
             class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60"
             onClick={(e) => {
               if (e.target === e.currentTarget) setOpen(false);
@@ -200,7 +212,7 @@ export default function AccountModal({
                 <LoginForm />
               )}
             </div>
-          </div>,
+          </button>,
           document.body,
         )}
     </>

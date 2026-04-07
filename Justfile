@@ -139,7 +139,9 @@ _hmr_serve: _init_client
     #!/usr/bin/env bash
     CLIENT_PATH={{client_path}} ./scripts/gen-env.sh
     echo "🔄 Watching godot/ for changes (auto rebuild)..."
-    (watchexec --poll 2000 -w godot -e gd,tscn,gdshader,tres -- just build_game 2>&1 | tee /tmp/godot-rebuild.log &)
+    watchexec --poll 2000 -w godot -e gd,tscn,gdshader,tres -- just build_game 2>&1 | tee /tmp/godot-rebuild.log &
+    WATCH_PID=$!
+    trap "kill $WATCH_PID 2>/dev/null" EXIT
     PORT=$(python3 scripts/find_port.py)
     echo "🌐 Starting dev server on port $PORT..."
     cd {{client_path}} && bun run dev --port $PORT

@@ -22,6 +22,7 @@ export default defineConfig({
   output: 'server',
   adapter: node({ mode: 'standalone' }),
   server: { port: 8080, strictPort: false },
+  devToolbar: { enabled: false },  // Prevents weird 404
   integrations: [preact()],
   vite: {
     envPrefix: ['PUBLIC_'],

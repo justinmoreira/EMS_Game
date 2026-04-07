@@ -1,7 +1,7 @@
 import { signal } from "@preact/signals";
+import { authUser } from "./auth";
 import { db } from "./db";
 import { supabase } from "./supabase";
-import { authUser } from "./auth";
 
 const isBrowser = typeof window !== "undefined";
 
@@ -67,7 +67,7 @@ async function pullFromDb() {
       .from("user_progress")
       .select("tutorial_complete, updated_at")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     const local = await db.userProgress.get("self");
     const localTime = local?.updated_at ?? new Date(0).toISOString();
@@ -103,5 +103,16 @@ if (isBrowser) {
       pullFromDb();
       flushQueue();
     }
+  });
+
+  // Expose to Godot via JavaScriptBridge
+  (window as unknown as Record<string, unknown>).getProgress = () =>
+    JSON.stringify(progress.value);
+  (window as unknown as Record<string, unknown>).setProgress = (json: string) =>
+    setProgress(JSON.parse(json));
+
+  // Notify Godot when progress changes (e.g. reset tutorial from Account modal)
+  progress.subscribe((val) => {
+    window.dispatchEvent(new CustomEvent("progress-changed", { detail: val }));
   });
 }

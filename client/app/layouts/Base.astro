@@ -1,5 +1,6 @@
 ---
 import "@/styles/global.css";
+import { ClientRouter } from "astro:transitions";
 import NavBar from "@/components/NavBar";
 import { BASE_URL } from "@/utils";
 
@@ -23,7 +24,7 @@ const user = Astro.locals.user;
     <slot name="head" />
   </head>
   <body class="bg-black text-white m-0 overflow-hidden">
-    <NavBar serverUser={user} client:load />
+    <NavBar serverUser={user} client:load transition:persist />
     <slot />
     <script is:inline define:vars={{ BASE_URL }}>
       if (location.hostname === "localhost") {
