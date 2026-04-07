@@ -146,12 +146,13 @@ jobs:
           PGPASSWORD=postgres psql -h localhost -U postgres -d test -c "
             CREATE SCHEMA IF NOT EXISTS auth;
             CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
+            CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS \$\$ SELECT gen_random_uuid() \$\$ LANGUAGE sql;
           "
 
       - name: Apply migrations
         run: |
           for f in supabase/migrations/*.sql; do
             echo "Applying $f..."
-            PGPASSWORD=postgres psql -h localhost -U postgres -d test -f "$f" || exit 1
+            PGPASSWORD=postgres psql -h localhost -U postgres -d test -v ON_ERROR_STOP=1 -f "$f" || exit 1
           done
           echo "All migrations applied successfully"
