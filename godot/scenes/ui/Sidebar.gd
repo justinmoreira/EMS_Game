@@ -4,7 +4,7 @@ extends PanelContainer
 #  Sidebar.gd — EMS Simulation
 # ─────────────────────────────────────────────
 
-enum EntityType { NONE, TRANSCEIVER, JAMMER, SENSOR }
+enum EntityType {NONE, TRANSCEIVER, JAMMER, SENSOR}
 
 # ── Colors ────────────────────────────────────
 const C_BG_DARK := Color("0d0f14")
@@ -30,11 +30,15 @@ var _delete_btn: Button = null
 var _attr_header: Label
 var _attr_body: VBoxContainer
 var _attr_placeholder: Label
+var _entity_cards: Dictionary = {} # EntityType -> Control
+var _attr_section: PanelContainer
+var _attr_content: VBoxContainer
 
 
 # ════════════════════════════════════════════
 func _ready() -> void:
 	GameEvents.units_changed.connect(_update_simulate_button)
+	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
 	_build_sidebar()
 	_refresh_attribute_panel()
 
@@ -58,7 +62,7 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 
 
 func _build_sidebar() -> void:
-	_apply_style(self, C_BG_DARK, C_BORDER, 0, 0, 0, 1)
+	_apply_style(self , C_BG_DARK, C_BORDER, 0, 0, 0, 1)
 	custom_minimum_size = Vector2(300, 0)
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -72,7 +76,8 @@ func _build_sidebar() -> void:
 	vbox.add_child(_build_header())
 	vbox.add_child(_build_tray())
 	vbox.add_child(_build_divider())
-	vbox.add_child(_build_attr_section())
+	_attr_section = _build_attr_section()
+	vbox.add_child(_attr_section)
 
 
 func _build_header() -> PanelContainer:
@@ -171,36 +176,29 @@ func _build_tray() -> PanelContainer:
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 8)
 	vbox.add_child(stack)
-	stack.add_child(
-		_build_entity_card(
-			"Transceiver",
-			"T",
-			C_BLUE,
-			EntityType.TRANSCEIVER,
-			"res://scenes/core/units/TransceiverUnit.tscn",
-			"res://assets/sprites/transceiver.png"
-		)
+	var tx_card := _build_entity_card(
+		"Transceiver", "T", C_BLUE, EntityType.TRANSCEIVER,
+		"res://scenes/core/units/TransceiverUnit.tscn",
+		"res://assets/sprites/transceiver.png"
 	)
-	stack.add_child(
-		_build_entity_card(
-			"Jammer",
-			"J",
-			C_AMBER,
-			EntityType.JAMMER,
-			"res://scenes/core/units/JammerUnit.tscn",
-			"res://assets/sprites/jammer.png"
-		)
+	stack.add_child(tx_card)
+	_entity_cards[EntityType.TRANSCEIVER] = tx_card
+
+	var jm_card := _build_entity_card(
+		"Jammer", "J", C_AMBER, EntityType.JAMMER,
+		"res://scenes/core/units/JammerUnit.tscn",
+		"res://assets/sprites/jammer.png"
 	)
-	stack.add_child(
-		_build_entity_card(
-			"Sensor",
-			"S",
-			C_RED,
-			EntityType.SENSOR,
-			"res://scenes/core/units/SensorUnit.tscn",
-			"res://assets/sprites/sensor.png"
-		)
+	stack.add_child(jm_card)
+	_entity_cards[EntityType.JAMMER] = jm_card
+
+	var sn_card := _build_entity_card(
+		"Sensor", "S", C_RED, EntityType.SENSOR,
+		"res://scenes/core/units/SensorUnit.tscn",
+		"res://assets/sprites/sensor.png"
 	)
+	stack.add_child(sn_card)
+	_entity_cards[EntityType.SENSOR] = sn_card
 
 	var hint := _make_label("drag entities onto the scene", C_DIM, 15)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -240,15 +238,15 @@ func _build_attr_section() -> PanelContainer:
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	var content := VBoxContainer.new()
-	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 12)
-	panel.add_child(content)
+	_attr_content = VBoxContainer.new()
+	_attr_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_attr_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_attr_content.add_theme_constant_override("separation", 12)
+	panel.add_child(_attr_content)
 
 	var attr_header_row := HBoxContainer.new()
 	attr_header_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_child(attr_header_row)
+	_attr_content.add_child(attr_header_row)
 
 	attr_header_row.add_child(_make_label("ATTRIBUTES", C_DIM, 15))
 
@@ -278,13 +276,13 @@ func _build_attr_section() -> PanelContainer:
 	_delete_btn = delete_btn
 
 	_attr_header = _make_label("", C_TEXT, 20)
-	content.add_child(_attr_header)
+	_attr_content.add_child(_attr_header)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	content.add_child(scroll)
+	_attr_content.add_child(scroll)
 
 	_attr_body = VBoxContainer.new()
 	_attr_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -752,6 +750,20 @@ func _make_label(text: String, color: Color, size: int, expand: bool = false) ->
 	if expand:
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return lbl
+
+
+func _on_tutorial_filter(allowed_types: Array) -> void:
+	var tutorial_active := not allowed_types.is_empty()
+	_attr_content.modulate.a = 0.3 if tutorial_active else 1.0
+	_attr_content.mouse_filter = Control.MOUSE_FILTER_IGNORE if tutorial_active else Control.MOUSE_FILTER_STOP
+	for type in _entity_cards:
+		var card = _entity_cards[type]
+		var enabled = not tutorial_active or type in allowed_types
+		card.modulate.a = 1.0 if enabled else 0.3
+		card.set_process_input(enabled)
+		card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+		for child in card.get_children():
+			child.mouse_filter = Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
 
 
 func _animate_blink(node: ColorRect) -> void:

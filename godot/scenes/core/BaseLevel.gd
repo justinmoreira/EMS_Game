@@ -2,6 +2,10 @@ class_name BaseLevel
 extends Control
 
 const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
+const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
+
+enum TutorialStep { WELCOME, PLACE_TRANSCEIVER, DONE }
+var _tutorial_step: TutorialStep = TutorialStep.WELCOME
 
 var zoom := 1.0
 var offset := Vector2.ZERO
@@ -20,6 +24,15 @@ func _ready():
 	if sidebar:
 		sidebar.resized.connect(_on_window_resized)
 	_on_window_resized()
+	GameEvents.units_changed.connect(_on_units_changed_for_tutorial)
+
+	# Check if tutorial was already completed (web builds use localStorage)
+	if OS.has_feature("web"):
+		var done = JavaScriptBridge.eval("localStorage.getItem('tutorial_complete')")
+		if done == "true":
+			_tutorial_step = TutorialStep.DONE
+			return
+
 	_show_sandbox_intro_popup()
 
 
@@ -41,6 +54,39 @@ func _show_sandbox_intro_popup() -> void:
 # allow player to start playing game after clicking continue button
 func _on_intro_popup_closed() -> void:
 	intro_popup_open = false
+	_advance_tutorial()
+
+
+func _advance_tutorial() -> void:
+	match _tutorial_step:
+		TutorialStep.WELCOME:
+			_tutorial_step = TutorialStep.PLACE_TRANSCEIVER
+			GameEvents.tutorial_filter_sidebar.emit([sidebar.EntityType.TRANSCEIVER])
+			_show_tutorial_hint(
+				"Drag a [b]Transceiver[/b] from the sidebar onto the map to begin."
+			)
+		TutorialStep.PLACE_TRANSCEIVER:
+			_tutorial_step = TutorialStep.DONE
+			GameEvents.tutorial_filter_sidebar.emit([])
+			if OS.has_feature("web"):
+				JavaScriptBridge.eval("localStorage.setItem('tutorial_complete', 'true')")
+			_show_tutorial_hint(
+				"Great! You placed a transceiver.\nNow try adding Jammers and Sensors."
+			)
+		TutorialStep.DONE:
+			pass
+
+
+func _on_units_changed_for_tutorial() -> void:
+	if _tutorial_step == TutorialStep.PLACE_TRANSCEIVER:
+		if get_tree().get_nodes_in_group("transceivers").size() > 0:
+			_advance_tutorial()
+
+
+func _show_tutorial_hint(text: String) -> void:
+	var popup := TUTORIAL_HINT_POPUP.instantiate()
+	popup.hint_text = text
+	$CanvasLayer.add_child(popup)
 
 
 func get_map_size() -> Vector2:
