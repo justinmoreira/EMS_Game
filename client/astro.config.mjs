@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import preact from '@astrojs/preact';
+import node from '@astrojs/node';
 import tailwindcss from '@tailwindcss/vite';
 
 function crossOriginIsolation() {
@@ -18,9 +19,12 @@ function crossOriginIsolation() {
 export default defineConfig({
   srcDir: './app',
   base: process.env.BASE_URL ?? '/',
+  output: 'server',
+  adapter: node({ mode: 'standalone' }),
   server: { port: 8080, strictPort: false },
   integrations: [preact()],
   vite: {
+    envPrefix: ['PUBLIC_'],
     plugins: [tailwindcss(), crossOriginIsolation()],
     server: {
       watch: {

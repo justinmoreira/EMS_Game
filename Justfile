@@ -128,10 +128,16 @@ db-reset:
     supabase db reset
 
 [group('dev')]
+[doc('Generate TypeScript types from database schema')]
+db-types:
+    supabase gen types typescript --local > {{client_path}}/app/lib/database.types.ts
+
+[group('dev')]
 [doc('Start Astro dev server with auto Godot rebuild on changes')]
 [private]
 _hmr_serve: _init_client
     #!/usr/bin/env bash
+    CLIENT_PATH={{client_path}} ./scripts/gen-env.sh
     echo "🔄 Watching godot/ for changes (auto rebuild)..."
     (watchexec --poll 2000 -w godot -e gd,tscn,gdshader,tres -- just build_game 2>&1 | tee /tmp/godot-rebuild.log &)
     PORT=$(python3 scripts/find_port.py)

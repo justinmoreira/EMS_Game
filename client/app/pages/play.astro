@@ -1,5 +1,4 @@
 ---
-import NavBar from "@/components/NavBar";
 import Base from "@/layouts/Base.astro";
 import { BASE_URL } from "@/utils";
 ---
@@ -9,8 +8,6 @@ import { BASE_URL } from "@/utils";
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
   </Fragment>
-
-  <NavBar client:load />
 
   <!-- Game canvas -->
   <canvas

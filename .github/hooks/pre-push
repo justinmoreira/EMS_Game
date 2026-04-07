@@ -15,6 +15,22 @@ if ! just lint; then
     exit 1
 fi
 
+# Check if generated DB types are stale
+if command -v supabase &>/dev/null && supabase status &>/dev/null; then
+    CURRENT=$(cat client/app/lib/database.types.ts 2>/dev/null)
+    FRESH=$(supabase gen types typescript --local 2>/dev/null)
+    if [ -n "$FRESH" ] && [ "$CURRENT" != "$FRESH" ]; then
+        echo ""
+        echo "=========================================="
+        echo "  database.types.ts is out of date."
+        echo ""
+        echo "  Run:  just db-types"
+        echo "  Then commit the updated file."
+        echo "=========================================="
+        exit 1
+    fi
+fi
+
 if ! git diff --quiet; then
     echo ""
     echo "⚠️  Warning: you have uncommitted changes."

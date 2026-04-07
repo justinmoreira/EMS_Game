@@ -1,11 +1,13 @@
 ---
 import "@/styles/global.css";
+import NavBar from "@/components/NavBar";
 import { BASE_URL } from "@/utils";
 
 interface Props {
   title: string;
 }
 const { title } = Astro.props;
+const user = Astro.locals.user;
 ---
 
 <!doctype html>
@@ -21,6 +23,7 @@ const { title } = Astro.props;
     <slot name="head" />
   </head>
   <body class="bg-black text-white m-0 overflow-hidden">
+    <NavBar serverUser={user} client:load />
     <slot />
     <script is:inline define:vars={{ BASE_URL }}>
       if (location.hostname === "localhost") {

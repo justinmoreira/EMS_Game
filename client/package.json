@@ -9,7 +9,10 @@
     "fix": "biome check --write app/"
   },
   "dependencies": {
+    "@astrojs/node": "^10.0.4",
     "@astrojs/preact": "^5.0.1",
+    "@preact/signals": "^2.9.0",
+    "@supabase/supabase-js": "^2.101.1",
     "astro": "^6.0.5",
     "preact": "^10.29.0"
   },
