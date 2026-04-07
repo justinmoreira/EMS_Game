@@ -25,6 +25,7 @@
             watchexec      # For watching file changes (HMR)
             python313      # For dev tooling scripts - eventual API
             gdtoolkit_4    # GDScript linter & formatter
+            supabase-cli   # Local Supabase (Postgres + Auth)
           ];
 
           shellHook = ''

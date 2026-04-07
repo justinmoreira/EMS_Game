@@ -113,14 +113,34 @@ code:
     code dev.code-workspace
 
 [group('dev')]
+[doc('Start local Supabase (Postgres + Auth + API)')]
+db-start:
+    supabase start
+
+[group('dev')]
+[doc('Stop local Supabase')]
+db-stop:
+    supabase stop
+
+[group('dev')]
+[doc('Reset local database (destructive)')]
+db-reset:
+    supabase db reset
+
+[group('dev')]
 [doc('Start Astro dev server with auto Godot rebuild on changes')]
-dev: _init_client
+[private]
+_hmr_serve: _init_client
     #!/usr/bin/env bash
     echo "🔄 Watching godot/ for changes (auto rebuild)..."
-    (watchexec -w godot -e gd,tscn,gdshader,tres -- just build_game &)
+    (watchexec --poll 2000 -w godot -e gd,tscn,gdshader,tres -- just build_game 2>&1 | tee /tmp/godot-rebuild.log &)
     PORT=$(python3 scripts/find_port.py)
     echo "🌐 Starting dev server on port $PORT..."
     cd {{client_path}} && bun run dev --port $PORT
+
+[group('dev')]
+[doc('Full dev stack: Supabase + Astro + Godot watcher')]
+dev: _init_client db-start _hmr_serve
 
 [group('quality')]
 [doc('Fast style/format checks (--fix to auto-fix, --fix --unsafe for unsafe fixes)')]
