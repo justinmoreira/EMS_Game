@@ -1,0 +1,74 @@
+[gd_scene format=3 uid="uid://bv7hog3yvvesb"]
+
+[ext_resource type="Script" uid="uid://b4gpau4rlxmkd" path="res://scenes/ui/SandboxIntroPopup.gd" id="1"]
+
+[node name="SandboxIntroPopup" type="Control" unique_id=594745470]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Dim" type="ColorRect" parent="." unique_id=1883281244]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=42393506]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="CenterContainer" unique_id=567813162]
+custom_minimum_size = Vector2(900, 500)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="CenterContainer/Panel" unique_id=1761382891]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/Panel/Margin" unique_id=25533191]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="CenterContainer/Panel/Margin/VBox" unique_id=1841829086]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "Sandbox Mode"
+horizontal_alignment = 1
+
+[node name="Body" type="RichTextLabel" parent="CenterContainer/Panel/Margin/VBox" unique_id=92805605]
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "Welcome to Sandbox Mode.
+
+Sandbox Mode is a free-play environment where you can experiment with electromagnetic warfare systems.
+Place transceivers, jammers, and sensors anywhere on the map and adjust their settings to see how they interact.
+
+Game Units:
+• Transceivers - Send/receive signals
+• Jammers - Disrupt signals
+• Sensors - Detect signals
+
+Goal: Experiment and learn how different settings affect communication, interference, and detection."
+
+[node name="ContinueButton" type="Button" parent="CenterContainer/Panel/Margin/VBox" unique_id=1449289812]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Continue"

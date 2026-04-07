@@ -1,12 +1,19 @@
 class_name BaseLevel
 extends Control
 
+const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
+const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
+
+enum TutorialStep { WELCOME, PLACE_TRANSCEIVER, DONE }
+
+var _tutorial_step := TutorialStep.WELCOME
 var zoom := 1.0
 var offset := Vector2.ZERO
 var dragging := false
 var last_mouse_pos := Vector2.ZERO
 var currently_selected_unit: Node = null
 var sidebar_width: float = 0.0
+var intro_popup_open := false
 
 @onready var background := $BackgroundTexture
 @onready var sidebar = get_tree().root.find_child("Sidebar", true, false)
@@ -17,6 +24,68 @@ func _ready():
 	if sidebar:
 		sidebar.resized.connect(_on_window_resized)
 	_on_window_resized()
+	GameEvents.units_changed.connect(_on_units_changed_for_tutorial)
+
+	# Check if tutorial was already completed (web builds use localStorage)
+	var tutorial_done := false
+	if OS.has_feature("web"):
+		tutorial_done = JavaScriptBridge.eval("localStorage.getItem('tutorial_complete')") == "true"
+
+	if tutorial_done:
+		_tutorial_step = TutorialStep.DONE
+	else:
+		_start_tutorial()
+
+
+#display the popup on top of the game
+func _start_tutorial() -> void:
+	if intro_popup_open:
+		return
+
+	var popup := SANDBOX_INTRO_POPUP.instantiate()
+	intro_popup_open = true
+
+	$CanvasLayer.add_child(popup)
+
+	# listen for the continue button to be clicked
+	if popup.has_signal("continued"):
+		popup.continued.connect(_on_intro_popup_closed)
+
+
+# allow player to start playing game after clicking continue button
+func _on_intro_popup_closed() -> void:
+	intro_popup_open = false
+	_advance_tutorial()
+
+
+func _advance_tutorial() -> void:
+	match _tutorial_step:
+		TutorialStep.WELCOME:
+			_tutorial_step = TutorialStep.PLACE_TRANSCEIVER
+			GameEvents.tutorial_filter_sidebar.emit([sidebar.EntityType.TRANSCEIVER])
+			_show_tutorial_hint("Drag a [b]Transceiver[/b] from the sidebar onto the map to begin.")
+		TutorialStep.PLACE_TRANSCEIVER:
+			_tutorial_step = TutorialStep.DONE
+			GameEvents.tutorial_filter_sidebar.emit([])
+			if OS.has_feature("web"):
+				JavaScriptBridge.eval("localStorage.setItem('tutorial_complete', 'true')")
+			_show_tutorial_hint(
+				"Great! You placed a transceiver.\nNow try adding Jammers and Sensors."
+			)
+		TutorialStep.DONE:
+			pass
+
+
+func _on_units_changed_for_tutorial() -> void:
+	if _tutorial_step == TutorialStep.PLACE_TRANSCEIVER:
+		if get_tree().get_nodes_in_group("transceivers").size() > 0:
+			_advance_tutorial()
+
+
+func _show_tutorial_hint(text: String) -> void:
+	var popup := TUTORIAL_HINT_POPUP.instantiate()
+	popup.hint_text = text
+	$CanvasLayer.add_child(popup)
 
 
 func get_map_size() -> Vector2:
@@ -164,6 +233,10 @@ func _deselect_unit() -> void:
 
 
 func _input(event):
+	#prevent gameplay after popup is open
+	if intro_popup_open:
+		return
+
 	if event is InputEventMouseButton:
 		if event.position.x < sidebar_width:
 			return
@@ -186,6 +259,10 @@ func _input(event):
 
 
 func _unhandled_input(event):
+	# prevent map interaction when popup is active
+	if intro_popup_open:
+		return
+
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			# Check if click is on empty map (not on sidebar)
