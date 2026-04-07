@@ -4,7 +4,7 @@ extends Control
 const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
 const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
 
-enum TutorialStep {WELCOME, PLACE_TRANSCEIVER, DONE}
+enum TutorialStep { WELCOME, PLACE_TRANSCEIVER, DONE }
 var _tutorial_step: TutorialStep = TutorialStep.WELCOME
 
 var zoom := 1.0
@@ -63,9 +63,7 @@ func _advance_tutorial() -> void:
 		TutorialStep.WELCOME:
 			_tutorial_step = TutorialStep.PLACE_TRANSCEIVER
 			GameEvents.tutorial_filter_sidebar.emit([sidebar.EntityType.TRANSCEIVER])
-			_show_tutorial_hint(
-				"Drag a [b]Transceiver[/b] from the sidebar onto the map to begin."
-			)
+			_show_tutorial_hint("Drag a [b]Transceiver[/b] from the sidebar onto the map to begin.")
 		TutorialStep.PLACE_TRANSCEIVER:
 			_tutorial_step = TutorialStep.DONE
 			GameEvents.tutorial_filter_sidebar.emit([])
@@ -278,7 +276,7 @@ func _unhandled_input(event):
 				for child in get_children():
 					if child is EMSUnit:
 						var distance = child.global_position.distance_to(mouse_pos)
-						if distance < 32: # Matches the selection radius in EMSUnit.gd
+						if distance < 32:  # Matches the selection radius in EMSUnit.gd
 							clicked_unit = true
 							break
 

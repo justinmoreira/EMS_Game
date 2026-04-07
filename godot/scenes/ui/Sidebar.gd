@@ -4,7 +4,7 @@ extends PanelContainer
 #  Sidebar.gd — EMS Simulation
 # ─────────────────────────────────────────────
 
-enum EntityType {NONE, TRANSCEIVER, JAMMER, SENSOR}
+enum EntityType { NONE, TRANSCEIVER, JAMMER, SENSOR }
 
 # ── Colors ────────────────────────────────────
 const C_BG_DARK := Color("0d0f14")
@@ -30,7 +30,7 @@ var _delete_btn: Button = null
 var _attr_header: Label
 var _attr_body: VBoxContainer
 var _attr_placeholder: Label
-var _entity_cards: Dictionary = {} # EntityType -> Control
+var _entity_cards: Dictionary = {}  # EntityType -> Control
 var _attr_section: PanelContainer
 var _attr_content: VBoxContainer
 var _tutorial_active: bool = false
@@ -65,7 +65,7 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 
 
 func _build_sidebar() -> void:
-	_apply_style(self , C_BG_DARK, C_BORDER, 0, 0, 0, 1)
+	_apply_style(self, C_BG_DARK, C_BORDER, 0, 0, 0, 1)
 	custom_minimum_size = Vector2(300, 0)
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -180,7 +180,10 @@ func _build_tray() -> PanelContainer:
 	stack.add_theme_constant_override("separation", 8)
 	vbox.add_child(stack)
 	var tx_card := _build_entity_card(
-		"Transceiver", "T", C_BLUE, EntityType.TRANSCEIVER,
+		"Transceiver",
+		"T",
+		C_BLUE,
+		EntityType.TRANSCEIVER,
 		"res://scenes/core/units/TransceiverUnit.tscn",
 		"res://assets/sprites/transceiver.png"
 	)
@@ -188,7 +191,10 @@ func _build_tray() -> PanelContainer:
 	_entity_cards[EntityType.TRANSCEIVER] = tx_card
 
 	var jm_card := _build_entity_card(
-		"Jammer", "J", C_AMBER, EntityType.JAMMER,
+		"Jammer",
+		"J",
+		C_AMBER,
+		EntityType.JAMMER,
 		"res://scenes/core/units/JammerUnit.tscn",
 		"res://assets/sprites/jammer.png"
 	)
@@ -196,7 +202,10 @@ func _build_tray() -> PanelContainer:
 	_entity_cards[EntityType.JAMMER] = jm_card
 
 	var sn_card := _build_entity_card(
-		"Sensor", "S", C_RED, EntityType.SENSOR,
+		"Sensor",
+		"S",
+		C_RED,
+		EntityType.SENSOR,
 		"res://scenes/core/units/SensorUnit.tscn",
 		"res://assets/sprites/sensor.png"
 	)
@@ -766,7 +775,9 @@ func _on_tutorial_filter(allowed_types: Array) -> void:
 		card.set_process_input(enabled)
 		card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
 		for child in card.get_children():
-			child.mouse_filter = Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
+			child.mouse_filter = (
+				Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
+			)
 
 
 func _set_interactivity(node: Control, enabled: bool) -> void:
