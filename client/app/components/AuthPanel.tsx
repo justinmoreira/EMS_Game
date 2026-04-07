@@ -1,6 +1,8 @@
 import type { User } from "@supabase/supabase-js";
+import { createPortal } from "preact/compat";
 import { useState } from "preact/hooks";
 import { authLoading, authUser } from "@/lib/auth";
+import { setProgress } from "@/lib/progress";
 import { supabase } from "@/lib/supabase";
 
 function LoginForm() {
@@ -14,12 +16,10 @@ function LoginForm() {
     e.preventDefault();
     setError("");
     setSubmitting(true);
-
     const { error: authError } =
       mode === "login"
         ? await supabase.auth.signInWithPassword({ email, password })
         : await supabase.auth.signUp({ email, password });
-
     if (authError) setError(authError.message);
     setSubmitting(false);
   };
@@ -75,9 +75,7 @@ function ProfileView({ user }: { user: User }) {
 
   const handleSave = async () => {
     setSaving(true);
-    await supabase.auth.updateUser({
-      data: { display_name: displayName },
-    });
+    await supabase.auth.updateUser({ data: { display_name: displayName } });
     setSaving(false);
     setEditing(false);
   };
@@ -86,7 +84,6 @@ function ProfileView({ user }: { user: User }) {
     setDisplayName(currentName);
     setEditing(false);
   };
-
   const handleSignOut = async () => {
     await supabase.auth.signOut();
   };
@@ -140,8 +137,15 @@ function ProfileView({ user }: { user: User }) {
       </div>
       <button
         type="button"
+        onClick={() => setProgress({ tutorial_complete: false })}
+        class="px-4 py-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white rounded-lg transition-colors text-sm"
+      >
+        Forget Tutorial
+      </button>
+      <button
+        type="button"
         onClick={handleSignOut}
-        class="mt-4 px-4 py-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white rounded-lg transition-colors"
+        class="px-4 py-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white rounded-lg transition-colors"
       >
         Sign Out
       </button>
@@ -149,21 +153,56 @@ function ProfileView({ user }: { user: User }) {
   );
 }
 
-export default function AuthPanel({
+export default function AccountModal({
   serverUser,
 }: {
   serverUser?: User | null;
 }) {
+  const [open, setOpen] = useState(false);
   const user = authUser.value ?? serverUser;
 
-  if (authLoading.value) {
-    return <div class="text-neutral-500">Loading...</div>;
-  }
-
   return (
-    <div class="w-full max-w-sm bg-neutral-900/80 border border-neutral-700 rounded-xl p-8">
-      <h2 class="text-xl font-bold mb-6">{user ? "Account" : "Sign In"}</h2>
-      {user ? <ProfileView user={user} /> : <LoginForm />}
-    </div>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        class="text-sm font-medium hover:text-white text-neutral-300 transition-colors"
+      >
+        {user
+          ? (user.user_metadata?.display_name as string) ||
+            user.email?.split("@")[0]
+          : "Account"}
+      </button>
+      {open &&
+        createPortal(
+          <div
+            class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setOpen(false);
+            }}
+          >
+            <div class="w-full max-w-sm bg-neutral-900 border border-neutral-700 rounded-xl p-8 relative">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                class="absolute top-3 right-4 text-neutral-500 hover:text-white text-lg"
+              >
+                &times;
+              </button>
+              <h2 class="text-xl font-bold mb-6">
+                {user ? "Account" : "Sign In"}
+              </h2>
+              {authLoading.value ? (
+                <div class="text-neutral-500">Loading...</div>
+              ) : user ? (
+                <ProfileView user={user} />
+              ) : (
+                <LoginForm />
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
