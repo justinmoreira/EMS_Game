@@ -4,7 +4,7 @@ extends Control
 const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
 const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
 
-enum TutorialStep { WELCOME, PLACE_TRANSCEIVER, DONE }
+enum TutorialStep {WELCOME, PLACE_TRANSCEIVER, DONE}
 var _tutorial_step: TutorialStep = TutorialStep.WELCOME
 
 var zoom := 1.0
@@ -27,17 +27,18 @@ func _ready():
 	GameEvents.units_changed.connect(_on_units_changed_for_tutorial)
 
 	# Check if tutorial was already completed (web builds use localStorage)
+	var tutorial_done := false
 	if OS.has_feature("web"):
-		var done = JavaScriptBridge.eval("localStorage.getItem('tutorial_complete')")
-		if done == "true":
-			_tutorial_step = TutorialStep.DONE
-			return
+		tutorial_done = JavaScriptBridge.eval("localStorage.getItem('tutorial_complete')") == "true"
 
-	_show_sandbox_intro_popup()
+	if tutorial_done:
+		_tutorial_step = TutorialStep.DONE
+	else:
+		_start_tutorial()
 
 
 #display the popup on top of the game
-func _show_sandbox_intro_popup() -> void:
+func _start_tutorial() -> void:
 	if intro_popup_open:
 		return
 
@@ -277,7 +278,7 @@ func _unhandled_input(event):
 				for child in get_children():
 					if child is EMSUnit:
 						var distance = child.global_position.distance_to(mouse_pos)
-						if distance < 32:  # Matches the selection radius in EMSUnit.gd
+						if distance < 32: # Matches the selection radius in EMSUnit.gd
 							clicked_unit = true
 							break
 

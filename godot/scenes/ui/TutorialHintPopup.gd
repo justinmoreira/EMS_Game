@@ -2,7 +2,7 @@ extends Control
 
 signal continued
 
-@export var hint_text: String = ""
+var hint_text: String = ""
 
 @onready var hint_label: RichTextLabel = %HintLabel
 @onready var ok_button: Button = %OkButton

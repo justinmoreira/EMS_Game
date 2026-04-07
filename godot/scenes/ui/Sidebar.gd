@@ -33,6 +33,7 @@ var _attr_placeholder: Label
 var _entity_cards: Dictionary = {} # EntityType -> Control
 var _attr_section: PanelContainer
 var _attr_content: VBoxContainer
+var _tutorial_active: bool = false
 
 
 # ════════════════════════════════════════════
@@ -49,6 +50,8 @@ func _ready() -> void:
 
 
 func select_entity(type: EntityType, display_name: String = "", node: Node = null) -> void:
+	if _tutorial_active:
+		return
 	selected_entity = type
 	selected_entity_name = display_name
 	selected_node = node
@@ -753,17 +756,24 @@ func _make_label(text: String, color: Color, size: int, expand: bool = false) ->
 
 
 func _on_tutorial_filter(allowed_types: Array) -> void:
-	var tutorial_active := not allowed_types.is_empty()
-	_attr_content.modulate.a = 0.3 if tutorial_active else 1.0
-	_attr_content.mouse_filter = Control.MOUSE_FILTER_IGNORE if tutorial_active else Control.MOUSE_FILTER_STOP
+	_tutorial_active = not allowed_types.is_empty()
+	_attr_content.modulate.a = 0.3 if _tutorial_active else 1.0
+	_set_interactivity(_attr_content, not _tutorial_active)
 	for type in _entity_cards:
 		var card = _entity_cards[type]
-		var enabled = not tutorial_active or type in allowed_types
+		var enabled = not _tutorial_active or type in allowed_types
 		card.modulate.a = 1.0 if enabled else 0.3
 		card.set_process_input(enabled)
 		card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
 		for child in card.get_children():
 			child.mouse_filter = Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
+
+
+func _set_interactivity(node: Control, enabled: bool) -> void:
+	node.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+	for child in node.get_children():
+		if child is Control:
+			_set_interactivity(child, enabled)
 
 
 func _animate_blink(node: ColorRect) -> void:
