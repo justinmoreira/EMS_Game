@@ -32,16 +32,10 @@ var _attr_body: VBoxContainer
 var _attr_placeholder: Label
 
 
-# ════════════════════════════════════════════
 func _ready() -> void:
 	GameEvents.units_changed.connect(_update_simulate_button)
 	_build_sidebar()
 	_refresh_attribute_panel()
-
-
-# ════════════════════════════════════════════
-#  PUBLIC API
-# ════════════════════════════════════════════
 
 
 func select_entity(type: EntityType, display_name: String = "", node: Node = null) -> void:
@@ -291,7 +285,6 @@ func _build_attr_section() -> PanelContainer:
 	_attr_body.add_theme_constant_override("separation", 10)
 	scroll.add_child(_attr_body)
 
-	# Placeholder lives outside the scroll so it can center properly
 	_attr_placeholder = _make_label("— select a unit to configure —", C_DIM, 15)
 	_attr_placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_attr_placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -311,16 +304,12 @@ func _build_divider() -> HSeparator:
 	return sep
 
 
-# ════════════════════════════════════════════
-#  REFRESH
-# ════════════════════════════════════════════
-
-
 func _refresh_attribute_panel() -> void:
 	for child in _attr_body.get_children():
 		child.queue_free()
 
-	_delete_btn.visible = selected_entity != EntityType.NONE and selected_node != null
+	if _delete_btn:
+		_delete_btn.visible = selected_entity != EntityType.NONE and selected_node != null
 
 	if selected_entity == EntityType.NONE:
 		_attr_header.visible = false
@@ -454,11 +443,6 @@ func _refresh_attribute_panel() -> void:
 			)
 
 
-# ════════════════════════════════════════════
-#  CONTROL BUILDERS
-# ════════════════════════════════════════════
-
-
 func _add_accent_bar(accent: Color) -> void:
 	var bar := ColorRect.new()
 	bar.color = accent
@@ -478,7 +462,6 @@ func _add_slider(
 ) -> void:
 	var vbox := _make_row_container()
 
-	# Top row: label + spinbox
 	var top := HBoxContainer.new()
 	top.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_theme_constant_override("separation", 8)
@@ -498,7 +481,6 @@ func _add_slider(
 	spin.add_theme_color_override("font_color", accent)
 	top.add_child(spin)
 
-	# Bottom row: full-width slider
 	var slider := HSlider.new()
 	slider.min_value = min_v
 	slider.max_value = max_v
@@ -570,7 +552,6 @@ func _add_toggle(label: String, current: bool, accent: Color, on_change: Callabl
 	hbox.add_child(toggle)
 
 
-## Creates a styled card container, adds it to _attr_body, returns inner VBoxContainer
 func _make_row_container() -> VBoxContainer:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_LIGHT, 10))
@@ -602,6 +583,7 @@ func _on_reset_pressed() -> void:
 			for unit in get_tree().get_nodes_in_group("jammers"):
 				unit.get_parent().queue_free()
 			select_entity(EntityType.NONE)
+			SimulationManager.clear_all_links()
 			dialog.queue_free()
 	)
 	dialog.canceled.connect(func(): dialog.queue_free())
@@ -621,9 +603,9 @@ func _on_delete_pressed() -> void:
 
 	dialog.confirmed.connect(
 		func():
-			print("Deleting: ", selected_node.get_path())
 			selected_node.get_parent().queue_free()
 			select_entity(EntityType.NONE)
+			SimulationManager.clear_all_links()
 			dialog.queue_free()
 	)
 	dialog.canceled.connect(func(): dialog.queue_free())
@@ -635,11 +617,13 @@ func _update_simulate_button() -> void:
 		or get_tree().get_nodes_in_group("jammers").size() > 0
 		or get_tree().get_nodes_in_group("sensors").size() > 0
 	)
+
 	if _simulate_btn:
 		_simulate_btn.disabled = not has_units
 		_simulate_btn.mouse_default_cursor_shape = (
 			Control.CURSOR_POINTING_HAND if has_units else Control.CURSOR_ARROW
 		)
+
 	if _reset_btn:
 		_reset_btn.disabled = not has_units
 		_reset_btn.mouse_default_cursor_shape = (
@@ -649,11 +633,6 @@ func _update_simulate_button() -> void:
 
 func _on_simulate_pressed() -> void:
 	SimulationManager.simulate()
-
-
-# ════════════════════════════════════════════
-#  NODE PROPERTY HELPERS
-# ════════════════════════════════════════════
 
 
 func _component() -> Node:
@@ -690,19 +669,30 @@ func _write(p: String, value) -> void:
 
 	c.set(p, value)
 
-	# Get the unit (parent of component)
 	var unit = c.get_parent()
-	if unit:
-		var scene_path = unit.scene_file_path
-		if scene_path:
-			var packed_scene := PackedScene.new()
-			if packed_scene.pack(unit) == OK:
-				ResourceSaver.save(packed_scene, scene_path)
-			else:
-				push_error("Failed to pack unit")
+	if unit == null:
+		return
+
+	var scene_path = unit.scene_file_path
+	if scene_path:
+		var packed_scene := PackedScene.new()
+		if packed_scene.pack(unit) == OK:
+			ResourceSaver.save(packed_scene, scene_path)
+		else:
+			push_error("Failed to pack unit")
 
 
-## Read/write directly on the EMSUnit node (not the component child)
+func _is_transceiver_unit(unit: Node) -> bool:
+	if unit == null:
+		return false
+
+	for child in unit.get_children():
+		if child.name == "Transceiver":
+			return true
+
+	return false
+
+
 func _node_int(p: String, fallback: int) -> int:
 	return int(selected_node.get(p)) if selected_node and p in selected_node else fallback
 
@@ -711,13 +701,15 @@ func _write_node(p: String, value) -> void:
 	if selected_node and p in selected_node:
 		selected_node.set(p, value)
 
+		var scene_path = selected_node.scene_file_path
+		if scene_path:
+			var packed_scene := PackedScene.new()
+			if packed_scene.pack(selected_node) == OK:
+				ResourceSaver.save(packed_scene, scene_path)
+			else:
+				push_error("Failed to pack unit")
 
-# ════════════════════════════════════════════
-#  STYLE HELPERS
-# ════════════════════════════════════════════
 
-
-## Shorthand for a basic StyleBoxFlat with bg color and uniform padding
 func _flat_style(bg: Color, padding: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
@@ -729,7 +721,6 @@ func _flat_style(bg: Color, padding: int) -> StyleBoxFlat:
 	return s
 
 
-## Apply border styling directly to a control's panel stylebox
 func _apply_style(
 	control: Control, bg: Color, border: Color, top: int, bottom: int, left: int, right: int
 ) -> void:
@@ -743,7 +734,6 @@ func _apply_style(
 	control.add_theme_stylebox_override("panel", s)
 
 
-## Shorthand label factory
 func _make_label(text: String, color: Color, size: int, expand: bool = false) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
