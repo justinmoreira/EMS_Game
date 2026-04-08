@@ -108,9 +108,13 @@ if (isBrowser) {
     });
   }
 
-  authUser.subscribe((user) => { if (user) sync(); });
+  authUser.subscribe((user) => {
+    if (user) sync();
+  });
   window.addEventListener("online", () => sync());
-  window.addEventListener("offline", () => { syncStatus.value = "offline"; });
+  window.addEventListener("offline", () => {
+    syncStatus.value = "offline";
+  });
 
   // Godot bridge
   const w = window as unknown as Record<string, unknown>;
