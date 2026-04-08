@@ -4,7 +4,7 @@ extends PanelContainer
 #  Sidebar.gd — EMS Simulation
 # ─────────────────────────────────────────────
 
-enum EntityType {NONE, TRANSCEIVER, JAMMER, SENSOR}
+enum EntityType { NONE, TRANSCEIVER, JAMMER, SENSOR }
 
 # ── Colors ────────────────────────────────────
 const C_BG_DARK := Color("0d0f14")
@@ -53,7 +53,7 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 
 
 func _build_sidebar() -> void:
-	_apply_style(self , C_BG_DARK, C_BORDER, 0, 0, 0, 1)
+	_apply_style(self, C_BG_DARK, C_BORDER, 0, 0, 0, 1)
 	custom_minimum_size = Vector2(300, 0)
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
