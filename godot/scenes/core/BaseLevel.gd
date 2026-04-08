@@ -33,19 +33,7 @@ func _ready():
 		if result is String and result != "":
 			tutorial_done = result.find('"tutorial_complete":true') != -1
 		# Listen for reset tutorial from web UI
-		(
-			JavaScriptBridge
-			. eval(
-				"""
-			window.addEventListener('progress-changed', function(e) {
-				if (window._tutDone === true && !e.detail.tutorial_complete) {
-					location.reload();
-					window._tutDone = e.detail.tutorial_complete;
-				}
-			});
-		"""
-			)
-		)
+		JavaScriptBridge.eval("if(window.initTutorialListener) window.initTutorialListener()")
 
 	if tutorial_done:
 		_tutorial_step = TutorialStep.DONE

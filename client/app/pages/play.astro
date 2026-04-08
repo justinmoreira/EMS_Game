@@ -9,6 +9,7 @@ import { BASE_URL } from "@/utils";
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
   </Fragment>
 
+  <script is:inline src="/godot-bridge.js"></script>
   <!-- Game canvas -->
   <canvas
     id="canvas"
@@ -115,8 +116,6 @@ import { BASE_URL } from "@/utils";
           })
           .then(() => setStatusMode("hidden"), displayFailureNotice);
       }
-
-
     })();
   </script>
 </Base>
