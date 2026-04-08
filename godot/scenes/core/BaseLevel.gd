@@ -4,7 +4,7 @@ extends Control
 const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
 const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
 
-enum TutorialStep {WELCOME, PLACE_TRANSCEIVER, DONE}
+enum TutorialStep { WELCOME, PLACE_TRANSCEIVER, DONE }
 
 var _tutorial_step := TutorialStep.WELCOME
 # Camera / Viewport State
@@ -275,7 +275,7 @@ func _input(event: InputEvent) -> void:
 			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 				zoom = clamp(zoom * 1.1, 0.1, 1.0)
 			else:
-				return # Not a zoom event
+				return  # Not a zoom event
 
 			# Adjust offset so we zoom toward the mouse position
 			var map = get_map_size()
@@ -306,7 +306,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				for child in get_children():
 					if child is EMSUnit:
 						var distance = child.global_position.distance_to(mouse_pos)
-						if distance < 32: # Matches the selection radius in EMSUnit.gd
+						if distance < 32:  # Matches the selection radius in EMSUnit.gd
 							clicked_unit = true
 							break
 
