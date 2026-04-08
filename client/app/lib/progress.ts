@@ -116,6 +116,11 @@ if (isBrowser) {
     syncStatus.value = "offline";
   });
 
+  window.addEventListener("online", () => {
+    syncStatus.value = "online";
+    sync();
+  });
+
   // Godot bridge
   const w = window as unknown as Record<string, unknown>;
   w.getProgress = () => JSON.stringify(progress.value);

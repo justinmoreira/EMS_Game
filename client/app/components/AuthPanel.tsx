@@ -92,7 +92,6 @@ function ProfileView({ user }: { user: User }) {
 
   return (
     <div class="flex flex-col gap-4 w-full">
-      <div class="text-neutral-400 text-sm">Display Name</div>
       {editing ? (
         <div class="flex gap-2">
           <input
@@ -139,34 +138,6 @@ function ProfileView({ user }: { user: User }) {
         Joined{" "}
         {user.created_at ? new Date(user.created_at).toLocaleDateString() : ""}
       </div>
-      <div class="flex items-center gap-2 text-xs">
-        <span
-          class={`inline-block w-2 h-2 rounded-full ${
-            syncStatus.value === "online"
-              ? "bg-emerald-500"
-              : syncStatus.value === "syncing"
-                ? "bg-yellow-500 animate-pulse"
-                : "bg-red-500"
-          }`}
-        />
-        <span class="text-neutral-500">
-          {syncStatus.value === "online"
-            ? "Synced"
-            : syncStatus.value === "syncing"
-              ? "Syncing..."
-              : "Offline"}
-        </span>
-      </div>
-      <button
-        type="button"
-        onClick={() => {
-          setProgress({ tutorial_complete: false });
-          location.reload();
-        }}
-        class="px-4 py-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white rounded-lg transition-colors text-sm"
-      >
-        Forget Tutorial
-      </button>
       <button
         type="button"
         onClick={handleSignOut}
@@ -248,6 +219,34 @@ export default function AccountModal() {
               ) : (
                 <LoginForm />
               )}
+              <button
+                type="button"
+                onClick={() => {
+                  setProgress({ tutorial_complete: false });
+                  location.reload();
+                }}
+                class="w-full px-4 py-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white rounded-lg transition-colors text-sm mt-4"
+              >
+                Tutorial
+              </button>
+              <div class="flex items-center gap-2 text-xs mt-4 pt-4 border-t border-neutral-700">
+                <span
+                  class={`inline-block w-2 h-2 rounded-full ${
+                    syncStatus.value === "online"
+                      ? "bg-emerald-500"
+                      : syncStatus.value === "syncing"
+                        ? "bg-yellow-500 animate-pulse"
+                        : "bg-red-500"
+                  }`}
+                />
+                <span class="text-neutral-500">
+                  {syncStatus.value === "online"
+                    ? "Synced"
+                    : syncStatus.value === "syncing"
+                      ? "Syncing..."
+                      : "Offline"}
+                </span>
+              </div>
             </div>
           </button>,
           document.body,
