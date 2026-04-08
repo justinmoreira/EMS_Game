@@ -158,7 +158,10 @@ function ProfileView({ user }: { user: User }) {
       </div>
       <button
         type="button"
-        onClick={() => { setProgress({ tutorial_complete: false }); location.reload(); }}
+        onClick={() => {
+          setProgress({ tutorial_complete: false });
+          location.reload();
+        }}
         class="px-4 py-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white rounded-lg transition-colors text-sm"
       >
         Forget Tutorial
