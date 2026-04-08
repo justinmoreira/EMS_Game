@@ -29,7 +29,7 @@ func _ready():
 	# Check if tutorial was already completed
 	var tutorial_done := false
 	if OS.has_feature("web"):
-		var result = JavaScriptBridge.eval("window.getProgress ? window.getProgress() : '{}'")
+		var result = JavaScriptBridge.eval("typeof window.getProgress==='function' ? window.getProgress() : '{}'")
 		if result is String and result != "":
 			tutorial_done = result.find('"tutorial_complete":true') != -1
 		# Listen for reset tutorial from web UI
@@ -81,7 +81,7 @@ func _advance_tutorial() -> void:
 			_tutorial_step = TutorialStep.DONE
 			GameEvents.tutorial_filter_sidebar.emit([])
 			if OS.has_feature("web"):
-				JavaScriptBridge.eval("window.setProgress('{\"tutorial_complete\":true}')")
+				JavaScriptBridge.eval("if(window.setProgress) window.setProgress('{\"tutorial_complete\":true}')")
 			_show_tutorial_hint(
 				"Great! You placed a transceiver.\nNow try adding Jammers and Sensors."
 			)

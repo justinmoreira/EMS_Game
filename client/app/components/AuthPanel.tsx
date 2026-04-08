@@ -2,7 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import { createPortal } from "preact/compat";
 import { useEffect, useState } from "preact/hooks";
 import { authLoading, authUser } from "@/lib/auth";
-import { setProgress } from "@/lib/progress";
+import { setProgress, syncStatus } from "@/lib/progress";
 import { supabase } from "@/lib/supabase";
 
 function LoginForm() {
@@ -119,12 +119,14 @@ function ProfileView({ user }: { user: User }) {
           </button>
         </div>
       ) : (
-        <div class="flex items-center gap-2">
-          <span class="text-white text-lg font-medium">{currentName}</span>
+        <div class="relative w-full text-center">
+          <span class="block text-center text-white text-lg font-medium">
+            {currentName}
+          </span>
           <button
             type="button"
             onClick={() => setEditing(true)}
-            class="text-neutral-500 hover:text-white transition-colors"
+            class="absolute right-0 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white transition-colors"
             title="Edit display name"
           >
             &#9998;
@@ -135,6 +137,24 @@ function ProfileView({ user }: { user: User }) {
       <div class="text-neutral-500 text-xs">
         Joined{" "}
         {user.created_at ? new Date(user.created_at).toLocaleDateString() : ""}
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <span
+          class={`inline-block w-2 h-2 rounded-full ${
+            syncStatus.value === "online"
+              ? "bg-emerald-500"
+              : syncStatus.value === "syncing"
+                ? "bg-yellow-500 animate-pulse"
+                : "bg-red-500"
+          }`}
+        />
+        <span class="text-neutral-500">
+          {syncStatus.value === "online"
+            ? "Synced"
+            : syncStatus.value === "syncing"
+              ? "Syncing..."
+              : "Offline"}
+        </span>
       </div>
       <button
         type="button"
@@ -154,14 +174,10 @@ function ProfileView({ user }: { user: User }) {
   );
 }
 
-export default function AccountModal({
-  serverUser,
-}: {
-  serverUser?: User | null;
-}) {
+export default function AccountModal() {
   const [open, setOpen] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -170,19 +186,21 @@ export default function AccountModal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
-  const user = hydrated ? authUser.value : (authUser.value ?? serverUser);
+  const user = authUser.value;
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        class="text-sm font-medium hover:text-white text-neutral-300 transition-colors"
+        class="text-sm font-medium hover:text-white text-neutral-300 transition-colors min-w-[70px] text-right cursor-pointer"
       >
-        {user
-          ? (user.user_metadata?.display_name as string) ||
-            user.email?.split("@")[0]
-          : "Account"}
+        {!ready
+          ? ""
+          : user
+            ? (user.user_metadata?.display_name as string) ||
+              user.email?.split("@")[0]
+            : "Account"}
       </button>
       {open &&
         createPortal(

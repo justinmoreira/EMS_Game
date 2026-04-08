@@ -1,6 +1,7 @@
-const CACHE_NAME = "ems-sim-v1";
+const CACHE_NAME = "ems-sim-v2";
 const PRECACHE = [
   "./",
+  "./play",
   "./manifest.json",
   "./godot/index.js",
   "./godot/index.wasm",
@@ -25,17 +26,32 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  const { request } = event;
+
+  // Skip non-GET and Supabase API calls
+  if (request.method !== "GET" || request.url.includes("/rest/v1/") || request.url.includes("/auth/v1/")) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      // Always fetch from network in the background to update cache
-      const networkFetch = fetch(event.request).then((response) => {
-        if (response.ok && event.request.method === "GET") {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return response;
-      });
-      // Serve cached version immediately, fall back to network
+    caches.match(request).then((cached) => {
+      const networkFetch = fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => {
+          // Offline fallback: serve index for navigation requests
+          if (request.mode === "navigate") {
+            return caches.match("./");
+          }
+          return cached;
+        });
+
+      // Serve cached immediately, update in background
       return cached || networkFetch;
     })
   );

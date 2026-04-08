@@ -4,27 +4,39 @@ import { db } from "./db";
 import { supabase } from "./supabase";
 
 const isBrowser = typeof window !== "undefined";
+const LS_KEY = "user_progress";
 
 export interface UserProgress {
   tutorial_complete: boolean;
 }
 
-export const progress = signal<UserProgress>({ tutorial_complete: false });
-
-// Load from IndexedDB on startup
-export async function initProgress() {
-  if (!isBrowser) return;
-  const row = await db.userProgress.get("self");
-  if (row) {
-    progress.value = { tutorial_complete: row.tutorial_complete };
+// localStorage = instant read, always available
+function readLocal(): UserProgress {
+  if (!isBrowser) return { tutorial_complete: false };
+  try {
+    return JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+  } catch {
+    return { tutorial_complete: false };
   }
 }
 
-// Write to IndexedDB (instant), then sync to Supabase in background
+function writeLocal(p: UserProgress) {
+  if (isBrowser) localStorage.setItem(LS_KEY, JSON.stringify(p));
+}
+
+// Reactive state — initialized from localStorage (sync, instant)
+export const progress = signal<UserProgress>(readLocal());
+export const syncStatus = signal<"online" | "offline" | "syncing">(
+  isBrowser && navigator.onLine ? "online" : "offline",
+);
+
+// Write: localStorage (instant) → Dexie (durable) → Supabase (background)
 export async function setProgress(updates: Partial<UserProgress>) {
-  if (!isBrowser) return;
   const next = { ...progress.value, ...updates };
   progress.value = next;
+  writeLocal(next);
+
+  if (!isBrowser) return;
 
   await db.userProgress.put({
     id: "self",
@@ -33,85 +45,78 @@ export async function setProgress(updates: Partial<UserProgress>) {
     synced: false,
   });
 
-  flushQueue();
+  sync();
 }
 
-// Push all unsynced rows to Supabase
-async function flushQueue() {
+// Sync: push unsynced Dexie rows to Supabase, pull remote if newer
+async function sync() {
   const user = authUser.value;
-  if (!user) return;
+  if (!user || !isBrowser) return;
 
-  const unsynced = await db.userProgress.where("synced").equals(0).toArray();
-  for (const row of unsynced) {
-    try {
+  syncStatus.value = "syncing";
+
+  try {
+    // Push local changes
+    const unsynced = await db.userProgress.where("synced").equals(0).toArray();
+    for (const row of unsynced) {
       await supabase.from("user_progress").upsert({
         user_id: user.id,
         tutorial_complete: row.tutorial_complete,
         updated_at: row.updated_at,
       });
       await db.userProgress.update(row.id, { synced: true });
-    } catch {
-      // Offline — stays in queue
-      break;
     }
-  }
-}
 
-// Pull from Supabase and merge (remote wins if newer)
-async function pullFromDb() {
-  const user = authUser.value;
-  if (!user) return;
-
-  try {
+    // Pull remote
     const { data } = await supabase
       .from("user_progress")
       .select("tutorial_complete, updated_at")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    const local = await db.userProgress.get("self");
-    const localTime = local?.updated_at ?? new Date(0).toISOString();
-
-    if (data && data.updated_at > localTime) {
-      // Remote is newer — update local
-      await db.userProgress.put({
-        id: "self",
-        tutorial_complete: data.tutorial_complete,
-        updated_at: data.updated_at,
-        synced: true,
-      });
-      progress.value = { tutorial_complete: data.tutorial_complete };
-    } else {
-      // Local is newer or no remote — push local up
-      flushQueue();
+    if (data) {
+      const local = await db.userProgress.get("self");
+      if (!local || data.updated_at > local.updated_at) {
+        const remote = { tutorial_complete: data.tutorial_complete };
+        progress.value = remote;
+        writeLocal(remote);
+        await db.userProgress.put({
+          id: "self",
+          tutorial_complete: data.tutorial_complete,
+          updated_at: data.updated_at,
+          synced: true,
+        });
+      }
     }
+
+    syncStatus.value = "online";
   } catch {
-    // Offline — local stays as truth
+    syncStatus.value = "offline";
   }
 }
 
-// Sync on login and when coming back online
+// Lifecycle
 if (isBrowser) {
-  initProgress();
+  // Hydrate Dexie from localStorage on first load
+  const local = readLocal();
+  if (local.tutorial_complete) {
+    db.userProgress.put({
+      id: "self",
+      tutorial_complete: local.tutorial_complete,
+      updated_at: new Date().toISOString(),
+      synced: false,
+    });
+  }
 
-  authUser.subscribe((user) => {
-    if (user) pullFromDb();
-  });
+  authUser.subscribe((user) => { if (user) sync(); });
+  window.addEventListener("online", () => sync());
+  window.addEventListener("offline", () => { syncStatus.value = "offline"; });
 
-  window.addEventListener("online", () => {
-    if (authUser.value) {
-      pullFromDb();
-      flushQueue();
-    }
-  });
+  // Godot bridge
+  const w = window as unknown as Record<string, unknown>;
+  w.getProgress = () => JSON.stringify(progress.value);
+  w.setProgress = (json: string) => setProgress(JSON.parse(json));
 
-  // Expose to Godot via JavaScriptBridge
-  (window as unknown as Record<string, unknown>).getProgress = () =>
-    JSON.stringify(progress.value);
-  (window as unknown as Record<string, unknown>).setProgress = (json: string) =>
-    setProgress(JSON.parse(json));
-
-  // Notify Godot when progress changes (e.g. reset tutorial from Account modal)
   progress.subscribe((val) => {
     window.dispatchEvent(new CustomEvent("progress-changed", { detail: val }));
   });

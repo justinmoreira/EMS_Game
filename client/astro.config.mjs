@@ -1,6 +1,5 @@
 import { defineConfig } from 'astro/config';
 import preact from '@astrojs/preact';
-import node from '@astrojs/node';
 import tailwindcss from '@tailwindcss/vite';
 
 function crossOriginIsolation() {
@@ -19,8 +18,6 @@ function crossOriginIsolation() {
 export default defineConfig({
   srcDir: './app',
   base: process.env.BASE_URL ?? '/',
-  output: 'server',
-  adapter: node({ mode: 'standalone' }),
   server: { port: 8080, strictPort: false },
   devToolbar: { enabled: false },  // Prevents weird 404
   integrations: [preact()],
@@ -29,6 +26,8 @@ export default defineConfig({
     plugins: [tailwindcss(), crossOriginIsolation()],
     server: {
       watch: {
+        usePolling: true,
+        interval: 1000,
         ignored: ['**/public/godot/**'],
       },
     },

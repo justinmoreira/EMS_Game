@@ -1,14 +1,13 @@
 ---
 import "@/styles/global.css";
 import { ClientRouter } from "astro:transitions";
-import NavBar from "@/components/NavBar";
+import AccountModal from "@/components/AuthPanel";
 import { BASE_URL } from "@/utils";
 
 interface Props {
   title: string;
 }
 const { title } = Astro.props;
-const user = Astro.locals.user;
 ---
 
 <!doctype html>
@@ -23,21 +22,45 @@ const user = Astro.locals.user;
     <meta name="theme-color" content="#111111" />
     <slot name="head" />
   </head>
-  <body class="bg-black text-white m-0 overflow-hidden">
-    <NavBar serverUser={user} client:load transition:persist />
+  <body class="bg-black text-white m-0 overflow-hidden pt-12">
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-neutral-900/80 backdrop-blur-sm border-b border-neutral-700" transition:persist>
+      <div class="relative flex items-center justify-between px-6 h-12">
+        <a href={`${BASE_URL}/`} class="text-sm font-bold tracking-wide">
+          EMS Sim
+        </a>
+        <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
+          <a href={`${BASE_URL}/play`} class="text-sm font-medium hover:text-white text-neutral-300 transition-colors">
+            Singleplayer
+          </a>
+          <a href={`${BASE_URL}/multiplayer`} class="text-sm font-medium hover:text-white text-neutral-300 transition-colors">
+            Multiplayer
+          </a>
+          <a href={`${BASE_URL}/leaderboards`} class="text-sm font-medium hover:text-white text-neutral-300 transition-colors">
+            Leaderboards
+          </a>
+        </div>
+        <AccountModal client:only="preact" />
+      </div>
+    </nav>
     <slot />
     <script is:inline define:vars={{ BASE_URL }}>
       if (location.hostname === "localhost") {
         setInterval(() => {
-          fetch(BASE_URL + "/godot/index.pck", { cache: "no-store" })
+          fetch(BASE_URL + "/godot/index.pck", { method: "HEAD", cache: "no-store" })
             .then((res) => res.headers.get("last-modified"))
             .then((modified) => {
               if (window.lastGodotBuild && window.lastGodotBuild !== modified) {
                 location.reload();
               }
               window.lastGodotBuild = modified;
-            });
+            })
+            .catch(() => {});
         }, 2000);
+      }
+    </script>
+    <script is:inline>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js");
       }
     </script>
   </body>
