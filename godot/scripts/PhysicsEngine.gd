@@ -118,28 +118,24 @@ func calculate_interference(
 	Returns:
 		Totalinterferencepower as a grep -B 2 "var jammer_power_at_rx" godot/scripts/PhysicsEngine.gdfloat
 	"""
-	var total_interference = 0.0
+	var total_interference := 0.0
+
 	for jammer in jammers:
-		# Check if jammer is within receiver's bandwidth
 		var frequency_diff = abs(rx_frequency - jammer.frequency)
 		var bw_key = BW_LOOKUP[jammer.jammer_bandwidth]
 		var bandwidth_half = BANDWIDTH_VALUES.get(bw_key, 1.0) / 2.0
 
-		# Only add interference if frequencies are close enough
 		if frequency_diff <= bandwidth_half:
-			# Calculate jammer's power at receiver
 			var jammer_power_at_rx = calculate_received_power(
 				jammer.power,
 				jammer.height,
 				rx_height,
 				jammer.frequency,
 				calculate_distance(jammer.global_position, rx_pos),
-				1.0  # terrain_loss
+				1.0
 			)
-			# Get bandwidth penalty for this jammer type
-			var bandwidth_power = BANDWIDTH_POWER.get(bw_key, 1.0)
 
-			# Add to total interference
+			var bandwidth_power = BANDWIDTH_POWER.get(bw_key, 1.0)
 			total_interference += (jammer_power_at_rx * bandwidth_power)
 
 	return total_interference
@@ -170,3 +166,19 @@ func jamming_check(received_power: float, interference_power: float) -> bool:
 		true if linksuccessful(signal beatsinterference), false if jammed
 	"""
 	return received_power > (interference_power + NOISE_FLOOR)
+
+
+func bandwidth_penalty_check(received_power: float, bandwidth_penalty: float) -> bool:
+	"""
+	Checks if receivedpowerovercomesbandwidthpenalty and noisefloor
+
+	Args:
+		received_power: Thecalculatedreceivedpower
+		bandwidth_penalty: Penaltybasedonreceiverbandwidth
+
+	Returns:
+		true if linksuccessful(signal beatsbandwidthpenalty), false if failed due to bandwidth
+	"""
+	if received_power > (NOISE_FLOOR) && (received_power * bandwidth_penalty) < NOISE_FLOOR:
+		return true
+	return false
