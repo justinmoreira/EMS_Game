@@ -1,13 +1,5 @@
 extends BaseLevel
 
-@onready var contour_rect: TextureRect = $BackgroundTexture
-@onready var map_container = $BackgroundTexture
-
-var grid_w: int = 150
-var grid_h: int = 150
-var cell_size: int = 8
-var height_grid: Array = []
-
 # ── Labelling knobs ───────────────────────────────────────────────────────────
 ## Minimum grid-cell radius between any two labels of the same type.
 ## Raise this if labels are still crowding each other.
@@ -25,7 +17,13 @@ const VALLEY_MINOR_THRESH := 160.0  # m  →  small aqua label
 ## Pixel distance below which two labels are considered overlapping.
 const OVERLAP_MARGIN := 40.0  # px
 
-# ─────────────────────────────────────────────────────────────────────────────
+var grid_w: int = 150
+var grid_h: int = 150
+var cell_size: int = 8
+var height_grid: Array = []
+
+@onready var contour_rect: TextureRect = $BackgroundTexture
+@onready var map_container = $BackgroundTexture
 
 
 func _ready() -> void:
