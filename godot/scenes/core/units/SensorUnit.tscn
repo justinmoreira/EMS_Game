@@ -18,9 +18,6 @@ shape = SubResource("CircleShape2D_o81bo")
 
 [node name="Sensor" type="Node2D" parent="." unique_id=2031422171 instance=ExtResource("2_xbxfc")]
 script = ExtResource("3_7nrp4")
-sensitivity = 0
-sensor_bandwidth = 0
-tuning_frequency = 490
 
 [node name="Visual" type="Node2D" parent="." unique_id=1094016982]
 script = ExtResource("3_tm6hg")
