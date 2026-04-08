@@ -46,6 +46,7 @@ const { title } = Astro.props;
     <script is:inline define:vars={{ BASE_URL }}>
       if (location.hostname === "localhost") {
         setInterval(() => {
+          if (!navigator.onLine) return;
           fetch(BASE_URL + "/godot/index.pck", { method: "HEAD", cache: "no-store" })
             .then((res) => res.headers.get("last-modified"))
             .then((modified) => {

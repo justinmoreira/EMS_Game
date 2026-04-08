@@ -29,9 +29,7 @@ func _ready():
 	# Check if tutorial was already completed
 	var tutorial_done := false
 	if OS.has_feature("web"):
-		var result = JavaScriptBridge.eval(
-			"typeof window.getProgress==='function' ? window.getProgress() : '{}'"
-		)
+		var result = JavaScriptBridge.eval("localStorage.getItem('user_progress') || '{}'")
 		if result is String and result != "":
 			tutorial_done = result.find('"tutorial_complete":true') != -1
 		# Listen for reset tutorial from web UI
@@ -40,7 +38,7 @@ func _ready():
 			. eval(
 				"""
 			window.addEventListener('progress-changed', function(e) {
-				if (!e.detail.tutorial_complete) { location.reload(); }
+				if (window._tutDone === true && !e.detail.tutorial_complete) location.reload(); window._tutDone = e.detail.tutorial_complete;
 			});
 		"""
 			)

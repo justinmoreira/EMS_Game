@@ -144,7 +144,7 @@ _hmr_serve: _init_client
     trap "kill $WATCH_PID 2>/dev/null" EXIT
     PORT=$(python3 scripts/find_port.py)
     echo "🌐 Starting dev server on port $PORT..."
-    cd {{client_path}} && bun run dev --port $PORT
+    cd {{client_path}} && PORT=$PORT bun run dev --port $PORT
 
 [group('dev')]
 [doc('Full dev stack: Supabase + Astro + Godot watcher')]

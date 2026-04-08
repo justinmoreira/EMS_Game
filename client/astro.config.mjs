@@ -18,7 +18,7 @@ function crossOriginIsolation() {
 export default defineConfig({
   srcDir: './app',
   base: process.env.BASE_URL ?? '/',
-  server: { port: 8080, strictPort: false },
+  server: { port: parseInt(process.env.PORT || '8080'), strictPort: true },
   devToolbar: { enabled: false },  // Prevents weird 404
   integrations: [preact()],
   vite: {
