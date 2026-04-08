@@ -11,21 +11,22 @@ var height_grid: Array = []
 # ── Labelling knobs ───────────────────────────────────────────────────────────
 ## Minimum grid-cell radius between any two labels of the same type.
 ## Raise this if labels are still crowding each other.
-const SUPPRESS_RADIUS_PEAK := 18 # cells
-const SUPPRESS_RADIUS_VALLEY := 14 # cells
+const SUPPRESS_RADIUS_PEAK := 18  # cells
+const SUPPRESS_RADIUS_VALLEY := 14  # cells
 
 ## A candidate is only a peak/valley if it is the strict extremum within this
 ## radius.  Larger = fewer, more prominent labels.
-const LOCAL_WINDOW := 12 # cells (half-width of the dominance window)
+const LOCAL_WINDOW := 12  # cells (half-width of the dominance window)
 
 ## Height thresholds
-const PEAK_MINOR_THRESH := 280.0 # m  →  small gold label
-const VALLEY_MINOR_THRESH := 160.0 # m  →  small aqua label
+const PEAK_MINOR_THRESH := 280.0  # m  →  small gold label
+const VALLEY_MINOR_THRESH := 160.0  # m  →  small aqua label
 
 ## Pixel distance below which two labels are considered overlapping.
-const OVERLAP_MARGIN := 40.0 # px
+const OVERLAP_MARGIN := 40.0  # px
 
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 func _ready() -> void:
 	if not contour_rect or not contour_rect.material:
@@ -38,9 +39,9 @@ func _ready() -> void:
 	contour_rect.material.set_shader_parameter("height_map", tex)
 
 	# Terrain colors
-	contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0)) # green
-	contour_rect.material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0)) # tan
-	contour_rect.material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0)) # snow
+	contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))  # green
+	contour_rect.material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0))  # tan
+	contour_rect.material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0))  # snow
 
 	# Water
 	contour_rect.material.set_shader_parameter("water_color", Color(0.10, 0.30, 0.85, 1.0))
@@ -70,12 +71,13 @@ func _generate_terrain(w: int, h: int) -> Array:
 		g.append([])
 		for y in range(h):
 			var n := noise.get_noise_2d(float(x), float(y))
-			var h_m := (n + 1.0) * 0.5 * 500.0 # 0 – 500 m
+			var h_m := (n + 1.0) * 0.5 * 500.0  # 0 – 500 m
 			g[x].append(h_m)
 	return g
 
 
 # ── Main labelling entry point ────────────────────────────────────────────────
+
 
 func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 	# Step 1 – collect raw candidates (strict local extrema inside a window)
@@ -90,12 +92,16 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 			var is_valley := true
 
 			for dx in range(-half, half + 1):
-				if not (is_peak or is_valley): break
+				if not (is_peak or is_valley):
+					break
 				for dy in range(-half, half + 1):
-					if dx == 0 and dy == 0: continue
+					if dx == 0 and dy == 0:
+						continue
 					var nb: float = grid[x + dx][y + dy]
-					if nb >= val: is_peak = false
-					if nb <= val: is_valley = false
+					if nb >= val:
+						is_peak = false
+					if nb <= val:
+						is_valley = false
 
 			if is_peak and val >= PEAK_MINOR_THRESH:
 				peak_candidates.append({"x": x, "y": y, "val": val})
@@ -115,26 +121,36 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 	var label_descs: Array[Dictionary] = []
 
 	for p in peaks:
-		label_descs.append({
-			"grid_pos": Vector2(p["x"], p["y"]),
-			"px_pos": Vector2(p["x"] * sx, p["y"] * sy),
-			"val": p["val"],
-			"color": Color.GOLDENROD,
-			"symbol": "▲",
-			"font_size": 14,
-			"val_h": p["val"],
-		})
+		(
+			label_descs
+			. append(
+				{
+					"grid_pos": Vector2(p["x"], p["y"]),
+					"px_pos": Vector2(p["x"] * sx, p["y"] * sy),
+					"val": p["val"],
+					"color": Color.GOLDENROD,
+					"symbol": "▲",
+					"font_size": 14,
+					"val_h": p["val"],
+				}
+			)
+		)
 
 	for v in valleys:
-		label_descs.append({
-			"grid_pos": Vector2(v["x"], v["y"]),
-			"px_pos": Vector2(v["x"] * sx, v["y"] * sy),
-			"val": v["val"],
-			"color": Color.AQUAMARINE,
-			"symbol": "▼",
-			"font_size": 14,
-			"val_h": v["val"],
-		})
+		(
+			label_descs
+			. append(
+				{
+					"grid_pos": Vector2(v["x"], v["y"]),
+					"px_pos": Vector2(v["x"] * sx, v["y"] * sy),
+					"val": v["val"],
+					"color": Color.AQUAMARINE,
+					"symbol": "▼",
+					"font_size": 14,
+					"val_h": v["val"],
+				}
+			)
+		)
 
 	# Step 4 – pixel-space deconfliction (drop weaker overlapping labels)
 	var kept := _deconflict(label_descs)
@@ -149,13 +165,13 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 ## then greedily accepts each candidate only if no already-accepted candidate
 ## lies within `radius` grid cells.
 
+
 func _suppress(
-		candidates: Array[Dictionary],
-		radius: int,
-		higher_is_better: bool) -> Array[Dictionary]:
+	candidates: Array[Dictionary], radius: int, higher_is_better: bool
+) -> Array[Dictionary]:
 	# Sort so the "best" candidate comes first
-	candidates.sort_custom(func(a, b):
-		return a["val"] > b["val"] if higher_is_better else a["val"] < b["val"]
+	candidates.sort_custom(
+		func(a, b): return a["val"] > b["val"] if higher_is_better else a["val"] < b["val"]
 	)
 
 	var accepted: Array[Dictionary] = []
@@ -182,6 +198,7 @@ func _suppress(
 ## pixel positions can still collide (especially at low resolutions).
 ## Drop the lower-significance label when two are within OVERLAP_MARGIN px.
 
+
 func _deconflict(descs: Array[Dictionary]) -> Array[Dictionary]:
 	# Sort by height descending so major labels win ties
 	descs.sort_custom(func(a, b): return a["val"] > b["val"])
@@ -201,6 +218,7 @@ func _deconflict(descs: Array[Dictionary]) -> Array[Dictionary]:
 
 # ── Label spawning ────────────────────────────────────────────────────────────
 
+
 func _spawn_label(desc: Dictionary) -> void:
 	var lbl := Label.new()
 	lbl.text = "%s %dm" % [desc["symbol"], int(desc["val_h"])]
@@ -218,6 +236,7 @@ func _spawn_label(desc: Dictionary) -> void:
 
 
 # ── Texture creation ──────────────────────────────────────────────
+
 
 func _create_height_texture(grid: Array, w: int, h: int) -> ImageTexture:
 	var img := Image.create(w, h, false, Image.FORMAT_RF)
