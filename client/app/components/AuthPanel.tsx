@@ -86,6 +86,7 @@ function ProfileView({ user }: { user: User }) {
   };
 
   const handleSignOut = async () => {
+    localStorage.removeItem("account_display_name");
     await supabase.auth.signOut();
   };
 
@@ -177,10 +178,22 @@ function ProfileView({ user }: { user: User }) {
   );
 }
 
+function getCachedName(): string {
+  try {
+    return localStorage.getItem("account_display_name") || "Account";
+  } catch {
+    return "Account";
+  }
+}
+
 export default function AccountModal() {
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
-  useEffect(() => setReady(true), []);
+  useEffect(() => {
+    setReady(true);
+    const el = document.getElementById("account-slot");
+    if (el) el.style.display = "none";
+  }, []);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -198,12 +211,15 @@ export default function AccountModal() {
         onClick={() => setOpen(true)}
         class="text-sm font-medium hover:text-white text-neutral-300 transition-colors min-w-[70px] text-right cursor-pointer"
       >
-        {!ready
-          ? ""
-          : user
+        {(() => {
+          const name = user
             ? (user.user_metadata?.display_name as string) ||
-              user.email?.split("@")[0]
-            : "Account"}
+              user.email?.split("@")[0] ||
+              ""
+            : "";
+          if (name) localStorage.setItem("account_display_name", name);
+          return ready ? name || "Account" : getCachedName();
+        })()}
       </button>
       {open &&
         createPortal(

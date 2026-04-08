@@ -16,29 +16,62 @@ const { title } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
-    <link rel="icon" type="image/png" href={`${BASE_URL}/godot/index.icon.png`} />
-    <link rel="apple-touch-icon" href={`${BASE_URL}/godot/index.apple-touch-icon.png`} />
+    <link
+      rel="icon"
+      type="image/png"
+      href={`${BASE_URL}/godot/index.icon.png`}
+    />
+    <link
+      rel="apple-touch-icon"
+      href={`${BASE_URL}/godot/index.apple-touch-icon.png`}
+    />
     <link rel="manifest" href={`${BASE_URL}/manifest.json`} />
     <meta name="theme-color" content="#111111" />
     <slot name="head" />
   </head>
   <body class="bg-black text-white m-0 overflow-hidden pt-12">
-    <nav class="fixed top-0 left-0 right-0 z-50 bg-neutral-900/80 backdrop-blur-sm border-b border-neutral-700" transition:persist>
+    <nav
+      class="fixed top-0 left-0 right-0 z-50 bg-neutral-900/80 backdrop-blur-sm border-b border-neutral-700"
+      transition:persist
+    >
       <div class="relative flex items-center justify-between px-6 h-12">
         <a href={`${BASE_URL}/`} class="text-sm font-bold tracking-wide">
           EMS Sim
         </a>
         <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
-          <a href={`${BASE_URL}/play`} class="text-sm font-medium hover:text-white text-neutral-300 transition-colors">
+          <a
+            href={`${BASE_URL}/play`}
+            class="text-sm font-medium hover:text-white text-neutral-300 transition-colors"
+          >
             Singleplayer
           </a>
-          <a href={`${BASE_URL}/multiplayer`} class="text-sm font-medium hover:text-white text-neutral-300 transition-colors">
+          <a
+            href={`${BASE_URL}/multiplayer`}
+            class="text-sm font-medium hover:text-white text-neutral-300 transition-colors"
+          >
             Multiplayer
           </a>
-          <a href={`${BASE_URL}/leaderboards`} class="text-sm font-medium hover:text-white text-neutral-300 transition-colors">
+          <a
+            href={`${BASE_URL}/leaderboards`}
+            class="text-sm font-medium hover:text-white text-neutral-300 transition-colors"
+          >
             Leaderboards
           </a>
         </div>
+        <span
+          id="account-placeholder"
+          class="text-sm font-medium text-neutral-300 min-w-[70px] text-right"
+        ></span>
+        <script is:inline>
+          try {
+            var n = localStorage.getItem("account_display_name");
+            if (n)
+              document.getElementById("account-placeholder").textContent = n;
+            else
+              document.getElementById("account-placeholder").textContent =
+                "Account";
+          } catch {}
+        </script>
         <AccountModal client:only="preact" />
       </div>
     </nav>
@@ -47,7 +80,10 @@ const { title } = Astro.props;
       if (location.hostname === "localhost") {
         setInterval(() => {
           if (!navigator.onLine) return;
-          fetch(BASE_URL + "/godot/index.pck", { method: "HEAD", cache: "no-store" })
+          fetch(BASE_URL + "/godot/index.pck", {
+            method: "HEAD",
+            cache: "no-store",
+          })
             .then((res) => res.headers.get("last-modified"))
             .then((modified) => {
               if (window.lastGodotBuild && window.lastGodotBuild !== modified) {
