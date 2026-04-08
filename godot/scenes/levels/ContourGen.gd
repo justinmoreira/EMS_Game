@@ -3,19 +3,19 @@ extends BaseLevel
 # ── Labelling knobs ───────────────────────────────────────────────────────────
 ## Minimum grid-cell radius between any two labels of the same type.
 ## Raise this if labels are still crowding each other.
-const SUPPRESS_RADIUS_PEAK := 18 # cells
-const SUPPRESS_RADIUS_VALLEY := 14 # cells
+const SUPPRESS_RADIUS_PEAK := 18  # cells
+const SUPPRESS_RADIUS_VALLEY := 14  # cells
 
 ## A candidate is only a peak/valley if it is the strict extremum within this
 ## radius.  Larger = fewer, more prominent labels.
-const LOCAL_WINDOW := 12 # cells (half-width of the dominance window)
+const LOCAL_WINDOW := 12  # cells (half-width of the dominance window)
 
 ## Height thresholds
-const PEAK_MINOR_THRESH := 280.0 # m  →  small gold label
-const VALLEY_MINOR_THRESH := 160.0 # m  →  small aqua label
+const PEAK_MINOR_THRESH := 280.0  # m  →  small gold label
+const VALLEY_MINOR_THRESH := 160.0  # m  →  small aqua label
 
 ## Pixel distance below which two labels are considered overlapping.
-const OVERLAP_MARGIN := 40.0 # px
+const OVERLAP_MARGIN := 40.0  # px
 
 var grid_w: int = 150
 var grid_h: int = 150
@@ -32,15 +32,17 @@ func _ready() -> void:
 		return
 
 	height_grid = _generate_terrain(grid_w, grid_h)
-	SimulationManager.set_terrain_data(height_grid, map_container.global_position, map_container.size)
+	SimulationManager.set_terrain_data(
+		height_grid, map_container.global_position, map_container.size
+	)
 
 	var tex := _create_height_texture(height_grid, grid_w, grid_h)
 	contour_rect.material.set_shader_parameter("height_map", tex)
 
 	# Terrain colors
-	contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0)) # green
-	contour_rect.material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0)) # tan
-	contour_rect.material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0)) # snow
+	contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))  # green
+	contour_rect.material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0))  # tan
+	contour_rect.material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0))  # snow
 
 	# Water
 	contour_rect.material.set_shader_parameter("water_color", Color(0.10, 0.30, 0.85, 1.0))
@@ -70,7 +72,7 @@ func _generate_terrain(w: int, h: int) -> Array:
 		g.append([])
 		for y in range(h):
 			var n := noise.get_noise_2d(float(x), float(y))
-			var h_m := (n + 1.0) * 0.5 * 500.0 # 0 – 500 m
+			var h_m := (n + 1.0) * 0.5 * 500.0  # 0 – 500 m
 			g[x].append(h_m)
 	return g
 
@@ -122,7 +124,7 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 	for p in peaks:
 		(
 			label_descs
-			.append(
+			. append(
 				{
 					"grid_pos": Vector2(p["x"], p["y"]),
 					"px_pos": Vector2(p["x"] * sx, p["y"] * sy),
@@ -138,7 +140,7 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 	for v in valleys:
 		(
 			label_descs
-			.append(
+			. append(
 				{
 					"grid_pos": Vector2(v["x"], v["y"]),
 					"px_pos": Vector2(v["x"] * sx, v["y"] * sy),

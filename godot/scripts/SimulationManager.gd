@@ -31,6 +31,7 @@ var map_scale: Vector2
 var grid_cols: int
 var grid_rows: int
 
+
 func _ready() -> void:
 	#_contour_gen = get_node("ContourGen")
 	setup_timer()
@@ -323,24 +324,24 @@ func set_terrain_data(grid: Array, origin: Vector2, map_size: Vector2) -> void:
 
 
 func print_max_height_along_link(tx: Transceiver, rx: Transceiver) -> void:
- 	# grid is built as grid[x][y] (x = outer index) in the terrain script.
+	# grid is built as grid[x][y] (x = outer index) in the terrain script.
 	if grid_cols == 0:
 		return
 
 	var tx_local = tx.global_position - map_origin
 	var rx_local = rx.global_position - map_origin
 
- 	# Convert world position → grid cell index.
- 	# cell_size is in pixels-per-cell, so dividing world px by cell_size gives
- 	# the column/row index.
+	# Convert world position → grid cell index.
+	# cell_size is in pixels-per-cell, so dividing world px by cell_size gives
+	# the column/row index.
 	var x0: int = int(tx_local.x / map_scale.x)
 	var y0: int = int(tx_local.y / map_scale.y)
 	var x1: int = int(rx_local.x / map_scale.x)
 	var y1: int = int(rx_local.y / map_scale.y)
 
-	var max_h: float = - INF
+	var max_h: float = -INF
 
- 	# Bresenham line walk.
+	# Bresenham line walk.
 	var dx: int = absi(x1 - x0)
 	var dy: int = absi(y1 - y0)
 	var sx: int = 1 if x0 < x1 else -1
@@ -348,8 +349,8 @@ func print_max_height_along_link(tx: Transceiver, rx: Transceiver) -> void:
 	var err: int = dx - dy
 
 	while true:
- 		# Bounds-check against the correct axis for each index.
- 		# grid[x][y]: x must be < grid_cols, y must be < grid_rows.
+		# Bounds-check against the correct axis for each index.
+		# grid[x][y]: x must be < grid_cols, y must be < grid_rows.
 		if x0 >= 0 and x0 < grid_cols and y0 >= 0 and y0 < grid_rows:
 			var h: float = height_grid[x0][y0]
 			if h > max_h:
