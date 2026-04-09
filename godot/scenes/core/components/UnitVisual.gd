@@ -12,7 +12,7 @@ const NAME_FONT_SIZE := 12  # Smaller font for name
 @export var frame_width: int = 974  # 3896 / 4 columns
 @export var frame_height: int = 970  # 2910 / 3 rows
 @export var animation_speed: float = 12.0  # Frames per second
-var unit_name: String = "" # Unit name
+var unit_name: String = ""  # Unit name
 
 var is_selected: bool = false
 var _animated_sprite: AnimatedSprite2D
@@ -116,18 +116,20 @@ func _draw() -> void:
 		var text_size := font.get_string_size(unit_label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
 		var offset := Vector2(-text_size.x / 2.0, text_size.y / 4.0)
 		draw_string(font, offset, unit_label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, Color.WHITE)
-		
+
 	# Draw unit name above the unit
 	if unit_name != "":
 		var font := ThemeDB.fallback_font
-		var name_text_size := font.get_string_size(unit_name, HORIZONTAL_ALIGNMENT_CENTER, -1, NAME_FONT_SIZE)
+		var name_text_size := font.get_string_size(
+			unit_name, HORIZONTAL_ALIGNMENT_CENTER, -1, NAME_FONT_SIZE
+		)
 		var name_offset := Vector2(-name_text_size.x / 2.0, -RADIUS - 5)
 		draw_string(
-			font, 
-			name_offset, 
-			unit_name, 
-			HORIZONTAL_ALIGNMENT_CENTER, 
-			-1, 
-			NAME_FONT_SIZE, 
+			font,
+			name_offset,
+			unit_name,
+			HORIZONTAL_ALIGNMENT_CENTER,
+			-1,
+			NAME_FONT_SIZE,
 			Color.WHITE
 		)

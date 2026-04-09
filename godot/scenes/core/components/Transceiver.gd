@@ -20,11 +20,11 @@ var _unit_visual: Node2D
 
 func _ready() -> void:
 	add_to_group("transceivers")
-	
+
 	# Initialize unit name if not already set
 	if unit_name == "":
 		unit_name = UnitNameManager.get_next_name("Transceiver")
-		
+
 	GameEvents.units_changed.emit()
 	_unit_visual = UnitVisual.new()
 	_unit_visual.unit_label = unit_label

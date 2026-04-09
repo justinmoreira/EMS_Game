@@ -657,8 +657,8 @@ func _on_simulate_pressed() -> void:
 
 func _component() -> Node:
 	return selected_node
-	
-	
+
+
 func _add_text_input(label: String, current: String, accent: Color, on_change: Callable) -> void:
 	var vbox := _make_row_container()
 	var hbox := HBoxContainer.new()
