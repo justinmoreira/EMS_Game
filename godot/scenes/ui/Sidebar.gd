@@ -18,6 +18,9 @@ const C_RED := Color("ff5c5c")
 const C_TEXT := Color("e8eaf0")
 const C_DIM := Color("6b7594")
 
+# Constants
+var invalid_props = ["script", "name", "owner", "unique_name_in_owner"]
+
 # ── State ─────────────────────────────────────
 var selected_entity: EntityType = EntityType.NONE
 var selected_entity_name: String = ""
@@ -32,7 +35,6 @@ var _delete_btn: Button = null
 var _attr_header: Label
 var _attr_body: VBoxContainer
 var _attr_placeholder: Label
-var invalid_props = ["script", "name", "owner", "unique_name_in_owner"]
 
 
 # ════════════════════════════════════════════
