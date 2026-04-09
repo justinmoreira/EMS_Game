@@ -32,6 +32,7 @@ var _delete_btn: Button = null
 var _attr_header: Label
 var _attr_body: VBoxContainer
 var _attr_placeholder: Label
+var invalid_props = ["script", "name", "owner", "unique_name_in_owner"]
 
 
 # ════════════════════════════════════════════
@@ -378,10 +379,10 @@ func _refresh_attribute_panel() -> void:
 				"Height",
 				0.0,
 				10.0,
-				_node_int("height", 5),
+				_prop_int("height", 5),
 				"m",
 				C_BLUE,
-				func(v): _write_node("height", int(v)),
+				func(v): _write("height", int(v)),
 				true
 			)
 			_add_dropdown(
@@ -427,10 +428,10 @@ func _refresh_attribute_panel() -> void:
 				"Height",
 				0.0,
 				10.0,
-				_node_int("height", 5),
+				_prop_int("height", 5),
 				"m",
 				C_AMBER,
-				func(v): _write_node("height", int(v)),
+				func(v): _write("height", int(v)),
 				true
 			)
 
@@ -459,10 +460,10 @@ func _refresh_attribute_panel() -> void:
 				"Height",
 				0.0,
 				10.0,
-				_node_int("height", 5),
+				_prop_int("height", 5),
 				"m",
 				C_RED,
-				func(v): _write_node("height", int(v)),
+				func(v): _write("height", int(v)),
 				true
 			)
 			_add_toggle(
@@ -704,7 +705,6 @@ func _prop_bool(p: String, fallback: bool) -> bool:
 
 func _write(p: String, value) -> void:
 	# Don't write properties that aren't actual component attributes
-	var invalid_props = ["script", "name", "owner", "unique_name_in_owner"]
 	if p in invalid_props:
 		return
 

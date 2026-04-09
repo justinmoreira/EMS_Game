@@ -16,7 +16,6 @@ metadata/world_uv = Vector2(0.38089994, 0.3967955)
 shape = SubResource("CircleShape2D_o81bo")
 
 [node name="Sensor" parent="." unique_id=2031422171 instance=ExtResource("2_xbxfc")]
-sensitivity = 7
 
 [node name="Visual" type="Node2D" parent="." unique_id=1094016982]
 script = ExtResource("3_tm6hg")
