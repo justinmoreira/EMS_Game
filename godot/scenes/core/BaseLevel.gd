@@ -69,7 +69,7 @@ func _advance_tutorial() -> void:
 	match _tutorial_step:
 		TutorialStep.WELCOME:
 			_tutorial_step = TutorialStep.PLACE_TRANSCEIVER
-			GameEvents.tutorial_filter_sidebar.emit([sidebar.EntityType.TRANSCEIVER])
+			GameEvents.tutorial_filter_sidebar.emit([Sidebar.EntityType.TRANSCEIVER])
 			_show_tutorial_hint("Drag a [b]Transceiver[/b] from the sidebar onto the map to begin.")
 		TutorialStep.PLACE_TRANSCEIVER:
 			_tutorial_step = TutorialStep.DONE
