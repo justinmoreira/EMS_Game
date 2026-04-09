@@ -3,6 +3,7 @@ extends Node2D
 
 const RADIUS := 32.0
 const FONT_SIZE := 25
+const NAME_FONT_SIZE := 12  # Smaller font for name
 
 # Set these in the Inspector per unit type
 @export var unit_label: String = "T"  # "T", "J", or "S"
@@ -11,6 +12,7 @@ const FONT_SIZE := 25
 @export var frame_width: int = 974  # 3896 / 4 columns
 @export var frame_height: int = 970  # 2910 / 3 rows
 @export var animation_speed: float = 12.0  # Frames per second
+var unit_name: String = "" # Unit name
 
 var is_selected: bool = false
 var _animated_sprite: AnimatedSprite2D
@@ -114,3 +116,18 @@ func _draw() -> void:
 		var text_size := font.get_string_size(unit_label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
 		var offset := Vector2(-text_size.x / 2.0, text_size.y / 4.0)
 		draw_string(font, offset, unit_label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, Color.WHITE)
+		
+	# Draw unit name above the unit
+	if unit_name != "":
+		var font := ThemeDB.fallback_font
+		var name_text_size := font.get_string_size(unit_name, HORIZONTAL_ALIGNMENT_CENTER, -1, NAME_FONT_SIZE)
+		var name_offset := Vector2(-name_text_size.x / 2.0, -RADIUS - 5)
+		draw_string(
+			font, 
+			name_offset, 
+			unit_name, 
+			HORIZONTAL_ALIGNMENT_CENTER, 
+			-1, 
+			NAME_FONT_SIZE, 
+			Color.WHITE
+		)

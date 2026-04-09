@@ -13,12 +13,19 @@ extends Node2D
 @export var frame_width: int = 974
 @export var frame_height: int = 970
 @export var animation_speed: float = 12.0
+@export var unit_name: String = ""
 
 var _unit_visual: Node2D
 
 
 func _ready() -> void:
 	add_to_group("jammers")
+	
+	# Initialize unit name if not already set
+	if unit_name == "":
+		unit_name = UnitNameManager.get_next_name("Jammer")
+		
+	
 	GameEvents.units_changed.emit()
 	_unit_visual = UnitVisual.new()
 	_unit_visual.unit_label = unit_label
@@ -27,6 +34,7 @@ func _ready() -> void:
 	_unit_visual.frame_width = frame_width
 	_unit_visual.frame_height = frame_height
 	_unit_visual.animation_speed = animation_speed
+	_unit_visual.unit_name = unit_name
 	add_child(_unit_visual)
 
 
