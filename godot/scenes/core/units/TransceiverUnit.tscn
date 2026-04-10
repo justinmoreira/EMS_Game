@@ -18,9 +18,6 @@ shape = SubResource("CircleShape2D_8fr1l")
 
 [node name="Transceiver" type="Node2D" parent="." unique_id=948404429 instance=ExtResource("2_qfeqd")]
 script = ExtResource("3_n06sf")
-power = 10
-frequency = 500.0
-transceiver_bandwidth = 2
 
 [node name="Visual" type="Node2D" parent="." unique_id=1739282174]
 script = ExtResource("3_2w5d4")

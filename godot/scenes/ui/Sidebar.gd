@@ -17,6 +17,7 @@ const C_BLUE := Color("4fc3f7")
 const C_RED := Color("ff5c5c")
 const C_TEXT := Color("e8eaf0")
 const C_DIM := Color("6b7594")
+const C_PURPLE := Color("e099ff")
 
 # ── State ─────────────────────────────────────
 var selected_entity: EntityType = EntityType.NONE
@@ -179,7 +180,7 @@ func _build_tray() -> PanelContainer:
 		_build_entity_card(
 			"Jammer",
 			"J",
-			C_AMBER,
+			C_RED,
 			EntityType.JAMMER,
 			"res://scenes/core/units/JammerUnit.tscn",
 			"res://assets/sprites/jammer.png"
@@ -189,7 +190,7 @@ func _build_tray() -> PanelContainer:
 		_build_entity_card(
 			"Sensor",
 			"S",
-			C_RED,
+			C_PURPLE,
 			EntityType.SENSOR,
 			"res://scenes/core/units/SensorUnit.tscn",
 			"res://assets/sprites/sensor.png"
@@ -370,8 +371,8 @@ func _refresh_attribute_panel() -> void:
 
 		EntityType.JAMMER:
 			_attr_header.text = "Jammer"
-			_attr_header.add_theme_color_override("font_color", C_AMBER)
-			_add_accent_bar(C_AMBER)
+      _attr_header.add_theme_color_override("font_color", C_RED)
+			_add_accent_bar(C_RED)
 			_add_text_input(
 				"Name",
 				_prop_string("unit_name", "Jammer 1"),
@@ -384,7 +385,7 @@ func _refresh_attribute_panel() -> void:
 				10.0,
 				_prop_int("power", 5),
 				"dBm",
-				C_AMBER,
+				C_RED,
 				func(v): _write("power", int(v)),
 				true
 			)
@@ -394,16 +395,9 @@ func _refresh_attribute_panel() -> void:
 				3000.0,
 				_prop_float("frequency", 1000.0),
 				"MHz",
-				C_AMBER,
+				C_RED,
 				func(v): _write("frequency", v),
 				true
-			)
-			_add_dropdown(
-				"Bandwidth",
-				["Narrow", "Medium", "Wide"],
-				_prop_int("jammer_bandwidth", 1),
-				C_AMBER,
-				func(v): _write("jammer_bandwidth", v)
 			)
 			_add_slider(
 				"Height",
@@ -411,15 +405,22 @@ func _refresh_attribute_panel() -> void:
 				10.0,
 				_node_int("height", 5),
 				"m",
-				C_AMBER,
+				C_RED,
 				func(v): _write_node("height", int(v)),
 				true
+			)
+			_add_dropdown(
+				"Bandwidth",
+				["Narrow", "Medium", "Wide"],
+				_prop_int("jammer_bandwidth", 1),
+				C_RED,
+				func(v): _write("jammer_bandwidth", v)
 			)
 
 		EntityType.SENSOR:
 			_attr_header.text = "Sensor"
-			_attr_header.add_theme_color_override("font_color", C_RED)
-			_add_accent_bar(C_RED)
+      _attr_header.add_theme_color_override("font_color", C_PURPLE)
+			_add_accent_bar(C_PURPLE)
 			_add_text_input(
 				"Name",
 				_prop_string("unit_name", "Sensor 1"),
@@ -432,16 +433,19 @@ func _refresh_attribute_panel() -> void:
 				10.0,
 				_prop_int("sensitivity", 3),
 				"dBm",
-				C_RED,
+				C_PURPLE,
 				func(v): _write("sensitivity", int(v)),
 				true
 			)
-			_add_dropdown(
-				"Bandwidth",
-				["Narrow", "Medium", "Wide"],
-				_prop_int("sensor_bandwidth", 1),
-				C_RED,
-				func(v): _write("sensor_bandwidth", v)
+			_add_slider(
+				"Tuning Frequency",
+				30.0,
+				3000.0,
+				_node_int("tuning_frequency", 1000),
+				"MHz",
+				C_PURPLE,
+				func(v): _write_node("tuning_frequency", int(v)),
+				true
 			)
 			_add_slider(
 				"Height",
@@ -449,14 +453,21 @@ func _refresh_attribute_panel() -> void:
 				10.0,
 				_node_int("height", 5),
 				"m",
-				C_RED,
+				C_PURPLE,
 				func(v): _write_node("height", int(v)),
 				true
+			)
+			_add_dropdown(
+				"Bandwidth",
+				["Narrow", "Medium", "Wide"],
+				_prop_int("sensor_bandwidth", 1),
+				C_PURPLE,
+				func(v): _write("sensor_bandwidth", v)
 			)
 			_add_toggle(
 				"Scanning",
 				_prop_bool("is_scanning", true),
-				C_RED,
+				C_PURPLE,
 				func(v): _write("is_scanning", v)
 			)
 
