@@ -371,7 +371,7 @@ func _refresh_attribute_panel() -> void:
 
 		EntityType.JAMMER:
 			_attr_header.text = "Jammer"
-      _attr_header.add_theme_color_override("font_color", C_RED)
+			_attr_header.add_theme_color_override("font_color", C_RED)
 			_add_accent_bar(C_RED)
 			_add_text_input(
 				"Name",
@@ -419,7 +419,7 @@ func _refresh_attribute_panel() -> void:
 
 		EntityType.SENSOR:
 			_attr_header.text = "Sensor"
-      _attr_header.add_theme_color_override("font_color", C_PURPLE)
+			_attr_header.add_theme_color_override("font_color", C_PURPLE)
 			_add_accent_bar(C_PURPLE)
 			_add_text_input(
 				"Name",
