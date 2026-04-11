@@ -1,5 +1,5 @@
-extends Node2D
 class_name UnitStatusVisual
+extends Node2D
 
 enum Status {
 	NONE,
