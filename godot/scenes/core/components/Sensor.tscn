@@ -5,6 +5,9 @@
 
 [node name="Sensor" type="Node2D" unique_id=2031422171]
 script = ExtResource("1_1skol")
+sensitivity = 5
+sensor_bandwidth = 0
+unit_name = "Sensor 1"
 
 [node name="Visual" type="Node2D" parent="." unique_id=530265049]
 script = ExtResource("2_onkla")
