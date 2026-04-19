@@ -118,6 +118,26 @@ db-start:
     supabase start
 
 [group('dev')]
+[doc('Restart local Supabase (force by default, mode=soft skips restart when healthy)')]
+db-restart mode="force":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ "{{mode}}" = "soft" ]; then
+        if curl --silent --show-error --fail --max-time 5 http://127.0.0.1:54321/auth/v1/health >/dev/null; then
+            echo "✅ Supabase auth is healthy; skipping restart"
+            exit 0
+        fi
+        echo "⚠️  Supabase auth is unhealthy; restarting..."
+    else
+        echo "🔄 Restarting local Supabase..."
+    fi
+
+    supabase stop
+    supabase start
+    just _wait_supabase
+
+[group('dev')]
 [doc('Stop local Supabase')]
 db-stop:
     supabase stop
@@ -131,6 +151,27 @@ db-reset:
 [doc('Generate TypeScript types from database schema')]
 db-types:
     supabase gen types typescript --local > {{client_path}}/app/lib/database.types.ts
+
+[group('dev')]
+[doc('Wait for local Supabase auth to become healthy')]
+[private]
+_wait_supabase:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "⏳ Waiting for Supabase auth to become healthy..."
+    if curl --silent --show-error --fail \
+        --retry 30 \
+        --retry-all-errors \
+        --retry-connrefused \
+        --retry-delay 2 \
+        --retry-max-time 60 \
+        http://127.0.0.1:54321/auth/v1/health >/dev/null; then
+        echo "✅ Supabase auth is healthy"
+    else
+        echo "❌ Supabase auth did not become healthy in time"
+        docker ps --filter 'name=supabase_'
+        exit 1
+    fi
 
 [group('dev')]
 [doc('Start Astro dev server with auto Godot rebuild on changes')]
@@ -148,7 +189,9 @@ _hmr_serve: _init_client
 
 [group('dev')]
 [doc('Full dev stack: Supabase + Astro + Godot watcher')]
-dev: _init_client db-start _hmr_serve
+dev:
+    just db-restart mode=soft
+    just _hmr_serve
 
 [group('quality')]
 [doc('Fast style/format checks (--fix to auto-fix, --fix --unsafe for unsafe fixes)')]
