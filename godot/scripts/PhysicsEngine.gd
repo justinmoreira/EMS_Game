@@ -41,21 +41,20 @@ func bandwidth_penalty(receiver: Bandwidth) -> float:
 			return 0.0
 
 
-func is_detected(
-	frequency: float,
-	receiver: Bandwidth,
-	sensitivity: float,
-	ptx: float,
-	height_tx: float,
-	height_sensor: float,
-	dis: float,
-	terrain_loss: float = 1
-) -> bool:
-	var threshold = sensitivity + bandwidth_penalty(receiver)
+func is_detected(tx: Transceiver, srx: Sensor, dis: float, terrain_loss: float = 1) -> bool:
+	var frequency_diff = abs(tx.frequency - srx.tuning_frequency)
+	var bw_key = PhysicsEngine.BW_LOOKUP[srx.sensor_bandwidth]
+	var bandwidth_half = PhysicsEngine.BANDWIDTH_VALUES.get(bw_key, 1.0) / 2.0
 
-	var srx = calculate_received_power(ptx, height_tx, height_sensor, frequency, dis, terrain_loss)
+	if frequency_diff > bandwidth_half:
+		return false
 
-	return srx > threshold
+	var threshold = srx.sensitivity + bandwidth_penalty(srx.sensor_bandwidth)
+
+	var received_power = calculate_received_power(
+		tx.power, tx.height, srx.height, tx.frequency, dis, terrain_loss
+	)
+	return received_power > threshold
 
 
 func calculate_received_power(
