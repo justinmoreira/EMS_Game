@@ -120,7 +120,11 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	add_child(unit)
 
 	# Apply any pending attribute changes from the sidebar
-	if sidebar_node and sidebar_node.pending_attributes and sidebar_node.pending_attributes.size() > 0:
+	if (
+		sidebar_node
+		and sidebar_node.pending_attributes
+		and sidebar_node.pending_attributes.size() > 0
+	):
 		var component: Node = null
 		for child in unit.get_children():
 			if child.name in ["Transceiver", "Jammer", "Sensor"]:
@@ -143,6 +147,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 
 	# Connect the selection signal
 	_on_unit_placed(unit)
+
 
 func _on_unit_placed(unit: Node) -> void:
 	# Connect selection signals

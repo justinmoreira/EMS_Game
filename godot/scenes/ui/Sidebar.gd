@@ -727,7 +727,7 @@ func _node_int(p: String, fallback: int) -> int:
 func _write_node(p: String, value) -> void:
 	if selected_node and p in selected_node:
 		selected_node.set(p, value)
-		
+
 	var scene_path = selected_node.scene_file_path
 	if scene_path:
 		var packed_scene := PackedScene.new()
