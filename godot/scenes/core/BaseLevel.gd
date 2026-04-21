@@ -120,7 +120,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	add_child(unit)
 
 	# Apply any pending attribute changes from the sidebar
-	if sidebar and sidebar.pending_attributes.size() > 0:
+	if sidebar_node and sidebar_node.pending_attributes and sidebar_node.pending_attributes.size() > 0:
 		var component: Node = null
 		for child in unit.get_children():
 			if child.name in ["Transceiver", "Jammer", "Sensor"]:
@@ -131,18 +131,18 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 			# Get the component's original script before applying attributes
 			var original_script = component.get_script()
 
-			for attr_name in sidebar.pending_attributes:
-				component.set(attr_name, sidebar.pending_attributes[attr_name])
+			# Apply all pending attributes
+			for attr_name in sidebar_node.pending_attributes:
+				component.set(attr_name, sidebar_node.pending_attributes[attr_name])
 
 			# Restore the original script if it was somehow changed
 			if component.get_script() != original_script:
 				component.set_script(original_script)
 
-		sidebar.pending_attributes.clear()
+		sidebar_node.pending_attributes.clear()
 
 	# Connect the selection signal
 	_on_unit_placed(unit)
-
 
 func _on_unit_placed(unit: Node) -> void:
 	# Connect selection signals
@@ -260,7 +260,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 				# If no unit was clicked, deselect
 				if not clicked_unit:
-					_deselect_unit()
+					_deselect_current_unit()
 					get_tree().root.set_input_as_handled()
 
 			dragging = true

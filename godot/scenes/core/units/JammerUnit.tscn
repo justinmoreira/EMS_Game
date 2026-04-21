@@ -1,21 +1,23 @@
-[gd_scene format=3 uid="uid://bnea686lc5kwx"]
+[gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://cn221t4cpxfpm" path="res://scenes/core/EMSUnit.gd" id="1_vqkxn"]
-[ext_resource type="PackedScene" uid="uid://jwf2rfhtgkhc" path="res://scenes/core/components/Jammer.tscn" id="2_p83nw"]
-[ext_resource type="Script" uid="uid://ck42ox5aq2g2o" path="res://scenes/core/components/UnitVisual.gd" id="3_hkf84"]
+[ext_resource type="Script" path="res://scenes/core/EMSUnit.gd" id="1_vqkxn"]
+[ext_resource type="PackedScene" path="res://scenes/core/components/Jammer.tscn" id="2_p83nw"]
+[ext_resource type="Script" path="res://scenes/core/components/Jammer.gd" id="3_gwb5p"]
+[ext_resource type="Script" path="res://scenes/core/components/UnitVisual.gd" id="3_hkf84"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_w5soc"]
 radius = 32.0
 
 [node name="_Area2D_1301" type="Area2D" unique_id=1423769516]
-position = Vector2(771, 360)
+position = Vector2(972.92926, 448.8973)
 script = ExtResource("1_vqkxn")
-metadata/world_uv = Vector2(0.1861111, 0.33333334)
+metadata/world_uv = Vector2(0.35734192, 0.41564566)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_w5soc")
 
-[node name="Jammer" parent="." unique_id=1057677908 instance=ExtResource("2_p83nw")]
+[node name="Jammer" type="Node2D" parent="." unique_id=1057677908 instance=ExtResource("2_p83nw")]
+script = ExtResource("3_gwb5p")
 
 [node name="Visual" type="Node2D" parent="." unique_id=413501508]
 script = ExtResource("3_hkf84")

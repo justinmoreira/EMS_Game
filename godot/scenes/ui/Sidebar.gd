@@ -699,16 +699,14 @@ func _write(p: String, value) -> void:
 	c.set(p, value)
 
 	var unit = c.get_parent()
-	if unit == null:
-		return
-
-	var scene_path = unit.scene_file_path
-	if scene_path:
-		var packed_scene := PackedScene.new()
-		if packed_scene.pack(unit) == OK:
-			ResourceSaver.save(packed_scene, scene_path)
-		else:
-			push_error("Failed to pack unit")
+	if unit:
+		var scene_path = unit.scene_file_path
+		if scene_path:
+			var packed_scene := PackedScene.new()
+			if packed_scene.pack(unit) == OK:
+				ResourceSaver.save(packed_scene, scene_path)
+			else:
+				push_error("Failed to pack unit")
 
 
 func _is_transceiver_unit(unit: Node) -> bool:
@@ -729,6 +727,14 @@ func _node_int(p: String, fallback: int) -> int:
 func _write_node(p: String, value) -> void:
 	if selected_node and p in selected_node:
 		selected_node.set(p, value)
+		
+	var scene_path = selected_node.scene_file_path
+	if scene_path:
+		var packed_scene := PackedScene.new()
+		if packed_scene.pack(selected_node) == OK:
+			ResourceSaver.save(packed_scene, scene_path)
+		else:
+			push_error("Failed to pack unit")
 
 
 func _clear_selection() -> void:
@@ -742,15 +748,6 @@ func _clear_selection() -> void:
 # ════════════════════════════════════════════
 #  STYLE HELPERS
 # ════════════════════════════════════════════
-		var scene_path = selected_node.scene_file_path
-		if scene_path:
-			var packed_scene := PackedScene.new()
-			if packed_scene.pack(selected_node) == OK:
-				ResourceSaver.save(packed_scene, scene_path)
-			else:
-				push_error("Failed to pack unit")
-
-
 func _flat_style(bg: Color, padding: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
