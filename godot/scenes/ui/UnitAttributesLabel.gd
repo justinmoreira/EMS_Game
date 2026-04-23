@@ -1,5 +1,5 @@
-extends Label
 class_name UnitAttributesLabel
+extends Label
 
 const DEFAULT_OFFSET := Vector2(70, 40)
 const LABEL_SIZE := Vector2(190, 84)

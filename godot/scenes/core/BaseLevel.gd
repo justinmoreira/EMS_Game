@@ -1,6 +1,10 @@
 class_name BaseLevel
 extends Control
 
+# Unit attribute controls
+const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
+const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
+
 # Camera / Viewport State
 var zoom := 1.0
 var offset := Vector2.ZERO
@@ -10,10 +14,6 @@ var sidebar_width: float = 0.0
 
 # Selection State
 var currently_selected_unit: Node = null
-
-# Unit attribute controls
-const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
-const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
 
 var unit_attributes_visible: bool = false
 
@@ -212,7 +212,7 @@ func _input(event: InputEvent) -> void:
 			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 				zoom = clamp(zoom * 1.1, 0.1, 1.0)
 			else:
-				return # Not a zoom event
+				return  # Not a zoom event
 
 			# Adjust offset so we zoom toward the mouse position
 			var map = get_map_size()
@@ -251,7 +251,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				for child in get_children():
 					if child is EMSUnit:
 						var distance = child.global_position.distance_to(mouse_pos)
-						if distance < 32: # Matches the selection radius in EMSUnit.gd
+						if distance < 32:  # Matches the selection radius in EMSUnit.gd
 							clicked_unit = true
 							break
 
