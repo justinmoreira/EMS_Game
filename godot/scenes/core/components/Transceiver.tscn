@@ -5,9 +5,6 @@
 
 [node name="Transceiver" type="Node2D" unique_id=948404429]
 script = ExtResource("1_sdup5")
-power = 6
-frequency = 1468.0
-unit_name = "Transceiver 1"
 
 [node name="Visual" type="Node2D" parent="." unique_id=853107210]
 script = ExtResource("2_wsojc")
