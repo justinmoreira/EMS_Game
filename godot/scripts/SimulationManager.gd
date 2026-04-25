@@ -107,17 +107,9 @@ func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> int:
 	return LinkState.SUCCESS
 
 
-func calculate_detection(sensor, tx: Transceiver) -> bool:
-	var dist = PhysicsEngine.calculate_distance(sensor.global_position, tx.global_position)
-	return PhysicsEngine.is_detected(
-		tx.frequency,
-		sensor.sensor_bandwidth,
-		sensor.sensitivity,
-		tx.power,
-		tx.height,
-		sensor.height,
-		dist
-	)
+func calculate_detection(srx: Sensor, tx: Transceiver) -> bool:
+	var dist = PhysicsEngine.calculate_distance(srx.global_position, tx.global_position)
+	return PhysicsEngine.is_detected(tx, srx, dist)
 
 
 # Iterates all ordered transceiver pairs and draw arrow pair
