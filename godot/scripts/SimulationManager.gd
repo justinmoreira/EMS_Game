@@ -270,13 +270,13 @@ func _get_or_create_status_visual(unit: Node) -> UnitStatusVisual:
 
 func _compute_status_for_transceiver(tx: Transceiver) -> int:
 	var tx_id := str(tx.get_instance_id())
-	var tx_prefix := tx_id + "_to_"
-	var tx_suffix := "_to_" + tx_id
+	var tx_incoming_suffix := "_to_" + tx_id
 
 	var has_out_of_range := false
 
+	# Jammed/out-of-range should only apply to the RECEIVER of a failed link.
 	for key in link_results.keys():
-		if !(key.begins_with(tx_prefix) or key.ends_with(tx_suffix)):
+		if !key.ends_with(tx_incoming_suffix):
 			continue
 
 		var state: int = link_results[key]
@@ -287,6 +287,7 @@ func _compute_status_for_transceiver(tx: Transceiver) -> int:
 		if state == LinkState.FAILED_OUT_OF_RANGE:
 			has_out_of_range = true
 
+	# Sensors detect emitters/transceivers.
 	for d_key in detect_results.keys():
 		if d_key.ends_with("_detects_" + tx_id) and detect_results[d_key]:
 			return UnitStatusVisual.Status.DETECTED
