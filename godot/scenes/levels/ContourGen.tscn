@@ -1,7 +1,7 @@
-[gd_scene format=3 uid="uid://ctp1tec2bgmw0"]
+[gd_scene format=3 uid="uid://dj373426vo2td"]
 
 [ext_resource type="PackedScene" uid="uid://cscdegdlpq00e" path="res://scenes/core/BaseLevel.tscn" id="1_xf8rq"]
-[ext_resource type="Script" uid="uid://dtsuljfegoveo" path="res://scenes/levels/ContourGen.gd" id="2_g3vw8"]
+[ext_resource type="Script" path="res://scenes/levels/ContourGen.gd" id="2_g3vw8"]
 [ext_resource type="Shader" uid="uid://ccadptf4j2ywd" path="res://shaders/ContourLine.gdshader" id="3_kpmxm"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_l1"]

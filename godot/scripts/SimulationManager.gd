@@ -25,7 +25,6 @@ var detect_results: Dictionary = {}
 var timer: Timer
 var links_visible: bool = true
 var height_grid: Array = []
-# var cell_size: int = 8
 var map_origin: Vector2
 var map_scale: Vector2
 var grid_cols: int
@@ -33,7 +32,6 @@ var grid_rows: int
 
 
 func _ready() -> void:
-	#_contour_gen = get_node("ContourGen")
 	setup_timer()
 	call_deferred("simulate")
 
