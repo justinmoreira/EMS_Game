@@ -1,6 +1,10 @@
 class_name BaseLevel
 extends Control
 
+# Unit attribute controls
+const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
+const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
+
 # Camera / Viewport State
 var zoom := 1.0
 var offset := Vector2.ZERO
@@ -10,6 +14,8 @@ var sidebar_width: float = 0.0
 
 # Selection State
 var currently_selected_unit: Node = null
+
+var unit_attributes_visible: bool = false
 
 @onready var background := $BackgroundTexture
 @onready var sidebar_node = get_tree().root.find_child("Sidebar", true, false)
@@ -126,6 +132,10 @@ func _on_unit_placed(unit: Node) -> void:
 	# Connect selection signals
 	if unit.has_signal("selected") and not unit.selected.is_connected(_on_unit_selected):
 		unit.selected.connect(_on_unit_selected)
+	if unit is EMSUnit:
+		var label = _get_or_create_attribute_label(unit)
+		if label:
+			label.visible = unit_attributes_visible
 
 
 # --- Selection Logic ---
@@ -216,6 +226,15 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		var focus_owner := get_viewport().gui_get_focus_owner()
+		if focus_owner is LineEdit or focus_owner is TextEdit:
+			return
+
+		if event.keycode == TOGGLE_UNIT_ATTRIBUTES_KEY:
+			_toggle_unit_attributes()
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.position.x < sidebar_width:
 			return
@@ -252,3 +271,46 @@ func _unhandled_input(event: InputEvent) -> void:
 		_clamp_offset()
 		last_mouse_pos = event.position
 		update_shader()
+
+
+#show unit attribute helper function
+func _toggle_unit_attributes() -> void:
+	unit_attributes_visible = not unit_attributes_visible
+	_apply_unit_attribute_visibility()
+
+
+func _apply_unit_attribute_visibility() -> void:
+	for child in get_children():
+		if child is EMSUnit:
+			var label = _get_or_create_attribute_label(child)
+			if label:
+				label.visible = unit_attributes_visible
+
+
+func _get_or_create_attribute_label(unit: Node) -> UnitAttributesLabel:
+	var existing = unit.get_node_or_null("UnitAttributesLabel")
+	if existing:
+		return existing as UnitAttributesLabel
+
+	var component := _find_unit_component(unit)
+	if component == null:
+		return null
+
+	var label := ATTRIBUTE_LABEL_SCRIPT.new()
+	label.name = "UnitAttributesLabel"
+	unit.add_child(label)
+	label.setup(unit, component)
+	label.visible = unit_attributes_visible
+	return label
+
+
+func _find_unit_component(unit: Node) -> Node:
+	for child in unit.get_children():
+		if child is Transceiver or child is Jammer or child is Sensor:
+			return child
+
+		for grandchild in child.get_children():
+			if grandchild is Transceiver or grandchild is Jammer or grandchild is Sensor:
+				return grandchild
+
+	return null
