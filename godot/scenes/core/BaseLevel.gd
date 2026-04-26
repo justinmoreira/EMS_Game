@@ -1,6 +1,8 @@
 class_name BaseLevel
 extends Control
 
+const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
+
 # Unit attribute controls
 const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
 const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
@@ -11,6 +13,7 @@ var offset := Vector2.ZERO
 var dragging := false
 var last_mouse_pos := Vector2.ZERO
 var sidebar_width: float = 0.0
+var intro_popup_open := false
 
 # Selection State
 var currently_selected_unit: Node = null
@@ -22,15 +25,33 @@ var unit_attributes_visible: bool = false
 
 # --- Initialization ---
 
-
-func _ready() -> void:
+func _ready():
 	# Handle window resizing and sidebar layout
 	get_tree().get_root().size_changed.connect(_on_window_resized)
 	if sidebar_node:
 		sidebar_node.resized.connect(_on_window_resized)
-
 	_on_window_resized()
+	_show_sandbox_intro_popup()
 
+
+#display the popup on top of the game
+func _show_sandbox_intro_popup() -> void:
+	if intro_popup_open:
+		return
+
+	var popup := SANDBOX_INTRO_POPUP.instantiate()
+	intro_popup_open = true
+
+	$CanvasLayer.add_child(popup)
+
+	# listen for the continue button to be clicked
+	if popup.has_signal("continued"):
+		popup.continued.connect(_on_intro_popup_closed)
+
+
+# allow player to start playing game after clicking continue button
+func _on_intro_popup_closed() -> void:
+	intro_popup_open = false
 
 func _on_window_resized() -> void:
 	self.size = get_viewport_rect().size
@@ -200,6 +221,10 @@ func _show_attributes(component: Node) -> void:
 
 
 func _input(event: InputEvent) -> void:
+  #prevent gameplay after popup is open
+	if intro_popup_open:
+		return
+    
 	if event is InputEventMouseButton:
 		if event.position.x < sidebar_width:
 			return
@@ -226,6 +251,10 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+  # prevent map interaction when popup is active
+	if intro_popup_open:
+		return
+    
 	if event is InputEventKey and event.pressed and not event.echo:
 		var focus_owner := get_viewport().gui_get_focus_owner()
 		if focus_owner is LineEdit or focus_owner is TextEdit:
