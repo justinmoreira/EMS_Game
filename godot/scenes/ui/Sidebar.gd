@@ -648,7 +648,7 @@ func _update_simulate_button() -> void:
 		or get_tree().get_nodes_in_group("jammers").size() > 0
 		or get_tree().get_nodes_in_group("sensors").size() > 0
 	)
-	
+
 	if has_units:
 		SimulationManager.simulate()
 

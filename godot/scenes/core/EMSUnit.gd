@@ -12,7 +12,7 @@ var drag_distance: float = 0.0
 
 func _ready() -> void:
 	# Find whichever component was instantiated
-	for child in get_all_children(self ):
+	for child in get_all_children(self):
 		if child is Transceiver or child is Jammer or child is Sensor:
 			component = child
 			break
@@ -36,11 +36,11 @@ func _input(event: InputEvent) -> void:
 	var distance = global_position.distance_to(mouse_pos)
 
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if distance < 32: # Within the 32 radius
+		if distance < 32:  # Within the 32 radius
 			if event.pressed:
 				# Start drag
 				SimulationManager.clear_all_links()
-				
+
 				is_being_dragged = true
 				drag_start_pos = mouse_pos
 				drag_distance = 0.0
@@ -48,10 +48,10 @@ func _input(event: InputEvent) -> void:
 			else:
 				# On release
 				SimulationManager.simulate()
-				
-				if drag_distance < 5.0: # Click threshold
+
+				if drag_distance < 5.0:  # Click threshold
 					# This was a click - select the unit
-					selected.emit(self )
+					selected.emit(self)
 
 				is_being_dragged = false
 				get_tree().root.set_input_as_handled()
