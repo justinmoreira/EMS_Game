@@ -122,7 +122,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	_on_unit_placed(unit)
 
 
-func _on_unit_placed(unit: Node) -> void:
+func _on_unit_placed(unit: Node) -> void:	
 	# Connect selection signals
 	if unit.has_signal("selected") and not unit.selected.is_connected(_on_unit_selected):
 		unit.selected.connect(_on_unit_selected)
@@ -242,6 +242,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 			dragging = true
 			last_mouse_pos = event.position
+			
 		else:
 			dragging = false
 
@@ -252,3 +253,5 @@ func _unhandled_input(event: InputEvent) -> void:
 		_clamp_offset()
 		last_mouse_pos = event.position
 		update_shader()
+	
+	
