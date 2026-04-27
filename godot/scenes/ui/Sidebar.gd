@@ -17,6 +17,7 @@ const C_BLUE := Color("4fc3f7")
 const C_RED := Color("ff5c5c")
 const C_TEXT := Color("e8eaf0")
 const C_DIM := Color("6b7594")
+const C_PURPLE := Color("e099ff")
 
 # Constants
 var invalid_props = ["script", "name", "owner", "unique_name_in_owner"]
@@ -197,7 +198,7 @@ func _build_tray() -> PanelContainer:
 		_build_entity_card(
 			"Jammer",
 			"J",
-			C_AMBER,
+			C_RED,
 			EntityType.JAMMER,
 			"res://scenes/core/units/JammerUnit.tscn",
 			"res://assets/sprites/jammer.png"
@@ -207,7 +208,7 @@ func _build_tray() -> PanelContainer:
 		_build_entity_card(
 			"Sensor",
 			"S",
-			C_RED,
+			C_PURPLE,
 			EntityType.SENSOR,
 			"res://scenes/core/units/SensorUnit.tscn",
 			"res://assets/sprites/sensor.png"
@@ -346,6 +347,12 @@ func _refresh_attribute_panel() -> void:
 			_attr_header.text = "Transceiver"
 			_attr_header.add_theme_color_override("font_color", C_BLUE)
 			_add_accent_bar(C_BLUE)
+			_add_text_input(
+				"Name",
+				_prop_string("unit_name", "Transceiver 1"),
+				C_BLUE,
+				func(v): _write("unit_name", v)
+			)
 			_add_slider(
 				"Tx Power",
 				0.0,
@@ -386,15 +393,21 @@ func _refresh_attribute_panel() -> void:
 
 		EntityType.JAMMER:
 			_attr_header.text = "Jammer"
-			_attr_header.add_theme_color_override("font_color", C_AMBER)
-			_add_accent_bar(C_AMBER)
+			_attr_header.add_theme_color_override("font_color", C_RED)
+			_add_accent_bar(C_RED)
+			_add_text_input(
+				"Name",
+				_prop_string("unit_name", "Jammer 1"),
+				C_AMBER,
+				func(v): _write("unit_name", v)
+			)
 			_add_slider(
 				"Power",
 				0.0,
 				10.0,
 				_prop_int("power", 5),
 				"dBm",
-				C_AMBER,
+				C_RED,
 				func(v): _write("power", int(v)),
 				true
 			)
@@ -404,48 +417,57 @@ func _refresh_attribute_panel() -> void:
 				3000.0,
 				_prop_float("frequency", 1000.0),
 				"MHz",
-				C_AMBER,
+				C_RED,
 				func(v): _write("frequency", v),
+				true
+			)
+			_add_slider(
+				"Height",
+				0.0,
+				10.0,
+				_prop_int("height", 5),
+				"m",
+				C_RED,
+				func(v): _write_node("height", int(v)),
 				true
 			)
 			_add_dropdown(
 				"Bandwidth",
 				["Narrow", "Medium", "Wide"],
 				_prop_int("jammer_bandwidth", 1),
-				C_AMBER,
+				C_RED,
 				func(v): _write("jammer_bandwidth", v)
-			)
-			_add_slider(
-				"Height",
-				0.0,
-				10.0,
-				_prop_int("height", 5),
-				"m",
-				C_AMBER,
-				func(v): _write("height", int(v)),
-				true
 			)
 
 		EntityType.SENSOR:
 			_attr_header.text = "Sensor"
-			_attr_header.add_theme_color_override("font_color", C_RED)
-			_add_accent_bar(C_RED)
+			_attr_header.add_theme_color_override("font_color", C_PURPLE)
+			_add_accent_bar(C_PURPLE)
+			_add_text_input(
+				"Name",
+				_prop_string("unit_name", "Sensor 1"),
+				C_RED,
+				func(v): _write("unit_name", v)
+			)
 			_add_slider(
 				"Sensitivity",
 				0.0,
 				10.0,
 				_prop_int("sensitivity", 3),
 				"dBm",
-				C_RED,
+				C_PURPLE,
 				func(v): _write("sensitivity", int(v)),
 				true
 			)
-			_add_dropdown(
-				"Bandwidth",
-				["Narrow", "Medium", "Wide"],
-				_prop_int("sensor_bandwidth", 1),
-				C_RED,
-				func(v): _write("sensor_bandwidth", v)
+			_add_slider(
+				"Tuning Frequency",
+				30.0,
+				3000.0,
+				_node_int("tuning_frequency", 1000),
+				"MHz",
+				C_PURPLE,
+				func(v): _write_node("tuning_frequency", int(v)),
+				true
 			)
 			_add_slider(
 				"Height",
@@ -453,14 +475,21 @@ func _refresh_attribute_panel() -> void:
 				10.0,
 				_prop_int("height", 5),
 				"m",
-				C_RED,
-				func(v): _write("height", int(v)),
+				C_PURPLE,
+				func(v): _write_node("height", int(v)),
 				true
+			)
+			_add_dropdown(
+				"Bandwidth",
+				["Narrow", "Medium", "Wide"],
+				_prop_int("sensor_bandwidth", 1),
+				C_PURPLE,
+				func(v): _write("sensor_bandwidth", v)
 			)
 			_add_toggle(
 				"Scanning",
 				_prop_bool("is_scanning", true),
-				C_RED,
+				C_PURPLE,
 				func(v): _write("is_scanning", v)
 			)
 
@@ -598,6 +627,8 @@ func _on_reset_pressed() -> void:
 
 	dialog.confirmed.connect(
 		func():
+			# Reset unit name counters
+			UnitNameManager.reset()
 			for unit in get_tree().get_nodes_in_group("transceivers"):
 				unit.get_parent().queue_free()
 			for unit in get_tree().get_nodes_in_group("sensors"):
@@ -659,6 +690,34 @@ func _on_simulate_pressed() -> void:
 
 func _component() -> Node:
 	return selected_node
+
+
+func _add_text_input(label: String, current: String, accent: Color, on_change: Callable) -> void:
+	var vbox := _make_row_container()
+	var hbox := HBoxContainer.new()
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_theme_constant_override("separation", 8)
+	vbox.add_child(hbox)
+	hbox.add_child(_make_label(label, C_DIM, 13, true))
+
+	var input := LineEdit.new()
+	input.text = current
+	input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	input.custom_minimum_size = Vector2(140, 0)
+	input.add_theme_font_size_override("font_size", 13)
+	input.add_theme_color_override("font_color", accent)
+	input.text_submitted.connect(func(v): on_change.call(v))
+	input.focus_exited.connect(func(): on_change.call(input.text))
+	hbox.add_child(input)
+
+
+func _prop_string(p: String, fallback: String) -> String:
+	var c := _component()
+	if c:
+		var val = c.get(p)
+		if val != null:
+			return str(val)
+	return fallback
 
 
 func _prop_float(p: String, fallback: float) -> float:

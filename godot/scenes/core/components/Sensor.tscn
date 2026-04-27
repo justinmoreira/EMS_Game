@@ -1,12 +1,12 @@
-[gd_scene format=3 uid="uid://di5qvuuy8oj2u"]
+[gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://drja1ty1kv8fq" path="res://scenes/core/components/Sensor.gd" id="1_1skol"]
-[ext_resource type="Script" uid="uid://ck42ox5aq2g2o" path="res://scenes/core/components/UnitVisual.gd" id="2_onkla"]
+[ext_resource type="Script" path="res://scenes/core/components/Sensor.gd" id="1_1skol"]
+[ext_resource type="Script" path="res://scenes/core/components/UnitVisual.gd" id="2_onkla"]
 
 [node name="Sensor" type="Node2D" unique_id=2031422171]
 script = ExtResource("1_1skol")
 
-[node name="Node2D" type="Node2D" parent="." unique_id=530265049]
+[node name="Visual" type="Node2D" parent="." unique_id=530265049]
 script = ExtResource("2_onkla")
 unit_label = "S"
 circle_color = Color(1, 0.36078432, 0.36078432, 1)
