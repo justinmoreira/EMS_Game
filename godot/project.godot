@@ -20,7 +20,7 @@ config/icon="res://icon.svg"
 PhysicsEngine="*res://scripts/PhysicsEngine.gd"
 SimulationManager="*res://scripts/SimulationManager.gd"
 GameEvents="*res://scripts/GameEvents.gd"
-UnitNameManager="*uid://b6ybce2ygj1k0"
+UnitNameManager="*res://scripts/UnitNameManager.gd"
 Sidebar="*uid://lovad8bhjgbc"
 
 [display]
