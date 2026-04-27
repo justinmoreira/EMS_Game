@@ -25,6 +25,7 @@ var selected_entity_name: String = ""
 var selected_node: Node = null
 var _reset_btn: Button = null
 var _delete_btn: Button = null
+var _confirm_btn: Button = null
 
 # ── Node refs ─────────────────────────────────
 var _attr_header: Label
@@ -217,15 +218,17 @@ func _build_attr_section() -> PanelContainer:
 
 	attr_header_row.add_child(_make_label("ATTRIBUTES", C_DIM, 15))
 
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	attr_header_row.add_child(spacer)
+	var button_row := HBoxContainer.new()
+	button_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button_row.add_theme_constant_override("separation", 10)
+	content.add_child(button_row)
 
 	var delete_btn := Button.new()
 	delete_btn.text = "DELETE UNIT"
 	delete_btn.add_theme_font_size_override("font_size", 12)
 	delete_btn.add_theme_color_override("font_color", C_BG_DARK)
 	delete_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	delete_btn.custom_minimum_size = Vector2(120, 0)
 
 	var del_style := StyleBoxFlat.new()
 	del_style.bg_color = C_RED
@@ -234,13 +237,39 @@ func _build_attr_section() -> PanelContainer:
 	del_style.corner_radius_bottom_left = 3
 	del_style.corner_radius_bottom_right = 3
 	del_style.set_content_margin_all(8)
+
 	delete_btn.add_theme_stylebox_override("normal", del_style)
-	delete_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	delete_btn.pressed.connect(_on_delete_pressed)
 	delete_btn.visible = false
 
-	attr_header_row.add_child(delete_btn)
+	button_row.add_child(delete_btn)
 	_delete_btn = delete_btn
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button_row.add_child(spacer)
+
+	var confirm_btn := Button.new()
+	confirm_btn.text = "CONFIRM"
+	confirm_btn.add_theme_font_size_override("font_size", 12)
+	confirm_btn.add_theme_color_override("font_color", C_BG_DARK)
+	confirm_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	confirm_btn.custom_minimum_size = Vector2(120, 0)
+
+	var cfm_style := StyleBoxFlat.new()
+	cfm_style.bg_color = C_GREEN
+	cfm_style.corner_radius_top_left = 3
+	cfm_style.corner_radius_top_right = 3
+	cfm_style.corner_radius_bottom_left = 3
+	cfm_style.corner_radius_bottom_right = 3
+	cfm_style.set_content_margin_all(8)
+
+	confirm_btn.add_theme_stylebox_override("normal", cfm_style)
+	confirm_btn.pressed.connect(_on_confirm_pressed)
+	confirm_btn.visible = false
+
+	button_row.add_child(confirm_btn)
+	_confirm_btn = confirm_btn
 
 	_attr_header = _make_label("", C_TEXT, 20)
 	content.add_child(_attr_header)
@@ -262,7 +291,8 @@ func _build_attr_section() -> PanelContainer:
 	_attr_placeholder.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_attr_placeholder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_attr_placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_child(_attr_placeholder)
+
+	content.add_child(_attr_placeholder)
 
 	return panel
 
@@ -281,6 +311,9 @@ func _refresh_attribute_panel() -> void:
 
 	if _delete_btn:
 		_delete_btn.visible = selected_entity != EntityType.NONE and selected_node != null
+	
+	if _confirm_btn:
+		_confirm_btn.visible = selected_entity != EntityType.NONE and selected_node != null
 
 	if selected_entity == EntityType.NONE:
 		_attr_header.visible = false
@@ -612,6 +645,14 @@ func _on_delete_pressed() -> void:
 	dialog.canceled.connect(func(): dialog.queue_free())
 
 
+func _on_confirm_pressed() -> void:
+	if not selected_node:
+		return
+	
+	_confirm_btn.visible = false
+	SimulationManager.simulate()
+
+
 func _update_reset_button() -> void:
 	var has_units = (
 		get_tree().get_nodes_in_group("transceivers").size() > 0
@@ -619,18 +660,11 @@ func _update_reset_button() -> void:
 		or get_tree().get_nodes_in_group("sensors").size() > 0
 	)
 
-	if has_units:
-		SimulationManager.simulate()
-
 	if _reset_btn:
 		_reset_btn.disabled = not has_units
 		_reset_btn.mouse_default_cursor_shape = (
 			Control.CURSOR_POINTING_HAND if has_units else Control.CURSOR_ARROW
 		)
-
-
-func _on_simulate_pressed() -> void:
-	SimulationManager.simulate()
 
 
 func _component() -> Node:

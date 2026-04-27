@@ -146,15 +146,18 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 		return
 
 	var unit := scene.instantiate()
+	
 	if unit == null:
 		return
-
+	
 	# Set position and scale based on current camera zoom/offset
 	unit.set_meta("world_uv", screen_to_world_uv(at_position))
 	unit.position = at_position
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
 	add_child(unit)
-
+	
+	SimulationManager.simulate()
+	
 	_on_unit_placed(unit)
 
 
