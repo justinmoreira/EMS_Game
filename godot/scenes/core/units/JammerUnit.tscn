@@ -9,7 +9,6 @@
 radius = 32.0
 
 [node name="_Area2D_1301" type="Area2D" unique_id=1423769516]
-position = Vector2(972.92926, 448.8973)
 script = ExtResource("1_vqkxn")
 metadata/world_uv = Vector2(0.35734192, 0.41564566)
 
