@@ -24,7 +24,6 @@ var selected_entity: EntityType = EntityType.NONE
 var selected_entity_name: String = ""
 var selected_node: Node = null
 var _reset_btn: Button = null
-var _simulate_btn: Button = null
 var _delete_btn: Button = null
 
 # ── Node refs ─────────────────────────────────
@@ -34,7 +33,7 @@ var _attr_placeholder: Label
 
 
 func _ready() -> void:
-	GameEvents.units_changed.connect(_update_simulate_button)
+	GameEvents.units_changed.connect(_update_reset_button)
 	_build_sidebar()
 	_refresh_attribute_panel()
 
@@ -44,7 +43,7 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 	selected_entity_name = display_name
 	selected_node = node
 	_refresh_attribute_panel()
-	_update_simulate_button()
+	_update_reset_button()
 
 
 # ════════════════════════════════════════════
@@ -113,36 +112,7 @@ func _build_header() -> PanelContainer:
 	hbox.add_child(reset_btn)
 	_reset_btn = reset_btn
 
-	var btn := Button.new()
-	btn.text = "SIMULATE"
-	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	btn.add_theme_font_size_override("font_size", 13)
-	btn.add_theme_color_override("font_color", C_BG_DARK)
-
-	var btn_style := StyleBoxFlat.new()
-	btn_style.bg_color = C_GREEN
-	btn_style.corner_radius_top_left = 3
-	btn_style.corner_radius_top_right = 3
-	btn_style.corner_radius_bottom_left = 3
-	btn_style.corner_radius_bottom_right = 3
-	btn_style.set_content_margin_all(8)
-	btn.add_theme_stylebox_override("normal", btn_style)
-
-	var btn_disabled_style := StyleBoxFlat.new()
-	btn_disabled_style.bg_color = C_BORDER
-	btn_disabled_style.corner_radius_top_left = 3
-	btn_disabled_style.corner_radius_top_right = 3
-	btn_disabled_style.corner_radius_bottom_left = 3
-	btn_disabled_style.corner_radius_bottom_right = 3
-	btn_disabled_style.set_content_margin_all(8)
-	btn.add_theme_stylebox_override("disabled", btn_disabled_style)
-
-	btn.pressed.connect(_on_simulate_pressed)
-	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	hbox.add_child(btn)
-
-	_simulate_btn = btn
-	_update_simulate_button()
+	_update_reset_button()
 
 	return panel
 
@@ -642,7 +612,7 @@ func _on_delete_pressed() -> void:
 	dialog.canceled.connect(func(): dialog.queue_free())
 
 
-func _update_simulate_button() -> void:
+func _update_reset_button() -> void:
 	var has_units = (
 		get_tree().get_nodes_in_group("transceivers").size() > 0
 		or get_tree().get_nodes_in_group("jammers").size() > 0
@@ -651,12 +621,6 @@ func _update_simulate_button() -> void:
 
 	if has_units:
 		SimulationManager.simulate()
-
-	if _simulate_btn:
-		_simulate_btn.disabled = not has_units
-		_simulate_btn.mouse_default_cursor_shape = (
-			Control.CURSOR_POINTING_HAND if has_units else Control.CURSOR_ARROW
-		)
 
 	if _reset_btn:
 		_reset_btn.disabled = not has_units
