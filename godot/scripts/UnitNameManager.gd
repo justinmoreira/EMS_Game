@@ -20,6 +20,17 @@ func get_next_name(unit_type: String) -> String:
 	return ""
 
 
+func peek_next_name(unit_type: String) -> String:
+	match unit_type.to_lower():
+		"transceiver":
+			return "Transceiver %d" % (transceiver_count + 1)
+		"jammer":
+			return "Jammer %d" % (jammer_count + 1)
+		"sensor":
+			return "Sensor %d" % (sensor_count + 1)
+	return ""
+
+
 func reset() -> void:
 	transceiver_count = 0
 	jammer_count = 0

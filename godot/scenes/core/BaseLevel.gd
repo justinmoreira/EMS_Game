@@ -170,21 +170,14 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 				break
 
 		if component:
-			# Get the component's original script before applying attributes
-			var original_script = component.get_script()
-
-			# Apply all pending attributes
 			for attr_name in sidebar_node.pending_attributes:
 				component.set(attr_name, sidebar_node.pending_attributes[attr_name])
-
-			# Restore the original script if it was somehow changed
-			if component.get_script() != original_script:
-				component.set_script(original_script)
 
 		sidebar_node.pending_attributes.clear()
 
 	# Connect the selection signal
 	_on_unit_placed(unit)
+	_on_unit_selected(unit)
 
 
 func _on_unit_placed(unit: Node) -> void:
