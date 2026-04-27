@@ -18,6 +18,9 @@ const LINE_OFFSET := 12.0
 const NODE_PADDING := 22.0
 const VISUAL_TRANSITION_DELAY := 0.12
 
+const STATUS_VISUAL_SCRIPT := preload("res://scripts/UnitStatusVisual.gd")
+const STATUS_VISUAL_NODE_NAME := "UnitStatusVisual"
+
 #Data Storage
 var active_links: Dictionary = {}
 var link_results: Dictionary = {}
@@ -64,6 +67,7 @@ func simulate() -> void:
 			detect_results[d_key] = detected
 
 	_draw_links_from_results(transceivers)
+	_update_unit_status_visuals(transceivers)
 
 
 # tx is the transmitter, rx is the receiver — asymmetric by design.
@@ -241,6 +245,57 @@ func _update_active_link_visuals() -> void:
 	for k in dead_keys:
 		_free_link_nodes(active_links[k])
 		active_links.erase(k)
+
+
+func _update_unit_status_visuals(transceivers: Array) -> void:
+	for tx in transceivers:
+		if !is_instance_valid(tx):
+			continue
+
+		var visual := _get_or_create_status_visual(tx)
+		var status := _compute_status_for_transceiver(tx)
+		visual.set_status(status)
+
+
+func _get_or_create_status_visual(unit: Node) -> UnitStatusVisual:
+	var existing = unit.get_node_or_null(STATUS_VISUAL_NODE_NAME)
+	if existing != null:
+		return existing as UnitStatusVisual
+
+	var visual := STATUS_VISUAL_SCRIPT.new() as UnitStatusVisual
+	visual.name = STATUS_VISUAL_NODE_NAME
+	unit.add_child(visual)
+	return visual
+
+
+func _compute_status_for_transceiver(tx: Transceiver) -> int:
+	var tx_id := str(tx.get_instance_id())
+	var tx_incoming_suffix := "_to_" + tx_id
+
+	var has_out_of_range := false
+
+	# Jammed/out-of-range should only apply to the RECEIVER of a failed link.
+	for key in link_results.keys():
+		if !key.ends_with(tx_incoming_suffix):
+			continue
+
+		var state: int = link_results[key]
+
+		if state == LinkState.FAILED_JAMMED:
+			return UnitStatusVisual.Status.JAMMED
+
+		if state == LinkState.FAILED_OUT_OF_RANGE:
+			has_out_of_range = true
+
+	# Sensors detect emitters/transceivers.
+	for d_key in detect_results.keys():
+		if d_key.ends_with("_detects_" + tx_id) and detect_results[d_key]:
+			return UnitStatusVisual.Status.DETECTED
+
+	if has_out_of_range:
+		return UnitStatusVisual.Status.OUT_OF_RANGE
+
+	return UnitStatusVisual.Status.NONE
 
 
 func _vis_key(a: Transceiver, b: Transceiver) -> String:
