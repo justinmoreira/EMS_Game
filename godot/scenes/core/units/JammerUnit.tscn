@@ -9,15 +9,14 @@
 radius = 32.0
 
 [node name="_Area2D_1301" type="Area2D" unique_id=1423769516]
-position = Vector2(972.92926, 448.8973)
 script = ExtResource("1_vqkxn")
-metadata/world_uv = Vector2(0.35734192, 0.41564566)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_w5soc")
 
 [node name="Jammer" type="Node2D" parent="." unique_id=1057677908 instance=ExtResource("2_p83nw")]
 script = ExtResource("3_gwb5p")
+
 
 [node name="Visual" type="Node2D" parent="." unique_id=413501508]
 script = ExtResource("3_hkf84")

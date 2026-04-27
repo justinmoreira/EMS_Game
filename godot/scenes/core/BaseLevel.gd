@@ -1,30 +1,57 @@
 class_name BaseLevel
 extends Control
 
+const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
+
+# Unit attribute controls
+const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
+const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
+
 # Camera / Viewport State
 var zoom := 1.0
 var offset := Vector2.ZERO
 var dragging := false
 var last_mouse_pos := Vector2.ZERO
 var sidebar_width: float = 0.0
+var intro_popup_open := false
 
 # Selection State
 var currently_selected_unit: Node = null
+
+var unit_attributes_visible: bool = false
 
 @onready var background := $BackgroundTexture
 @onready var sidebar_node = get_tree().root.find_child("Sidebar", true, false)
 
 # --- Initialization ---
 
-
-func _ready() -> void:
+func _ready():
 	# Handle window resizing and sidebar layout
 	get_tree().get_root().size_changed.connect(_on_window_resized)
 	if sidebar_node:
 		sidebar_node.resized.connect(_on_window_resized)
-
 	_on_window_resized()
+	_show_sandbox_intro_popup()
 
+
+#display the popup on top of the game
+func _show_sandbox_intro_popup() -> void:
+	if intro_popup_open:
+		return
+
+	var popup := SANDBOX_INTRO_POPUP.instantiate()
+	intro_popup_open = true
+
+	$CanvasLayer.add_child(popup)
+
+	# listen for the continue button to be clicked
+	if popup.has_signal("continued"):
+		popup.continued.connect(_on_intro_popup_closed)
+
+
+# allow player to start playing game after clicking continue button
+func _on_intro_popup_closed() -> void:
+	intro_popup_open = false
 
 func _on_window_resized() -> void:
 	self.size = get_viewport_rect().size
@@ -98,10 +125,19 @@ func _clamp_offset() -> void:
 # --- Drag and Drop Logic ---
 
 
-func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
-	if _at_position.x < sidebar_width:
+func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
+	if not (data is Dictionary and data.has("scene_path")):
 		return false
-	return data is Dictionary and data.has("scene_path")
+
+	# Still reject sidebar drops
+	if at_position.x < sidebar_width:
+		return false
+
+	# Convert mouse position into map UV space
+	var world_uv := screen_to_world_uv(at_position)
+
+	# Only allow drops inside the actual map
+	return world_uv.x >= 0.0 and world_uv.x <= 1.0 and world_uv.y >= 0.0 and world_uv.y <= 1.0
 
 
 func _drop_data(at_position: Vector2, data: Variant) -> void:
@@ -153,6 +189,10 @@ func _on_unit_placed(unit: Node) -> void:
 	# Connect selection signals
 	if unit.has_signal("selected") and not unit.selected.is_connected(_on_unit_selected):
 		unit.selected.connect(_on_unit_selected)
+	if unit is EMSUnit:
+		var label = _get_or_create_attribute_label(unit)
+		if label:
+			label.visible = unit_attributes_visible
 
 
 # --- Selection Logic ---
@@ -217,6 +257,10 @@ func _show_attributes(component: Node) -> void:
 
 
 func _input(event: InputEvent) -> void:
+  #prevent gameplay after popup is open
+	if intro_popup_open:
+		return
+    
 	if event is InputEventMouseButton:
 		if event.position.x < sidebar_width:
 			return
@@ -243,6 +287,19 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+  # prevent map interaction when popup is active
+	if intro_popup_open:
+		return
+    
+	if event is InputEventKey and event.pressed and not event.echo:
+		var focus_owner := get_viewport().gui_get_focus_owner()
+		if focus_owner is LineEdit or focus_owner is TextEdit:
+			return
+
+		if event.keycode == TOGGLE_UNIT_ATTRIBUTES_KEY:
+			_toggle_unit_attributes()
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.position.x < sidebar_width:
 			return
@@ -280,3 +337,46 @@ func _unhandled_input(event: InputEvent) -> void:
 		_clamp_offset()
 		last_mouse_pos = event.position
 		update_shader()
+
+
+#show unit attribute helper function
+func _toggle_unit_attributes() -> void:
+	unit_attributes_visible = not unit_attributes_visible
+	_apply_unit_attribute_visibility()
+
+
+func _apply_unit_attribute_visibility() -> void:
+	for child in get_children():
+		if child is EMSUnit:
+			var label = _get_or_create_attribute_label(child)
+			if label:
+				label.visible = unit_attributes_visible
+
+
+func _get_or_create_attribute_label(unit: Node) -> UnitAttributesLabel:
+	var existing = unit.get_node_or_null("UnitAttributesLabel")
+	if existing:
+		return existing as UnitAttributesLabel
+
+	var component := _find_unit_component(unit)
+	if component == null:
+		return null
+
+	var label := ATTRIBUTE_LABEL_SCRIPT.new()
+	label.name = "UnitAttributesLabel"
+	unit.add_child(label)
+	label.setup(unit, component)
+	label.visible = unit_attributes_visible
+	return label
+
+
+func _find_unit_component(unit: Node) -> Node:
+	for child in unit.get_children():
+		if child is Transceiver or child is Jammer or child is Sensor:
+			return child
+
+		for grandchild in child.get_children():
+			if grandchild is Transceiver or grandchild is Jammer or grandchild is Sensor:
+				return grandchild
+
+	return null

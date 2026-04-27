@@ -8,10 +8,8 @@
 [sub_resource type="CircleShape2D" id="CircleShape2D_o81bo"]
 radius = 32.0
 
-[node name="@Area2D@1060" type="Area2D" unique_id=864604190]
-position = Vector2(746.998, 607.6909)
+[node name="EMSUnit - Sensor" type="Area2D" unique_id=864604190]
 script = ExtResource("1_dem8i")
-metadata/world_uv = Vector2(0.14814627, 0.5626768)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_o81bo")
