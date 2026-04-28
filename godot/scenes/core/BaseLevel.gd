@@ -25,6 +25,7 @@ var unit_attributes_visible: bool = false
 
 # --- Initialization ---
 
+
 func _ready():
 	# Handle window resizing and sidebar layout
 	get_tree().get_root().size_changed.connect(_on_window_resized)
@@ -52,6 +53,7 @@ func _show_sandbox_intro_popup() -> void:
 # allow player to start playing game after clicking continue button
 func _on_intro_popup_closed() -> void:
 	intro_popup_open = false
+
 
 func _on_window_resized() -> void:
 	self.size = get_viewport_rect().size
@@ -230,10 +232,10 @@ func _show_attributes(component: Node) -> void:
 
 
 func _input(event: InputEvent) -> void:
-  #prevent gameplay after popup is open
+	#prevent gameplay after popup is open
 	if intro_popup_open:
 		return
-    
+
 	if event is InputEventMouseButton:
 		if event.position.x < sidebar_width:
 			return
@@ -260,10 +262,10 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-  # prevent map interaction when popup is active
+	# prevent map interaction when popup is active
 	if intro_popup_open:
 		return
-    
+
 	if event is InputEventKey and event.pressed and not event.echo:
 		var focus_owner := get_viewport().gui_get_focus_owner()
 		if focus_owner is LineEdit or focus_owner is TextEdit:

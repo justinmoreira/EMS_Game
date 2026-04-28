@@ -9,7 +9,7 @@
         "bradlc.vscode-tailwindcss",
         "astro-build.astro-vscode",
         "biomejs.biome",
-        "geequlim.godot-tools",
+        "eddiedover.gdscript-formatter-linter",
         // Run Recipes from VSCode
         "nefrob.vscode-just-syntax",
         // WSL Remote Development

@@ -69,6 +69,14 @@
               ln -sfn "$BIOME_BIN" "$HOME/.local/bin/biome"
             fi
 
+            # Symlink gdformat to a stable path so the EddieDover gdscript-formatter-linter
+            # extension finds the same binary that `just lint` uses
+            GDFORMAT_BIN=$(command -v gdformat 2>/dev/null)
+            if [ -n "$GDFORMAT_BIN" ]; then
+              mkdir -p "$HOME/.local/bin"
+              ln -sfn "$GDFORMAT_BIN" "$HOME/.local/bin/gdformat"
+            fi
+
             # Silence direnv noise (env diff, loading messages) on future runs
             DIRENV_TOML="$HOME/.config/direnv/direnv.toml"
             if [ ! -f "$DIRENV_TOML" ] || ! grep -q "hide_env_diff" "$DIRENV_TOML"; then

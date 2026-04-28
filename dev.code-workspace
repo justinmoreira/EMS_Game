@@ -21,7 +21,7 @@
 			"editor.defaultFormatter": "astro-build.astro-vscode"
 		},
 		"[gdscript]": {
-			"editor.defaultFormatter": "geequlim.godot-tools",
+			"editor.defaultFormatter": "eddiedover.gdscript-formatter-linter",
 			"editor.tabSize": 4,
 			"editor.insertSpaces": false
 		},

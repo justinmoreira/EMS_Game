@@ -117,7 +117,7 @@ code:
 dev: _init_client
     #!/usr/bin/env bash
     echo "🔄 Watching godot/ for changes (auto rebuild)..."
-    (watchexec -w godot -e gd,tscn,gdshader,tres -- just build_game &)
+    (watchexec -w godot -e gd,tscn,gdshader,tres --poll 500ms -- just build_game &)
     PORT=$(python3 scripts/find_port.py)
     echo "🌐 Starting dev server on port $PORT..."
     cd {{client_path}} && bun run dev --port $PORT
