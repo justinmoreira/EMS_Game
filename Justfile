@@ -190,7 +190,7 @@ _hmr_serve: _init_client
 [group('dev')]
 [doc('Full dev stack: Supabase + Astro + Godot watcher')]
 dev:
-    just db-restart mode=soft
+    just db-restart soft
     just _hmr_serve
 
 [group('quality')]
