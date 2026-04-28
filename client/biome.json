@@ -1,12 +1,15 @@
 {
   "$schema": "https://biomejs.dev/schemas/latest/schema.json",
   "files": {
-    "includes": ["**/*.ts", "**/*.tsx", "**/*.astro"]
+    "includes": ["**/*.ts", "**/*.tsx", "**/*.astro", "!**/database.types.ts"]
   },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "suspicious": {
+        "noDocumentCookie": "off"
+      }
     }
   },
   "formatter": {

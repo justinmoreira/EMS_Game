@@ -22,8 +22,17 @@
 		},
 		"[gdscript]": {
 			"editor.defaultFormatter": "geequlim.godot-tools",
+			"editor.formatOnSave": false,
 			"editor.tabSize": 4,
 			"editor.insertSpaces": false
+		},
+		"emeraldwalk.runonsave": {
+			"commands": [
+				{
+					"match": "\\.gd$",
+					"cmd": "direnv exec . gdformat ${file}"
+				}
+			]
 		},
 		"vscode-just.justPath": "./scripts/bin/just",
 		"files.exclude": {

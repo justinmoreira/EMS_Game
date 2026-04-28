@@ -15,5 +15,6 @@
         // WSL Remote Development
         "ms-vscode-remote.remote-wsl",
         "ms-vscode-remote.vscode-remote-extensionpack",
+        "emeraldwalk.runonsave",
     ]
 }
