@@ -25,15 +25,13 @@
             watchexec      # For watching file changes (HMR)
             python313      # For dev tooling scripts - eventual API
             gdtoolkit_4    # GDScript linter & formatter
+            supabase-cli   # Local Supabase (Postgres + Auth)
           ];
 
           shellHook = ''
             if [ ! -d client/node_modules/@biomejs ]; then
               cd client && bun install && cd ..
             fi
-
-            # Configure Godot editor to use tab size 4
-            bash scripts/set_godot_save_fmt.sh
 
             # Configure Godot editor to use tab size 4
             bash scripts/set_godot_save_fmt.sh

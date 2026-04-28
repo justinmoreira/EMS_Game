@@ -1,3 +1,4 @@
+import AccountModal from "@/components/AuthPanel";
 import { BASE_URL } from "@/utils";
 
 export default function NavBar() {
@@ -27,24 +28,7 @@ export default function NavBar() {
             Leaderboards
           </a>
         </div>
-        <div class="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => {
-              localStorage.removeItem("tutorial_complete");
-              window.location.reload();
-            }}
-            class="text-xs font-medium hover:text-white text-neutral-500 transition-colors"
-          >
-            Reset Tutorial
-          </button>
-          <a
-            href={`${BASE_URL}/account`}
-            class="text-sm font-medium hover:text-white text-neutral-300 transition-colors"
-          >
-            Account
-          </a>
-        </div>
+        <AccountModal />
       </div>
     </nav>
   );

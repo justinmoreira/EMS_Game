@@ -804,11 +804,12 @@ func _apply_style(
 	control.add_theme_stylebox_override("panel", s)
 
 
-func _make_label(text: String, color: Color, size: int, expand: bool = false) -> Label:
+## Shorthand label factory
+func _make_label(text: String, color: Color, txt_size: int, expand: bool = false) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
 	lbl.add_theme_color_override("font_color", color)
-	lbl.add_theme_font_size_override("font_size", size)
+	lbl.add_theme_font_size_override("font_size", txt_size)
 	if expand:
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return lbl

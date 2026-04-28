@@ -40,10 +40,14 @@ func _ready():
 
 	GameEvents.units_changed.connect(_on_units_changed_for_tutorial)
 
-	# Check if tutorial was already completed (web builds use localStorage)
+	# Check if tutorial was already completed
 	var tutorial_done := false
 	if OS.has_feature("web"):
-		tutorial_done = JavaScriptBridge.eval("localStorage.getItem('tutorial_complete')") == "true"
+		var result = JavaScriptBridge.eval("localStorage.getItem('user_progress') || '{}'")
+		if result is String and result != "":
+			tutorial_done = result.find('"tutorial_complete":true') != -1
+		# Listen for reset tutorial from web UI
+		JavaScriptBridge.eval("if(window.initTutorialListener) window.initTutorialListener()")
 
 	if tutorial_done:
 		_tutorial_step = TutorialStep.DONE
@@ -73,13 +77,15 @@ func _advance_tutorial() -> void:
 	match _tutorial_step:
 		TutorialStep.WELCOME:
 			_tutorial_step = TutorialStep.PLACE_TRANSCEIVER
-			GameEvents.tutorial_filter_sidebar.emit([Sidebar.EntityType.TRANSCEIVER])
+			GameEvents.tutorial_filter_sidebar.emit([sidebar_node.EntityType.TRANSCEIVER])
 			_show_tutorial_hint("Drag a [b]Transceiver[/b] from the sidebar onto the map to begin.")
 		TutorialStep.PLACE_TRANSCEIVER:
 			_tutorial_step = TutorialStep.DONE
 			GameEvents.tutorial_filter_sidebar.emit([])
 			if OS.has_feature("web"):
-				JavaScriptBridge.eval("localStorage.setItem('tutorial_complete', 'true')")
+				JavaScriptBridge.eval(
+					"if(window.setProgress) window.setProgress('{\"tutorial_complete\":true}')"
+				)
 			_show_tutorial_hint(
 				"Great! You placed a transceiver.\nNow try adding Jammers and Sensors."
 			)
