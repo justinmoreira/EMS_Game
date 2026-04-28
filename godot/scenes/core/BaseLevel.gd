@@ -30,6 +30,7 @@ var unit_attributes_visible: bool = false
 
 # --- Initialization ---
 
+
 func _ready():
 	# Handle window resizing and sidebar layout
 	get_tree().get_root().size_changed.connect(_on_window_resized)
