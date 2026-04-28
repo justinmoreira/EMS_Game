@@ -105,7 +105,6 @@ func _show_tutorial_hint(text: String) -> void:
 	$CanvasLayer.add_child(popup)
 
 
-
 func _on_window_resized() -> void:
 	self.size = get_viewport_rect().size
 	sidebar_width = sidebar_node.size.x if sidebar_node else 0.0
