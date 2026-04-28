@@ -234,7 +234,7 @@ export default function AccountModal() {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     setReady(true);
-    const el = document.getElementById("account-slot");
+    const el = document.getElementById("account-placeholder");
     if (el) el.style.display = "none";
   }, []);
   useEffect(() => {
