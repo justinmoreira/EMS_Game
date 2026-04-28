@@ -29,6 +29,10 @@
           ];
 
           shellHook = ''
+            # Reclaim supabase/ from root after Docker bind-mounts files as root
+            [ -d supabase ] && [ ! -w supabase ] && sudo chown -R "$(id -un):$(id -gn)" supabase
+            mkdir -p supabase/{.branches,.temp,migrations} 2>/dev/null || true
+
             if [ ! -d client/node_modules/@biomejs ]; then
               cd client && bun install && cd ..
             fi
