@@ -15,7 +15,7 @@ if [ "${1:-}" = "--fix" ]; then
     echo "✅ All fixes applied!"
 else
     biome_log=$(mktemp); gdlint_log=$(mktemp); gdformat_log=$(mktemp)
-    trap 'rm -f "$biome_log" "$gdlint_log" "$gdformat_log"; kill 0 2>/dev/null' EXIT
+    trap 'rm -f "$biome_log" "$gdlint_log" "$gdformat_log"' EXIT
 
     echo "🔍 Running lint (Biome + gdlint + gdformat) in parallel..."
     (cd "$CLIENT_PATH" && bun run lint) > "$biome_log" 2>&1 & biome_pid=$!
