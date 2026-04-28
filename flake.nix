@@ -29,19 +29,9 @@
           ];
 
           shellHook = ''
-            # Fix supabase/ ownership when Docker volume mounts left root-owned files
-            # (happens when the supabase containers run as root and write into the
-            # host bind mount; afterwards `git switch` and `supabase start` fail with
-            # "permission denied" on supabase/.branches, supabase/config.toml, etc.)
-            if [ -d supabase ] && [ ! -w supabase ]; then
-              USERNAME="$(whoami)"
-              if sudo -n chown -R "$USERNAME:$USERNAME" supabase/ 2>/dev/null; then
-                echo "🔧 Fixed supabase/ ownership ($USERNAME)"
-              else
-                echo "⚠️  supabase/ is not writable (likely root-owned from a previous Docker run)."
-                echo "    Run:  sudo chown -R $USERNAME:$USERNAME supabase/"
-              fi
-            fi
+            # Reclaim supabase/ from root after Docker bind-mounts files as root
+            [ -d supabase ] && [ ! -w supabase ] && sudo chown -R "$(id -un):$(id -gn)" supabase
+            mkdir -p supabase/{.branches,.temp,migrations} 2>/dev/null || true
 
             if [ ! -d client/node_modules/@biomejs ]; then
               cd client && bun install && cd ..
