@@ -4,6 +4,11 @@ extends Control
 const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
 const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
 
+# legned display for line pattern
+const CONNECTION_LEGEND_SCRIPT := preload("res://scenes/ui/ConnectionLegend.gd")
+const CONNECTION_LEGEND_NODE_NAME := "ConnectionLegend"
+const CONNECTION_LEGEND_POSITION := Vector2(1650, 120)
+
 enum TutorialStep { WELCOME, PLACE_TRANSCEIVER, DONE }
 
 var _tutorial_step := TutorialStep.WELCOME
@@ -37,6 +42,7 @@ func _ready():
 	if sidebar_node:
 		sidebar_node.resized.connect(_on_window_resized)
 	_on_window_resized()
+	_create_connection_legend()
 
 	GameEvents.units_changed.connect(_on_units_changed_for_tutorial)
 
@@ -402,3 +408,15 @@ func _find_unit_component(unit: Node) -> Node:
 				return grandchild
 
 	return null
+
+
+# add legned display for line pattern
+func _create_connection_legend() -> void:
+	if $CanvasLayer.get_node_or_null(CONNECTION_LEGEND_NODE_NAME) != null:
+		return
+
+	var legend := CONNECTION_LEGEND_SCRIPT.new()
+	legend.name = CONNECTION_LEGEND_NODE_NAME
+	legend.position = CONNECTION_LEGEND_POSITION
+
+	$CanvasLayer.add_child(legend)
