@@ -11,7 +11,12 @@ uniform vec4 water_color : source_color; // blue
 
 uniform float max_height = 500.0;
 uniform float sea_level  = 100.0;
+uniform float low_point  = 0.3;
 uniform float mid_point  = 0.6;
+uniform float high_point  = 0.85;
+
+uniform bool gray_mode = false;
+uniform vec4 gray_mode_color : source_color;
 
 // Contours
 uniform float contour_interval = 50.0;
@@ -22,23 +27,22 @@ void fragment() {
     float h = texture(height_map, UV).r;
 
     vec3 base_color;
-
+	if(gray_mode)
+	{
+    	base_color = gray_mode_color.rgb;
+	}
     // WATER
-    if (h < sea_level) {
+    else if (h < sea_level) {
         base_color = water_color.rgb;
     }
     else {
         // Remap land height above sea level → 0–1
         float land_t = (h - sea_level) / (max_height - sea_level);
-        if (land_t < 0.3) {
+        if (land_t < low_point) {
             base_color = color_low.rgb;
         } else if(land_t < mid_point) {
-            if(color_low.rgb == color_mid.rgb) {
-                base_color = color_low.rgb;
-            } else {
-                base_color = color_low.rgb * 1.3;
-            }
-        } else if(land_t < 0.85) {
+            base_color = color_low.rgb * 1.3;
+        } else if(land_t < high_point) {
             base_color = color_mid.rgb;
         } else {
             base_color = color_high.rgb;

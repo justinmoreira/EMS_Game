@@ -305,7 +305,7 @@ func _input(event):
 func set_terrain_data(grid: Array, origin: Vector2, map_size: Vector2) -> void:
 	height_grid = grid
 	grid_cols = grid.size()
-	grid_rows = grid[0].size()
+	grid_rows = grid[0].size() if grid.size() > 0 else 0
 	map_origin = origin
 
 	# Calculate the exact pixel size of each cell
@@ -315,7 +315,7 @@ func set_terrain_data(grid: Array, origin: Vector2, map_size: Vector2) -> void:
 
 func print_max_height_along_link(tx: Transceiver, rx: Transceiver) -> void:
 	# grid is built as grid[x][y] (x = outer index) in the terrain script.
-	if grid_cols == 0:
+	if grid_cols == 0 or map_scale.x == 0 or map_scale.y == 0:
 		return
 
 	var tx_local = tx.global_position - map_origin
@@ -357,4 +357,5 @@ func print_max_height_along_link(tx: Transceiver, rx: Transceiver) -> void:
 			err += dx
 			y0 += sy
 
-	print("Max height between %s -> %s: %.2f m" % [tx.name, rx.name, max_h])
+	# value generated here will eventually be used for terrain interference via fresnel
+	# print("Max height between %s -> %s: %.2f m" % [tx.name, rx.name, max_h])

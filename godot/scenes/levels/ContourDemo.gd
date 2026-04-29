@@ -1,21 +1,22 @@
+class_name ContourGen
 extends BaseLevel
 
 # ── Labelling knobs ───────────────────────────────────────────────────────────
 ## Minimum grid-cell radius between any two labels of the same type.
 ## Raise this if labels are still crowding each other.
-const SUPPRESS_RADIUS_PEAK := 18  # cells
-const SUPPRESS_RADIUS_VALLEY := 14  # cells
+const SUPPRESS_RADIUS_PEAK := 18 # cells
+const SUPPRESS_RADIUS_VALLEY := 14 # cells
 
 ## A candidate is only a peak/valley if it is the strict extremum within this
 ## radius.  Larger = fewer, more prominent labels.
-const LOCAL_WINDOW := 12  # cells (half-width of the dominance window)
+const LOCAL_WINDOW := 12 # cells (half-width of the dominance window)
 
 ## Height thresholds
-const PEAK_MINOR_THRESH := 280.0  # m  →  small gold label
-const VALLEY_MINOR_THRESH := 160.0  # m  →  small aqua label
+const PEAK_MINOR_THRESH := 280.0 # m  →  small gold label
+const VALLEY_MINOR_THRESH := 160.0 # m  →  small aqua label
 
 ## Pixel distance below which two labels are considered overlapping.
-const OVERLAP_MARGIN := 40.0  # px
+const OVERLAP_MARGIN := 40.0 # px
 
 var grid_w: int = 150
 var grid_h: int = 150
@@ -40,9 +41,9 @@ func _ready() -> void:
 	contour_rect.material.set_shader_parameter("height_map", tex)
 
 	# Terrain colors
-	contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))  # green
-	contour_rect.material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0))  # tan
-	contour_rect.material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0))  # snow
+	contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0)) # green
+	contour_rect.material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0)) # tan
+	contour_rect.material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0)) # snow
 
 	# Water
 	contour_rect.material.set_shader_parameter("water_color", Color(0.10, 0.30, 0.85, 1.0))
@@ -52,12 +53,6 @@ func _ready() -> void:
 	contour_rect.material.set_shader_parameter("max_height", 500.0)
 	contour_rect.material.set_shader_parameter("mid_point", 0.6)
 
-	# Lighting
-	contour_rect.material.set_shader_parameter("light_dir", Vector2(-0.6, -0.8))
-	contour_rect.material.set_shader_parameter("shading_strength", 0.0)
-
-	# Wait one frame so map_container.size is finalised before placing labels.
-	await get_tree().process_frame
 	_label_tactical_points(height_grid, grid_w, grid_h)
 
 
@@ -72,7 +67,7 @@ func _generate_terrain(w: int, h: int) -> Array:
 		g.append([])
 		for y in range(h):
 			var n := noise.get_noise_2d(float(x), float(y))
-			var h_m := (n + 1.0) * 0.5 * 500.0  # 0 – 500 m
+			var h_m := (n + 1.0) * 0.5 * 500.0 # 0 – 500 m
 			g[x].append(h_m)
 	return g
 
@@ -124,14 +119,14 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 	for p in peaks:
 		(
 			label_descs
-			. append(
+			.append(
 				{
 					"grid_pos": Vector2(p["x"], p["y"]),
 					"px_pos": Vector2(p["x"] * sx, p["y"] * sy),
 					"val": p["val"],
 					"color": Color.GOLDENROD,
 					"symbol": "▲",
-					"font_size": 14,
+					"font_size": 20,
 					"val_h": p["val"],
 				}
 			)
@@ -140,14 +135,14 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 	for v in valleys:
 		(
 			label_descs
-			. append(
+			.append(
 				{
 					"grid_pos": Vector2(v["x"], v["y"]),
 					"px_pos": Vector2(v["x"] * sx, v["y"] * sy),
 					"val": v["val"],
 					"color": Color.AQUAMARINE,
 					"symbol": "▼",
-					"font_size": 14,
+					"font_size": 20,
 					"val_h": v["val"],
 				}
 			)
@@ -156,7 +151,9 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 	# Step 4 – pixel-space deconfliction (drop weaker overlapping labels)
 	var kept := _deconflict(label_descs)
 
+	
 	# Step 5 – spawn
+	await get_tree().process_frame
 	for desc in kept:
 		_spawn_label(desc)
 
@@ -229,11 +226,12 @@ func _spawn_label(desc: Dictionary) -> void:
 	lbl.add_theme_constant_override("outline_size", 4)
 	lbl.add_theme_font_size_override("font_size", desc["font_size"])
 
+	var size := lbl.get_theme_font("font").get_string_size(lbl.text)
+	lbl.size = size
+	
 	map_container.add_child(lbl)
-	await lbl.get_tree().process_frame
 
-	var half_size := lbl.get_minimum_size() * 0.5
-	lbl.position = desc["px_pos"] - half_size
+	lbl.position = desc["px_pos"] - (size*0.5)
 
 
 # ── Texture creation ──────────────────────────────────────────────
@@ -249,12 +247,13 @@ func _create_height_texture(grid: Array, w: int, h: int) -> ImageTexture:
 
 func toggle_shader(enabled: bool) -> void:
 	if not enabled:
-		contour_rect.material.set_shader_parameter("color_low", Color(0.5, 0.5, 0.5, 1.0))
-		contour_rect.material.set_shader_parameter("color_mid", Color(0.5, 0.5, 0.5, 1.0))
-		contour_rect.material.set_shader_parameter("color_high", Color(0.5, 0.5, 0.5, 1.0))
-		contour_rect.material.set_shader_parameter("water_color", Color(0.5, 0.5, 0.5, 1.0))
+		contour_rect.material.set_shader_parameter("gray_mode", true)
+		
+		contour_rect.material.set_shader_parameter("gray_mode_color", Color(0.5, 0.5, 0.5, 1.0))
 
 	else:
+		contour_rect.material.set_shader_parameter("gray_mode", false)
+		
 		contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))
 		contour_rect.material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0))
 		contour_rect.material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0))
