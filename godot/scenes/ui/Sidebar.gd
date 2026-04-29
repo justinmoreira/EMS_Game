@@ -20,10 +20,15 @@ const C_TEXT := Color("e8eaf0")
 const C_DIM := Color("6b7594")
 const C_PURPLE := Color("e099ff")
 
+# Constants
+var invalid_props = ["script", "name", "owner", "unique_name_in_owner"]
+
 # ── State ─────────────────────────────────────
 var selected_entity: EntityType = EntityType.NONE
 var selected_entity_name: String = ""
 var selected_node: Node = null
+var pending_attributes: Dictionary = {}
+var pending_entity_type: EntityType = EntityType.NONE
 var _reset_btn: Button = null
 var _simulate_btn: Button = null
 var _delete_btn: Button = null
@@ -46,11 +51,24 @@ func _ready() -> void:
 
 
 func select_entity(type: EntityType, display_name: String = "", node: Node = null) -> void:
+	# If switching to a different entity type, clear old pending attributes
+	if type != EntityType.NONE and type != pending_entity_type:
+		pending_attributes.clear()
+
 	if _tutorial_active:
 		return
 	selected_entity = type
 	selected_entity_name = display_name
 	selected_node = node
+
+	# If selecting a new entity type from sidebar without a placed unit
+	if node == null and type != EntityType.NONE:
+		pending_entity_type = type
+	else:
+		# Selecting a placed unit, clear pending
+		pending_entity_type = EntityType.NONE
+		pending_attributes.clear()
+
 	_refresh_attribute_panel()
 	_update_simulate_button()
 
@@ -236,7 +254,11 @@ func _build_entity_card(
 		C_BG_LIGHT.lightened(0.08),
 		sprite_path
 	)
-	card.pressed.connect(func(): select_entity(type, label, selected_node))
+	card.pressed.connect(
+		func():
+			_clear_selection()
+			select_entity(type, label, null)
+	)
 	return card
 
 
@@ -338,7 +360,7 @@ func _refresh_attribute_panel() -> void:
 			_add_accent_bar(C_BLUE)
 			_add_text_input(
 				"Name",
-				_prop_string("unit_name", "Transceiver 1"),
+				_prop_string("unit_name", UnitNameManager.peek_next_name("transceiver")),
 				C_BLUE,
 				func(v): _write("unit_name", v)
 			)
@@ -366,10 +388,10 @@ func _refresh_attribute_panel() -> void:
 				"Height",
 				0.0,
 				10.0,
-				_node_int("height", 5),
+				_prop_int("height", 5),
 				"m",
 				C_BLUE,
-				func(v): _write_node("height", int(v)),
+				func(v): _write("height", int(v)),
 				true
 			)
 			_add_dropdown(
@@ -386,7 +408,7 @@ func _refresh_attribute_panel() -> void:
 			_add_accent_bar(C_RED)
 			_add_text_input(
 				"Name",
-				_prop_string("unit_name", "Jammer 1"),
+				_prop_string("unit_name", UnitNameManager.peek_next_name("jammer")),
 				C_AMBER,
 				func(v): _write("unit_name", v)
 			)
@@ -414,10 +436,10 @@ func _refresh_attribute_panel() -> void:
 				"Height",
 				0.0,
 				10.0,
-				_node_int("height", 5),
+				_prop_int("height", 5),
 				"m",
 				C_RED,
-				func(v): _write_node("height", int(v)),
+				func(v): _write("height", int(v)),
 				true
 			)
 			_add_dropdown(
@@ -434,7 +456,7 @@ func _refresh_attribute_panel() -> void:
 			_add_accent_bar(C_PURPLE)
 			_add_text_input(
 				"Name",
-				_prop_string("unit_name", "Sensor 1"),
+				_prop_string("unit_name", UnitNameManager.peek_next_name("sensor")),
 				C_RED,
 				func(v): _write("unit_name", v)
 			)
@@ -462,10 +484,10 @@ func _refresh_attribute_panel() -> void:
 				"Height",
 				0.0,
 				10.0,
-				_node_int("height", 5),
+				_prop_int("height", 5),
 				"m",
 				C_PURPLE,
-				func(v): _write_node("height", int(v)),
+				func(v): _write("height", int(v)),
 				true
 			)
 			_add_dropdown(
@@ -706,6 +728,8 @@ func _prop_string(p: String, fallback: String) -> String:
 		var val = c.get(p)
 		if val != null:
 			return str(val)
+	if pending_attributes.has(p):
+		return str(pending_attributes[p])
 	return fallback
 
 
@@ -715,6 +739,8 @@ func _prop_float(p: String, fallback: float) -> float:
 		var val = c.get(p)
 		if val != null:
 			return float(val)
+	if pending_attributes.has(p):
+		return float(pending_attributes[p])
 	return fallback
 
 
@@ -724,32 +750,43 @@ func _prop_int(p: String, fallback: int) -> int:
 		var val = c.get(p)
 		if val != null:
 			return int(val)
+	if pending_attributes.has(p):
+		return int(pending_attributes[p])
 	return fallback
 
 
 func _prop_bool(p: String, fallback: bool) -> bool:
 	var c := _component()
-	return bool(c.get(p)) if c and p in c else fallback
+	if c and p in c:
+		return bool(c.get(p))
+	if pending_attributes.has(p):
+		return bool(pending_attributes[p])
+	return fallback
 
 
 func _write(p: String, value) -> void:
+	# Don't write properties that aren't actual component attributes
+	if p in invalid_props:
+		return
+
 	var c := _component()
 	if not c:
+		# If no component is selected, this is a pending entity being configured
+		# Store the attribute for when it's placed
+		pending_attributes[p] = value
 		return
 
 	c.set(p, value)
 
 	var unit = c.get_parent()
-	if unit == null:
-		return
-
-	var scene_path = unit.scene_file_path
-	if scene_path:
-		var packed_scene := PackedScene.new()
-		if packed_scene.pack(unit) == OK:
-			ResourceSaver.save(packed_scene, scene_path)
-		else:
-			push_error("Failed to pack unit")
+	if unit:
+		var scene_path = unit.scene_file_path
+		if scene_path:
+			var packed_scene := PackedScene.new()
+			if packed_scene.pack(unit) == OK:
+				ResourceSaver.save(packed_scene, scene_path)
+			else:
+				push_error("Failed to pack unit")
 
 
 func _is_transceiver_unit(unit: Node) -> bool:
@@ -768,18 +805,31 @@ func _node_int(p: String, fallback: int) -> int:
 
 
 func _write_node(p: String, value) -> void:
-	if selected_node and p in selected_node:
-		selected_node.set(p, value)
+	if not (selected_node and p in selected_node):
+		return
 
-		var scene_path = selected_node.scene_file_path
-		if scene_path:
-			var packed_scene := PackedScene.new()
-			if packed_scene.pack(selected_node) == OK:
-				ResourceSaver.save(packed_scene, scene_path)
-			else:
-				push_error("Failed to pack unit")
+	selected_node.set(p, value)
+
+	var scene_path = selected_node.scene_file_path
+	if scene_path:
+		var packed_scene := PackedScene.new()
+		if packed_scene.pack(selected_node) == OK:
+			ResourceSaver.save(packed_scene, scene_path)
+		else:
+			push_error("Failed to pack unit")
 
 
+func _clear_selection() -> void:
+	# When clicking a sidebar entity type, deselect any currently viewed unit
+	# so we show fresh defaults instead of the previous unit's values
+	selected_node = null
+	selected_entity_name = ""
+	_refresh_attribute_panel()
+
+
+# ════════════════════════════════════════════
+#  STYLE HELPERS
+# ════════════════════════════════════════════
 func _flat_style(bg: Color, padding: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg

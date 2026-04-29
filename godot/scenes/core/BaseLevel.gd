@@ -207,7 +207,27 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
 	add_child(unit)
 
+	# Apply any pending attribute changes from the sidebar
+	if (
+		sidebar_node
+		and sidebar_node.pending_attributes
+		and sidebar_node.pending_attributes.size() > 0
+	):
+		var component: Node = null
+		for child in unit.get_children():
+			if child.name in ["Transceiver", "Jammer", "Sensor"]:
+				component = child
+				break
+
+		if component:
+			for attr_name in sidebar_node.pending_attributes:
+				component.set(attr_name, sidebar_node.pending_attributes[attr_name])
+
+		sidebar_node.pending_attributes.clear()
+
+	# Connect the selection signal
 	_on_unit_placed(unit)
+	_on_unit_selected(unit)
 
 
 func _on_unit_placed(unit: Node) -> void:
@@ -346,6 +366,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				# If no unit was clicked, deselect
 				if not clicked_unit:
 					_deselect_current_unit()
+					get_tree().root.set_input_as_handled()
 
 			dragging = true
 			last_mouse_pos = event.position
