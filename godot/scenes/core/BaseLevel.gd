@@ -2,6 +2,11 @@ class_name BaseLevel
 extends Control
 
 const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
+const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
+
+enum TutorialStep { WELCOME, PLACE_TRANSCEIVER, DONE }
+
+var _tutorial_step := TutorialStep.WELCOME
 
 # Unit attribute controls
 const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
@@ -25,17 +30,32 @@ var unit_attributes_visible: bool = false
 
 # --- Initialization ---
 
+
 func _ready():
 	# Handle window resizing and sidebar layout
 	get_tree().get_root().size_changed.connect(_on_window_resized)
 	if sidebar_node:
 		sidebar_node.resized.connect(_on_window_resized)
 	_on_window_resized()
-	_show_sandbox_intro_popup()
+
+	GameEvents.units_changed.connect(_on_units_changed_for_tutorial)
+
+	# Check if tutorial was already completed
+	var tutorial_done := false
+	if OS.has_feature("web"):
+		var result = JavaScriptBridge.eval("localStorage.getItem('user_progress') || '{}'")
+		if result is String and result != "":
+			tutorial_done = result.find('"tutorial_complete":true') != -1
+		# Listen for reset tutorial from web UI
+		JavaScriptBridge.eval("if(window.initTutorialListener) window.initTutorialListener()")
+
+	if tutorial_done:
+		_tutorial_step = TutorialStep.DONE
+	else:
+		_start_tutorial()
 
 
-#display the popup on top of the game
-func _show_sandbox_intro_popup() -> void:
+func _start_tutorial() -> void:
 	if intro_popup_open:
 		return
 
@@ -44,14 +64,46 @@ func _show_sandbox_intro_popup() -> void:
 
 	$CanvasLayer.add_child(popup)
 
-	# listen for the continue button to be clicked
 	if popup.has_signal("continued"):
 		popup.continued.connect(_on_intro_popup_closed)
 
 
-# allow player to start playing game after clicking continue button
 func _on_intro_popup_closed() -> void:
 	intro_popup_open = false
+	_advance_tutorial()
+
+
+func _advance_tutorial() -> void:
+	match _tutorial_step:
+		TutorialStep.WELCOME:
+			_tutorial_step = TutorialStep.PLACE_TRANSCEIVER
+			GameEvents.tutorial_filter_sidebar.emit([sidebar_node.EntityType.TRANSCEIVER])
+			_show_tutorial_hint("Drag a [b]Transceiver[/b] from the sidebar onto the map to begin.")
+		TutorialStep.PLACE_TRANSCEIVER:
+			_tutorial_step = TutorialStep.DONE
+			GameEvents.tutorial_filter_sidebar.emit([])
+			if OS.has_feature("web"):
+				JavaScriptBridge.eval(
+					"if(window.setProgress) window.setProgress('{\"tutorial_complete\":true}')"
+				)
+			_show_tutorial_hint(
+				"Great! You placed a transceiver.\nNow try adding Jammers and Sensors."
+			)
+		TutorialStep.DONE:
+			pass
+
+
+func _on_units_changed_for_tutorial() -> void:
+	if _tutorial_step == TutorialStep.PLACE_TRANSCEIVER:
+		if get_tree().get_nodes_in_group("transceivers").size() > 0:
+			_advance_tutorial()
+
+
+func _show_tutorial_hint(text: String) -> void:
+	var popup := TUTORIAL_HINT_POPUP.instantiate()
+	popup.hint_text = text
+	$CanvasLayer.add_child(popup)
+
 
 func _on_window_resized() -> void:
 	self.size = get_viewport_rect().size
@@ -155,7 +207,27 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
 	add_child(unit)
 
+	# Apply any pending attribute changes from the sidebar
+	if (
+		sidebar_node
+		and sidebar_node.pending_attributes
+		and sidebar_node.pending_attributes.size() > 0
+	):
+		var component: Node = null
+		for child in unit.get_children():
+			if child.name in ["Transceiver", "Jammer", "Sensor"]:
+				component = child
+				break
+
+		if component:
+			for attr_name in sidebar_node.pending_attributes:
+				component.set(attr_name, sidebar_node.pending_attributes[attr_name])
+
+		sidebar_node.pending_attributes.clear()
+
+	# Connect the selection signal
 	_on_unit_placed(unit)
+	_on_unit_selected(unit)
 
 
 func _on_unit_placed(unit: Node) -> void:
@@ -230,10 +302,9 @@ func _show_attributes(component: Node) -> void:
 
 
 func _input(event: InputEvent) -> void:
-  #prevent gameplay after popup is open
+	# prevent gameplay after popup is open
 	if intro_popup_open:
 		return
-	
 	if event is InputEventMouseButton:
 		if event.position.x < sidebar_width:
 			return
@@ -256,14 +327,10 @@ func _input(event: InputEvent) -> void:
 			update_shader()
 
 
-# --- Unhandled Input (Camera Pan + Click-to-Deselect) ---
-
-
 func _unhandled_input(event: InputEvent) -> void:
-  # prevent map interaction when popup is active
+	# prevent map interaction when popup is active
 	if intro_popup_open:
 		return
-	
 	if event is InputEventKey and event.pressed and not event.echo:
 		var focus_owner := get_viewport().gui_get_focus_owner()
 		if focus_owner is LineEdit or focus_owner is TextEdit:
@@ -273,6 +340,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_toggle_unit_attributes()
 			get_viewport().set_input_as_handled()
 			return
+
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.position.x < sidebar_width:
 			return
@@ -296,6 +364,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				# If no unit was clicked, deselect
 				if not clicked_unit:
 					_deselect_current_unit()
+					get_tree().root.set_input_as_handled()
 
 			dragging = true
 			last_mouse_pos = event.position

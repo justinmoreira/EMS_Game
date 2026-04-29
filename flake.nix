@@ -25,15 +25,17 @@
             watchexec      # For watching file changes (HMR)
             python313      # For dev tooling scripts - eventual API
             gdtoolkit_4    # GDScript linter & formatter
+            supabase-cli   # Local Supabase (Postgres + Auth)
           ];
 
           shellHook = ''
+            # Reclaim supabase/ from root after Docker bind-mounts files as root
+            [ -d supabase ] && [ ! -w supabase ] && sudo chown -R "$(id -un):$(id -gn)" supabase
+            mkdir -p supabase/{.branches,.temp,migrations} 2>/dev/null || true
+
             if [ ! -d client/node_modules/@biomejs ]; then
               cd client && bun install && cd ..
             fi
-
-            # Configure Godot editor to use tab size 4
-            bash scripts/set_godot_save_fmt.sh
 
             # Configure Godot editor to use tab size 4
             bash scripts/set_godot_save_fmt.sh

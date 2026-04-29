@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://dj373426vo2td"]
+
+[ext_resource type="PackedScene" uid="uid://cscdegdlpq00e" path="res://scenes/core/BaseLevel.tscn" id="1_6xrlp"]
+[ext_resource type="Script" uid="uid://dtsuljfegoveo" path="res://scenes/levels/ContourDemo.gd" id="2_ju0un"]
+[ext_resource type="Shader" uid="uid://ccadptf4j2ywd" path="res://shaders/ContourLine.gdshader" id="3_si7pu"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_l1"]
+shader = ExtResource("3_si7pu")
+shader_parameter/color_low = Color(0, 0, 0, 1)
+shader_parameter/color_mid = Color(0, 0, 0, 1)
+shader_parameter/color_high = Color(0, 0, 0, 1)
+shader_parameter/water_color = Color(0, 0, 0, 1)
+shader_parameter/max_height = 500.0
+shader_parameter/sea_level = 100.0
+shader_parameter/low_point = 0.3
+shader_parameter/mid_point = 0.6
+shader_parameter/high_point = 0.85
+shader_parameter/gray_mode = false
+shader_parameter/gray_mode_color = Color(0, 0, 0, 1)
+shader_parameter/contour_interval = 50.0
+shader_parameter/line_thickness = 1.0
+shader_parameter/line_color = Color(0, 0, 0, 0.6)
+
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_pb6d8"]
+
+[node name="ContourGen" unique_id=1441387089 instance=ExtResource("1_6xrlp")]
+script = ExtResource("2_ju0un")
+
+[node name="BackgroundTexture" parent="." index="0" unique_id=2008967764]
+material = SubResource("ShaderMaterial_l1")
+texture = SubResource("PlaceholderTexture2D_pb6d8")
+expand_mode = 2

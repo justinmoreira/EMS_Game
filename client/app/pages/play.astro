@@ -1,5 +1,4 @@
 ---
-import NavBar from "@/components/NavBar";
 import Base from "@/layouts/Base.astro";
 import { BASE_URL } from "@/utils";
 ---
@@ -10,18 +9,17 @@ import { BASE_URL } from "@/utils";
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
   </Fragment>
 
-  <NavBar client:load />
-
+  <script is:inline src="/godot-bridge.js"></script>
   <!-- Game canvas -->
   <canvas
     id="canvas"
-    class="block w-screen h-[calc(100vh-3rem)] mt-12 touch-none outline-none"
+    class="block w-screen h-[calc(100vh-3rem)] touch-none outline-none"
   ></canvas>
 
   <!-- Loading overlay -->
   <div
     id="status"
-    class="fixed inset-0 bg-neutral-900 flex flex-col items-center justify-center"
+    class="fixed inset-0 top-12 bg-neutral-900 flex flex-col items-center justify-center"
   >
     <img
       id="status-splash"
@@ -44,7 +42,7 @@ import { BASE_URL } from "@/utils";
   <script is:inline define:vars={{ BASE_URL }}>
     const GODOT_CONFIG = {
       args: [],
-      canvasResizePolicy: 2,
+      canvasResizePolicy: 0,
       ensureCrossOriginIsolationHeaders: true,
       executable: BASE_URL + "/godot/index",
       focusCanvas: true,
@@ -55,7 +53,7 @@ import { BASE_URL } from "@/utils";
     const canvas = document.getElementById("canvas");
     function resizeCanvas() {
       canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      canvas.height = window.innerHeight - 48;
     }
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
@@ -117,11 +115,6 @@ import { BASE_URL } from "@/utils";
             },
           })
           .then(() => setStatusMode("hidden"), displayFailureNotice);
-      }
-
-      // Register service worker for PWA (production only)
-      if ("serviceWorker" in navigator && location.hostname !== "localhost") {
-        navigator.serviceWorker.register(BASE_URL + "/sw.js");
       }
     })();
   </script>

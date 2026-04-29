@@ -113,14 +113,90 @@ code:
     code dev.code-workspace
 
 [group('dev')]
-[doc('Start Astro dev server with auto Godot rebuild on changes')]
-dev: _init_client
+[doc('Start local Supabase (Postgres + Auth + API)')]
+db-start:
+    supabase start
+
+[group('dev')]
+[doc('Restart local Supabase (force by default, mode=soft skips restart when healthy)')]
+db-restart mode="force":
     #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ "{{mode}}" = "soft" ]; then
+        if curl --silent --show-error --fail --max-time 5 http://127.0.0.1:54321/auth/v1/health >/dev/null; then
+            echo "✅ Supabase auth is healthy; skipping restart"
+            exit 0
+        fi
+        echo "⚠️  Supabase auth is unhealthy; restarting..."
+    else
+        echo "🔄 Restarting local Supabase..."
+    fi
+
+    supabase stop
+    supabase start
+    just _wait_supabase
+
+[group('dev')]
+[doc('Stop local Supabase')]
+db-stop:
+    supabase stop
+
+[group('dev')]
+[doc('Reset local database (destructive)')]
+db-reset:
+    supabase db reset
+
+[group('dev')]
+[doc('Generate TypeScript types from database schema')]
+db-types:
+    supabase gen types typescript --local > {{client_path}}/app/lib/database.types.ts
+
+[group('dev')]
+[doc('Wait for local Supabase auth to become healthy')]
+[private]
+_wait_supabase:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "⏳ Waiting for Supabase auth to become healthy..."
+    if curl --silent --show-error --fail \
+        --retry 30 \
+        --retry-all-errors \
+        --retry-connrefused \
+        --retry-delay 2 \
+        --retry-max-time 60 \
+        http://127.0.0.1:54321/auth/v1/health >/dev/null; then
+        echo "✅ Supabase auth is healthy"
+    else
+        echo "❌ Supabase auth did not become healthy in time"
+        docker ps --filter 'name=supabase_'
+        exit 1
+    fi
+
+[group('dev')]
+[doc('Start Astro dev server with auto Godot rebuild on changes')]
+[private]
+_hmr_serve:
+    #!/usr/bin/env bash
+    CLIENT_PATH={{client_path}} ./scripts/gen-env.sh
     echo "🔄 Watching godot/ for changes (auto rebuild)..."
-    (watchexec -w godot -e gd,tscn,gdshader,tres -- just build_game &)
+    watchexec --postpone --poll 2000ms -w godot -e gd,tscn,gdshader,tres -- just build_game 2>&1 | tee /tmp/godot-rebuild.log &
+    WATCH_PID=$!
+    trap "kill $WATCH_PID 2>/dev/null" EXIT
     PORT=$(python3 scripts/find_port.py)
     echo "🌐 Starting dev server on port $PORT..."
-    cd {{client_path}} && bun run dev --port $PORT
+    cd {{client_path}} && PORT=$PORT bun run dev --port $PORT
+
+[group('dev')]
+[doc('Full dev stack: Supabase + Astro + Godot watcher')]
+dev:
+    #!/usr/bin/env bash
+    echo "⚡ Bringing up dev (db + Godot build + client deps in parallel)..."
+    just db-restart soft &
+    just build_game &
+    just _init_client &
+    for _ in 1 2 3; do wait -n || exit $?; done
+    just _hmr_serve
 
 [group('quality')]
 [doc('Fast style/format checks (--fix to auto-fix, --fix --unsafe for unsafe fixes)')]

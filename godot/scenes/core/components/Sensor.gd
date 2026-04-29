@@ -14,7 +14,12 @@ extends Node2D
 @export var frame_width: int = 974
 @export var frame_height: int = 970
 @export var animation_speed: float = 12.0
-@export var unit_name: String = ""
+@export var unit_name: String = "":
+	set(value):
+		unit_name = value
+		if _unit_visual:
+			_unit_visual.unit_name = value
+			_unit_visual.queue_redraw()
 
 var _unit_visual: Node2D
 
