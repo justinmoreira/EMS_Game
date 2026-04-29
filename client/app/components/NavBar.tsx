@@ -1,3 +1,4 @@
+import AccountModal from "@/components/AuthPanel";
 import { BASE_URL } from "@/utils";
 
 export default function NavBar() {
@@ -27,12 +28,7 @@ export default function NavBar() {
             Leaderboards
           </a>
         </div>
-        <a
-          href={`${BASE_URL}/account`}
-          class="text-sm font-medium hover:text-white text-neutral-300 transition-colors"
-        >
-          Account
-        </a>
+        <AccountModal />
       </div>
     </nav>
   );

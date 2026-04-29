@@ -27,6 +27,11 @@ var link_results: Dictionary = {}
 var detect_results: Dictionary = {}
 var timer: Timer
 var links_visible: bool = true
+var height_grid: Array = []
+var map_origin: Vector2
+var map_scale: Vector2
+var grid_cols: int
+var grid_rows: int
 
 
 func _ready() -> void:
@@ -92,6 +97,8 @@ func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> int:
 	)
 
 	var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER.get(bw_key, 1.0)
+
+	print_max_height_along_link(tx, rx)
 
 	if !PhysicsEngine.range_check(received_power):
 		return LinkState.FAILED_OUT_OF_RANGE
@@ -348,3 +355,62 @@ func _input(event):
 		links_visible = !links_visible
 		for k in active_links:
 			_apply_visibility_for_key(k)
+
+
+func set_terrain_data(grid: Array, origin: Vector2, map_size: Vector2) -> void:
+	height_grid = grid
+	grid_cols = grid.size()
+	grid_rows = grid[0].size() if grid.size() > 0 else 0
+	map_origin = origin
+
+	# Calculate the exact pixel size of each cell
+	map_scale.x = map_size.x / float(grid_cols)
+	map_scale.y = map_size.y / float(grid_rows)
+
+
+func print_max_height_along_link(tx: Transceiver, rx: Transceiver) -> void:
+	# grid is built as grid[x][y] (x = outer index) in the terrain script.
+	if grid_cols == 0 or map_scale.x == 0 or map_scale.y == 0:
+		return
+
+	var tx_local = tx.global_position - map_origin
+	var rx_local = rx.global_position - map_origin
+
+	# Convert world position → grid cell index.
+	# cell_size is in pixels-per-cell, so dividing world px by cell_size gives
+	# the column/row index.
+	var x0: int = int(tx_local.x / map_scale.x)
+	var y0: int = int(tx_local.y / map_scale.y)
+	var x1: int = int(rx_local.x / map_scale.x)
+	var y1: int = int(rx_local.y / map_scale.y)
+
+	var max_h: float = -INF
+
+	# Bresenham line walk.
+	var dx: int = absi(x1 - x0)
+	var dy: int = absi(y1 - y0)
+	var sx: int = 1 if x0 < x1 else -1
+	var sy: int = 1 if y0 < y1 else -1
+	var err: int = dx - dy
+
+	while true:
+		# Bounds-check against the correct axis for each index.
+		# grid[x][y]: x must be < grid_cols, y must be < grid_rows.
+		if x0 >= 0 and x0 < grid_cols and y0 >= 0 and y0 < grid_rows:
+			var h: float = height_grid[x0][y0]
+			if h > max_h:
+				max_h = h
+
+		if x0 == x1 and y0 == y1:
+			break
+
+		var e2: int = 2 * err
+		if e2 > -dy:
+			err -= dy
+			x0 += sx
+		if e2 < dx:
+			err += dx
+			y0 += sy
+
+	# value generated here will eventually be used for terrain interference via fresnel
+	# print("Max height between %s -> %s: %.2f m" % [tx.name, rx.name, max_h])

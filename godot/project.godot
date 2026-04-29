@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="EMS sim"
-run/main_scene="res://scenes/levels/Level1.tscn"
+run/main_scene="res://scenes/levels/ContourDemo.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
@@ -20,7 +20,7 @@ config/icon="res://icon.svg"
 PhysicsEngine="*res://scripts/PhysicsEngine.gd"
 SimulationManager="*res://scripts/SimulationManager.gd"
 GameEvents="*res://scripts/GameEvents.gd"
-UnitNameManager="*uid://b6ybce2ygj1k0"
+UnitNameManager="*res://scripts/UnitNameManager.gd"
 
 [display]
 
