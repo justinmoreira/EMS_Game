@@ -55,10 +55,22 @@ jobs:
       - name: Install client dependencies
         run: cd client && bun install
 
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Apply migrations to staging Supabase
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL_STAGING }}
+
       - name: Build Astro site
         run: cd client && bun run build
         env:
           BASE_URL: /EMS_Game
+          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL_STAGING }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY_STAGING }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

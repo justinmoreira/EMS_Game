@@ -1,3 +1,4 @@
+class_name Sidebar
 extends PanelContainer
 
 # ─────────────────────────────────────────────
@@ -19,10 +20,15 @@ const C_TEXT := Color("e8eaf0")
 const C_DIM := Color("6b7594")
 const C_PURPLE := Color("e099ff")
 
+# Constants
+var invalid_props = ["script", "name", "owner", "unique_name_in_owner"]
+
 # ── State ─────────────────────────────────────
 var selected_entity: EntityType = EntityType.NONE
 var selected_entity_name: String = ""
 var selected_node: Node = null
+var pending_attributes: Dictionary = {}
+var pending_entity_type: EntityType = EntityType.NONE
 var _reset_btn: Button = null
 var _delete_btn: Button = null
 var _confirm_btn: Button = null
@@ -31,18 +37,38 @@ var _confirm_btn: Button = null
 var _attr_header: Label
 var _attr_body: VBoxContainer
 var _attr_placeholder: Label
+var _entity_cards: Dictionary = {}  # EntityType -> Control
+var _attr_section: PanelContainer
+var _attr_content: VBoxContainer
+var _tutorial_active: bool = false
 
 
 func _ready() -> void:
 	GameEvents.units_changed.connect(_update_reset_button)
+	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
 	_build_sidebar()
 	_refresh_attribute_panel()
 
 
 func select_entity(type: EntityType, display_name: String = "", node: Node = null) -> void:
+	# If switching to a different entity type, clear old pending attributes
+	if type != EntityType.NONE and type != pending_entity_type:
+		pending_attributes.clear()
+
+	if _tutorial_active:
+		return
 	selected_entity = type
 	selected_entity_name = display_name
 	selected_node = node
+
+	# If selecting a new entity type from sidebar without a placed unit
+	if node == null and type != EntityType.NONE:
+		pending_entity_type = type
+	else:
+		# Selecting a placed unit, clear pending
+		pending_entity_type = EntityType.NONE
+		pending_attributes.clear()
+
 	_refresh_attribute_panel()
 	_update_reset_button()
 
@@ -67,7 +93,8 @@ func _build_sidebar() -> void:
 	vbox.add_child(_build_header())
 	vbox.add_child(_build_tray())
 	vbox.add_child(_build_divider())
-	vbox.add_child(_build_attr_section())
+	_attr_section = _build_attr_section()
+	vbox.add_child(_attr_section)
 
 
 func _build_header() -> PanelContainer:
@@ -137,36 +164,38 @@ func _build_tray() -> PanelContainer:
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 8)
 	vbox.add_child(stack)
-	stack.add_child(
-		_build_entity_card(
-			"Transceiver",
-			"T",
-			C_BLUE,
-			EntityType.TRANSCEIVER,
-			"res://scenes/core/units/TransceiverUnit.tscn",
-			"res://assets/sprites/transceiver.png"
-		)
+	var tx_card := _build_entity_card(
+		"Transceiver",
+		"T",
+		C_BLUE,
+		EntityType.TRANSCEIVER,
+		"res://scenes/core/units/TransceiverUnit.tscn",
+		"res://assets/sprites/transceiver.png"
 	)
-	stack.add_child(
-		_build_entity_card(
-			"Jammer",
-			"J",
-			C_RED,
-			EntityType.JAMMER,
-			"res://scenes/core/units/JammerUnit.tscn",
-			"res://assets/sprites/jammer.png"
-		)
+	stack.add_child(tx_card)
+	_entity_cards[EntityType.TRANSCEIVER] = tx_card
+
+	var jm_card := _build_entity_card(
+		"Jammer",
+		"J",
+		C_RED,
+		EntityType.JAMMER,
+		"res://scenes/core/units/JammerUnit.tscn",
+		"res://assets/sprites/jammer.png"
 	)
-	stack.add_child(
-		_build_entity_card(
-			"Sensor",
-			"S",
-			C_PURPLE,
-			EntityType.SENSOR,
-			"res://scenes/core/units/SensorUnit.tscn",
-			"res://assets/sprites/sensor.png"
-		)
+	stack.add_child(jm_card)
+	_entity_cards[EntityType.JAMMER] = jm_card
+
+	var sn_card := _build_entity_card(
+		"Sensor",
+		"S",
+		C_PURPLE,
+		EntityType.SENSOR,
+		"res://scenes/core/units/SensorUnit.tscn",
+		"res://assets/sprites/sensor.png"
 	)
+	stack.add_child(sn_card)
+	_entity_cards[EntityType.SENSOR] = sn_card
 
 	var hint := _make_label("drag entities onto the scene", C_DIM, 15)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -196,7 +225,11 @@ func _build_entity_card(
 		C_BG_LIGHT.lightened(0.08),
 		sprite_path
 	)
-	card.pressed.connect(func(): select_entity(type, label, selected_node))
+	card.pressed.connect(
+		func():
+			_clear_selection()
+			select_entity(type, label, null)
+	)
 	return card
 
 
@@ -206,15 +239,15 @@ func _build_attr_section() -> PanelContainer:
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	var content := VBoxContainer.new()
-	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 12)
-	panel.add_child(content)
+	_attr_content = VBoxContainer.new()
+	_attr_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_attr_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_attr_content.add_theme_constant_override("separation", 12)
+	panel.add_child(_attr_content)
 
 	var attr_header_row := HBoxContainer.new()
 	attr_header_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_child(attr_header_row)
+	_attr_content.add_child(attr_header_row)
 
 	attr_header_row.add_child(_make_label("ATTRIBUTES", C_DIM, 15))
 
@@ -272,13 +305,13 @@ func _build_attr_section() -> PanelContainer:
 	_confirm_btn = confirm_btn
 
 	_attr_header = _make_label("", C_TEXT, 20)
-	content.add_child(_attr_header)
+	_attr_content.add_child(_attr_header)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	content.add_child(scroll)
+	_attr_content.add_child(scroll)
 
 	_attr_body = VBoxContainer.new()
 	_attr_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -311,7 +344,7 @@ func _refresh_attribute_panel() -> void:
 
 	if _delete_btn:
 		_delete_btn.visible = selected_entity != EntityType.NONE and selected_node != null
-	
+
 	if _confirm_btn:
 		_confirm_btn.visible = selected_entity != EntityType.NONE and selected_node != null
 
@@ -330,7 +363,7 @@ func _refresh_attribute_panel() -> void:
 			_add_accent_bar(C_BLUE)
 			_add_text_input(
 				"Name",
-				_prop_string("unit_name", "Transceiver 1"),
+				_prop_string("unit_name", UnitNameManager.peek_next_name("transceiver")),
 				C_BLUE,
 				func(v): _write("unit_name", v)
 			)
@@ -358,10 +391,10 @@ func _refresh_attribute_panel() -> void:
 				"Height",
 				0.0,
 				10.0,
-				_node_int("height", 5),
+				_prop_int("height", 5),
 				"m",
 				C_BLUE,
-				func(v): _write_node("height", int(v)),
+				func(v): _write("height", int(v)),
 				true
 			)
 			_add_dropdown(
@@ -378,7 +411,7 @@ func _refresh_attribute_panel() -> void:
 			_add_accent_bar(C_RED)
 			_add_text_input(
 				"Name",
-				_prop_string("unit_name", "Jammer 1"),
+				_prop_string("unit_name", UnitNameManager.peek_next_name("jammer")),
 				C_AMBER,
 				func(v): _write("unit_name", v)
 			)
@@ -406,10 +439,10 @@ func _refresh_attribute_panel() -> void:
 				"Height",
 				0.0,
 				10.0,
-				_node_int("height", 5),
+				_prop_int("height", 5),
 				"m",
 				C_RED,
-				func(v): _write_node("height", int(v)),
+				func(v): _write("height", int(v)),
 				true
 			)
 			_add_dropdown(
@@ -426,7 +459,7 @@ func _refresh_attribute_panel() -> void:
 			_add_accent_bar(C_PURPLE)
 			_add_text_input(
 				"Name",
-				_prop_string("unit_name", "Sensor 1"),
+				_prop_string("unit_name", UnitNameManager.peek_next_name("sensor")),
 				C_RED,
 				func(v): _write("unit_name", v)
 			)
@@ -454,10 +487,10 @@ func _refresh_attribute_panel() -> void:
 				"Height",
 				0.0,
 				10.0,
-				_node_int("height", 5),
+				_prop_int("height", 5),
 				"m",
 				C_PURPLE,
-				func(v): _write_node("height", int(v)),
+				func(v): _write("height", int(v)),
 				true
 			)
 			_add_dropdown(
@@ -648,7 +681,7 @@ func _on_delete_pressed() -> void:
 func _on_confirm_pressed() -> void:
 	if not selected_node:
 		return
-	
+
 	_confirm_btn.visible = false
 	SimulationManager.simulate()
 
@@ -696,6 +729,8 @@ func _prop_string(p: String, fallback: String) -> String:
 		var val = c.get(p)
 		if val != null:
 			return str(val)
+	if pending_attributes.has(p):
+		return str(pending_attributes[p])
 	return fallback
 
 
@@ -705,6 +740,8 @@ func _prop_float(p: String, fallback: float) -> float:
 		var val = c.get(p)
 		if val != null:
 			return float(val)
+	if pending_attributes.has(p):
+		return float(pending_attributes[p])
 	return fallback
 
 
@@ -714,32 +751,43 @@ func _prop_int(p: String, fallback: int) -> int:
 		var val = c.get(p)
 		if val != null:
 			return int(val)
+	if pending_attributes.has(p):
+		return int(pending_attributes[p])
 	return fallback
 
 
 func _prop_bool(p: String, fallback: bool) -> bool:
 	var c := _component()
-	return bool(c.get(p)) if c and p in c else fallback
+	if c and p in c:
+		return bool(c.get(p))
+	if pending_attributes.has(p):
+		return bool(pending_attributes[p])
+	return fallback
 
 
 func _write(p: String, value) -> void:
+	# Don't write properties that aren't actual component attributes
+	if p in invalid_props:
+		return
+
 	var c := _component()
 	if not c:
+		# If no component is selected, this is a pending entity being configured
+		# Store the attribute for when it's placed
+		pending_attributes[p] = value
 		return
 
 	c.set(p, value)
 
 	var unit = c.get_parent()
-	if unit == null:
-		return
-
-	var scene_path = unit.scene_file_path
-	if scene_path:
-		var packed_scene := PackedScene.new()
-		if packed_scene.pack(unit) == OK:
-			ResourceSaver.save(packed_scene, scene_path)
-		else:
-			push_error("Failed to pack unit")
+	if unit:
+		var scene_path = unit.scene_file_path
+		if scene_path:
+			var packed_scene := PackedScene.new()
+			if packed_scene.pack(unit) == OK:
+				ResourceSaver.save(packed_scene, scene_path)
+			else:
+				push_error("Failed to pack unit")
 
 
 func _is_transceiver_unit(unit: Node) -> bool:
@@ -758,18 +806,31 @@ func _node_int(p: String, fallback: int) -> int:
 
 
 func _write_node(p: String, value) -> void:
-	if selected_node and p in selected_node:
-		selected_node.set(p, value)
+	if not (selected_node and p in selected_node):
+		return
 
-		var scene_path = selected_node.scene_file_path
-		if scene_path:
-			var packed_scene := PackedScene.new()
-			if packed_scene.pack(selected_node) == OK:
-				ResourceSaver.save(packed_scene, scene_path)
-			else:
-				push_error("Failed to pack unit")
+	selected_node.set(p, value)
+
+	var scene_path = selected_node.scene_file_path
+	if scene_path:
+		var packed_scene := PackedScene.new()
+		if packed_scene.pack(selected_node) == OK:
+			ResourceSaver.save(packed_scene, scene_path)
+		else:
+			push_error("Failed to pack unit")
 
 
+func _clear_selection() -> void:
+	# When clicking a sidebar entity type, deselect any currently viewed unit
+	# so we show fresh defaults instead of the previous unit's values
+	selected_node = null
+	selected_entity_name = ""
+	_refresh_attribute_panel()
+
+
+# ════════════════════════════════════════════
+#  STYLE HELPERS
+# ════════════════════════════════════════════
 func _flat_style(bg: Color, padding: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
@@ -794,14 +855,38 @@ func _apply_style(
 	control.add_theme_stylebox_override("panel", s)
 
 
-func _make_label(text: String, color: Color, size: int, expand: bool = false) -> Label:
+## Shorthand label factory
+func _make_label(text: String, color: Color, txt_size: int, expand: bool = false) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
 	lbl.add_theme_color_override("font_color", color)
-	lbl.add_theme_font_size_override("font_size", size)
+	lbl.add_theme_font_size_override("font_size", txt_size)
 	if expand:
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return lbl
+
+
+func _on_tutorial_filter(allowed_types: Array) -> void:
+	_tutorial_active = not allowed_types.is_empty()
+	_attr_content.modulate.a = 0.3 if _tutorial_active else 1.0
+	_set_interactivity(_attr_content, not _tutorial_active)
+	for type in _entity_cards:
+		var card = _entity_cards[type]
+		var enabled = not _tutorial_active or type in allowed_types
+		card.modulate.a = 1.0 if enabled else 0.3
+		card.set_process_input(enabled)
+		card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+		for child in card.get_children():
+			child.mouse_filter = (
+				Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
+			)
+
+
+func _set_interactivity(node: Control, enabled: bool) -> void:
+	node.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+	for child in node.get_children():
+		if child is Control:
+			_set_interactivity(child, enabled)
 
 
 func _animate_blink(node: ColorRect) -> void:
