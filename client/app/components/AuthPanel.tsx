@@ -4,6 +4,7 @@ import { useEffect, useState } from "preact/hooks";
 import { authLoading, authUser } from "@/lib/auth";
 import { setProgress, syncStatus } from "@/lib/progress";
 import { supabase } from "@/lib/supabase";
+import { BASE_URL } from "@/utils";
 
 function LoginForm() {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -11,18 +12,89 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState<string | null>(
+    null,
+  );
+  const [resending, setResending] = useState(false);
+  const [resendInfo, setResendInfo] = useState("");
+
+  const emailRedirectTo = `${window.location.origin}${BASE_URL}/`;
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
     setError("");
     setSubmitting(true);
-    const { error: authError } =
-      mode === "login"
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password });
-    if (authError) setError(authError.message);
+    if (mode === "login") {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (authError) setError(authError.message);
+    } else {
+      const { data, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo },
+      });
+      if (authError) {
+        setError(authError.message);
+      } else if (data.user && !data.session) {
+        setPendingConfirmation(email);
+      }
+    }
     setSubmitting(false);
   };
+
+  const handleResend = async () => {
+    if (!pendingConfirmation) return;
+    setResending(true);
+    setResendInfo("");
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email: pendingConfirmation,
+      options: { emailRedirectTo },
+    });
+    setResendInfo(
+      resendError ? resendError.message : "Sent. Check your inbox.",
+    );
+    setResending(false);
+  };
+
+  if (pendingConfirmation) {
+    return (
+      <div class="flex flex-col gap-4 w-full text-center">
+        <div class="mx-auto w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xl">
+          @
+        </div>
+        <p class="text-white font-medium">Check your email</p>
+        <p class="text-sm text-neutral-400">
+          We sent a confirmation link to{" "}
+          <span class="text-white">{pendingConfirmation}</span>. Click it to
+          activate your account, then come back here to sign in.
+        </p>
+        {resendInfo && <p class="text-xs text-neutral-400">{resendInfo}</p>}
+        <button
+          type="button"
+          onClick={handleResend}
+          disabled={resending}
+          class="px-4 py-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 disabled:opacity-50 text-white rounded-lg transition-colors text-sm"
+        >
+          {resending ? "Sending..." : "Resend confirmation email"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setPendingConfirmation(null);
+            setResendInfo("");
+            setMode("login");
+          }}
+          class="text-sm text-neutral-400 hover:text-white transition-colors"
+        >
+          Back to sign in
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} class="flex flex-col gap-4 w-full">
@@ -162,7 +234,7 @@ export default function AccountModal() {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     setReady(true);
-    const el = document.getElementById("account-slot");
+    const el = document.getElementById("account-placeholder");
     if (el) el.style.display = "none";
   }, []);
   useEffect(() => {

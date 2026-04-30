@@ -176,11 +176,11 @@ _wait_supabase:
 [group('dev')]
 [doc('Start Astro dev server with auto Godot rebuild on changes')]
 [private]
-_hmr_serve: _init_client
+_hmr_serve:
     #!/usr/bin/env bash
     CLIENT_PATH={{client_path}} ./scripts/gen-env.sh
     echo "🔄 Watching godot/ for changes (auto rebuild)..."
-    watchexec --poll 2000 -w godot -e gd,tscn,gdshader,tres -- just build_game 2>&1 | tee /tmp/godot-rebuild.log &
+    watchexec --postpone --poll 2000ms -w godot -e gd,tscn,gdshader,tres -- just build_game 2>&1 | tee /tmp/godot-rebuild.log &
     WATCH_PID=$!
     trap "kill $WATCH_PID 2>/dev/null" EXIT
     PORT=$(python3 scripts/find_port.py)
@@ -190,7 +190,12 @@ _hmr_serve: _init_client
 [group('dev')]
 [doc('Full dev stack: Supabase + Astro + Godot watcher')]
 dev:
-    just db-restart mode=soft
+    #!/usr/bin/env bash
+    echo "⚡ Bringing up dev (db + Godot build + client deps in parallel)..."
+    just db-restart soft &
+    just build_game &
+    just _init_client &
+    for _ in 1 2 3; do wait -n || exit $?; done
     just _hmr_serve
 
 [group('quality')]

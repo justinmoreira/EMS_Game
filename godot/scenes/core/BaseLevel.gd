@@ -4,10 +4,10 @@ extends Control
 const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
 const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
 
-# legned display for line pattern
+# legend display for line pattern
 const CONNECTION_LEGEND_SCRIPT := preload("res://scenes/ui/ConnectionLegend.gd")
 const CONNECTION_LEGEND_NODE_NAME := "ConnectionLegend"
-const CONNECTION_LEGEND_POSITION := Vector2(1650, 120)
+const CONNECTION_LEGEND_MARGIN := Vector2(0, 66)
 
 enum TutorialStep { WELCOME, PLACE_TRANSCEIVER, DONE }
 
@@ -30,10 +30,16 @@ var currently_selected_unit: Node = null
 
 var unit_attributes_visible: bool = false
 
+var connection_legend: Control = null
+
 @onready var background := $BackgroundTexture
 @onready var sidebar_node = get_tree().root.find_child("Sidebar", true, false)
 
 # --- Initialization ---
+
+
+func _enter_tree() -> void:
+	call_deferred("_create_connection_legend")
 
 
 func _ready():
@@ -117,6 +123,7 @@ func _on_window_resized() -> void:
 	if background:
 		background.offset_left = sidebar_width
 	update_shader()
+	_position_connection_legend()
 
 
 # --- Coordinate Space Math ---
@@ -410,13 +417,39 @@ func _find_unit_component(unit: Node) -> Node:
 	return null
 
 
-# add legned display for line pattern
+# add legend display for line pattern
+# Add legend display for line pattern
 func _create_connection_legend() -> void:
 	if $CanvasLayer.get_node_or_null(CONNECTION_LEGEND_NODE_NAME) != null:
+		connection_legend = $CanvasLayer.get_node(CONNECTION_LEGEND_NODE_NAME) as Control
+		_position_connection_legend()
 		return
 
-	var legend := CONNECTION_LEGEND_SCRIPT.new()
-	legend.name = CONNECTION_LEGEND_NODE_NAME
-	legend.position = CONNECTION_LEGEND_POSITION
+	# Make sure this UI layer appears above the map.
+	$CanvasLayer.layer = 100
 
-	$CanvasLayer.add_child(legend)
+	connection_legend = CONNECTION_LEGEND_SCRIPT.new()
+	connection_legend.name = CONNECTION_LEGEND_NODE_NAME
+	connection_legend.z_index = 1000
+	connection_legend.top_level = true
+
+	$CanvasLayer.add_child(connection_legend)
+
+	_position_connection_legend()
+
+	print("Connection legend added at: ", connection_legend.position)
+
+
+func _position_connection_legend() -> void:
+	if connection_legend == null:
+		return
+
+	var viewport_size := get_viewport_rect().size
+	var legend_width := 280.0
+
+	if connection_legend.has_method("get_collapsed_width"):
+		legend_width = connection_legend.get_collapsed_width()
+
+	connection_legend.position = Vector2(
+		viewport_size.x - legend_width - CONNECTION_LEGEND_MARGIN.x, CONNECTION_LEGEND_MARGIN.y
+	)

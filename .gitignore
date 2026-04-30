@@ -18,3 +18,5 @@ node_modules/
 .astro/
 
 /biome.json
+
+*.tmp
