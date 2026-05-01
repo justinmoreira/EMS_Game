@@ -681,7 +681,7 @@ func _on_delete_pressed() -> void:
 func _on_confirm_pressed() -> void:
 	if not selected_node:
 		return
-		
+
 	var c := _component()
 	if c:
 		for p in pending_attributes:
@@ -781,12 +781,13 @@ func _write(p: String, value) -> void:
 		return
 	pending_attributes[p] = value
 
+
 func _write_node_direct(p: String, value) -> void:
 	if not (selected_node and p in selected_node):
 		return
 	selected_node.set(p, value)
-	
-	
+
+
 func _is_transceiver_unit(unit: Node) -> bool:
 	if unit == null:
 		return false
