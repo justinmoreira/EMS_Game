@@ -11,8 +11,6 @@ var drag_distance: float = 0.0
 
 
 func _ready() -> void:
-	add_to_group("ems_units")
-
 	# Find whichever component was instantiated
 	for child in get_all_children(self):
 		if child is Transceiver or child is Jammer or child is Sensor:
