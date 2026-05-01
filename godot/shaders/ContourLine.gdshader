@@ -2,6 +2,9 @@ shader_type canvas_item;
 
 uniform sampler2D height_map;
 
+uniform float zoom = 1.0;
+uniform vec2  offset = vec2(0.0, 0.0);
+
 // ── Elevation coloring ─────────────────────────────
 uniform vec4 color_low  : source_color;  // green
 uniform vec4 color_mid  : source_color;  // tan
@@ -24,25 +27,31 @@ uniform float line_thickness = 1.0;
 uniform vec4 line_color : source_color = vec4(0.0, 0.0, 0.0, 0.6);
 
 void fragment() {
-    float h = texture(height_map, UV).r;
+	vec2 uv = UV - vec2(0.5);
+
+    // Apply zoom and pan offset
+    vec2 map_uv = uv * zoom + vec2(0.5) + offset;
+
+    // Clamp out-of-bounds
+    map_uv = clamp(map_uv, vec2(0.0), vec2(1.0));
+
+    float h = texture(height_map, map_uv).r;
 
     vec3 base_color;
-	if(gray_mode)
-	{
-    	base_color = gray_mode_color.rgb;
-	}
+    if (gray_mode) {
+        base_color = gray_mode_color.rgb;
+    }
     // WATER
     else if (h < sea_level) {
         base_color = water_color.rgb;
     }
     else {
-        // Remap land height above sea level → 0–1
         float land_t = (h - sea_level) / (max_height - sea_level);
         if (land_t < low_point) {
             base_color = color_low.rgb;
-        } else if(land_t < mid_point) {
+        } else if (land_t < mid_point) {
             base_color = color_low.rgb * 1.3;
-        } else if(land_t < high_point) {
+        } else if (land_t < high_point) {
             base_color = color_mid.rgb;
         } else {
             base_color = color_high.rgb;
@@ -50,10 +59,9 @@ void fragment() {
     }
 
     // CONTOUR LINES
-    float f = abs(fract(h / contour_interval - 0.5) - 0.5);
+    float f  = abs(fract(h / contour_interval - 0.5) - 0.5);
     float df = fwidth(h / contour_interval);
-    float g = smoothstep(df * line_thickness, 0.0, f);
-
+    float g  = smoothstep(df * line_thickness, 0.0, f);
     vec3 final_color = mix(base_color, line_color.rgb, g);
 
     COLOR = vec4(final_color, 1.0);
