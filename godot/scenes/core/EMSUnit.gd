@@ -95,7 +95,7 @@ func get_all_children(node: Node) -> Array:
 	return children
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	if is_being_dragged:
 		if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 			is_being_dragged = false
