@@ -70,7 +70,7 @@ func _generate_terrain(w: int, h: int) -> Array:
 		g.append([])
 		for y in range(h):
 			var n := noise.get_noise_2d(float(x), float(y))
-			var h_m := (n + 1.0) * 0.5 * 500.0 # 0 – 500 m
+			var h_m := (n + 1.0) * 0.5 * 500.0  # 0 – 500 m
 			g[x].append(h_m)
 	return g
 
@@ -161,6 +161,7 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 ## then greedily accepts each candidate only if no already-accepted candidate
 ## lies within `radius` grid cells.
 
+
 func _suppress(
 	candidates: Array[Dictionary], radius: int, higher_is_better: bool
 ) -> Array[Dictionary]:
@@ -189,6 +190,7 @@ func _suppress(
 ## After suppression the labels are well-spaced in grid space, but scaled
 ## pixel positions can still collide (especially at low resolutions).
 ## Drop the lower-significance label when two are within OVERLAP_MARGIN px.
+
 
 func _deconflict(descs: Array[Dictionary]) -> Array[Dictionary]:
 	# Sort by height descending so major labels win ties
