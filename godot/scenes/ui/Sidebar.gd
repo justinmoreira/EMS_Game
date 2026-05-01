@@ -254,7 +254,7 @@ func _build_attr_section() -> PanelContainer:
 	var button_row := HBoxContainer.new()
 	button_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button_row.add_theme_constant_override("separation", 10)
-	content.add_child(button_row)
+	_attr_content.add_child(button_row)
 
 	var delete_btn := Button.new()
 	delete_btn.text = "DELETE UNIT"
@@ -325,7 +325,7 @@ func _build_attr_section() -> PanelContainer:
 	_attr_placeholder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_attr_placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	content.add_child(_attr_placeholder)
+	_attr_content.add_child(_attr_placeholder)
 
 	return panel
 
@@ -681,8 +681,18 @@ func _on_delete_pressed() -> void:
 func _on_confirm_pressed() -> void:
 	if not selected_node:
 		return
+		
+	var c := _component()
+	if c:
+		for p in pending_attributes:
+			if p == "tuning_frequency":
+				_write_node_direct(p, pending_attributes[p])
+			else:
+				c.set(p, pending_attributes[p])
 
-	_confirm_btn.visible = false
+	pending_attributes.clear()
+	select_entity(EntityType.NONE)
+	GameEvents.unit_confirmed.emit()
 	SimulationManager.simulate()
 
 
@@ -769,27 +779,14 @@ func _write(p: String, value) -> void:
 	# Don't write properties that aren't actual component attributes
 	if p in invalid_props:
 		return
+	pending_attributes[p] = value
 
-	var c := _component()
-	if not c:
-		# If no component is selected, this is a pending entity being configured
-		# Store the attribute for when it's placed
-		pending_attributes[p] = value
+func _write_node_direct(p: String, value) -> void:
+	if not (selected_node and p in selected_node):
 		return
-
-	c.set(p, value)
-
-	var unit = c.get_parent()
-	if unit:
-		var scene_path = unit.scene_file_path
-		if scene_path:
-			var packed_scene := PackedScene.new()
-			if packed_scene.pack(unit) == OK:
-				ResourceSaver.save(packed_scene, scene_path)
-			else:
-				push_error("Failed to pack unit")
-
-
+	selected_node.set(p, value)
+	
+	
 func _is_transceiver_unit(unit: Node) -> bool:
 	if unit == null:
 		return false
@@ -806,18 +803,7 @@ func _node_int(p: String, fallback: int) -> int:
 
 
 func _write_node(p: String, value) -> void:
-	if not (selected_node and p in selected_node):
-		return
-
-	selected_node.set(p, value)
-
-	var scene_path = selected_node.scene_file_path
-	if scene_path:
-		var packed_scene := PackedScene.new()
-		if packed_scene.pack(selected_node) == OK:
-			ResourceSaver.save(packed_scene, scene_path)
-		else:
-			push_error("Failed to pack unit")
+	pending_attributes[p] = value
 
 
 func _clear_selection() -> void:

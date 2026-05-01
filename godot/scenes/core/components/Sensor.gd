@@ -1,12 +1,12 @@
 class_name Sensor
 extends Node2D
 
-@export_group("Settings")
-@export_range(0, 10) var height: int = 5
-@export_range(0, 10) var sensitivity: int = 3
-@export_enum("Narrow", "Medium", "Wide") var sensor_bandwidth: int = 1
-@export_range(30, 3000) var tuning_frequency: int = 1000
-@export var is_scanning: bool = true
+var height: int = 5
+var sensitivity: int = 3
+var sensor_bandwidth: int = 1
+var tuning_frequency: int = 1000
+var is_scanning: bool = true
+
 @export_group("Visual")
 @export var unit_label: String = "S"
 @export var circle_color: Color = Color("ff5c5c")
@@ -14,7 +14,7 @@ extends Node2D
 @export var frame_width: int = 974
 @export var frame_height: int = 970
 @export var animation_speed: float = 12.0
-@export var unit_name: String = "":
+var unit_name: String = "":
 	set(value):
 		unit_name = value
 		if _unit_visual:

@@ -28,6 +28,8 @@ var height_grid: Array = []
 
 
 func _ready() -> void:
+	super._ready()
+	
 	if not contour_rect or not contour_rect.material:
 		push_error("Ensure ContourOverlay exists and has a ShaderMaterial!")
 		return
