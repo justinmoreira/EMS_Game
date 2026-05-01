@@ -11,6 +11,7 @@ var drag_distance: float = 0.0
 
 @onready var sidebar_node = get_tree().root.find_child("Sidebar", true, false)
 
+
 func _ready() -> void:
 	# Find whichever component was instantiated
 	for child in get_all_children(self):
@@ -55,16 +56,22 @@ func _input(event: InputEvent) -> void:
 
 	elif event is InputEventMouseMotion and is_being_dragged:
 		var can_move := true
-		
+
 		if sidebar_node and sidebar_node.get_global_rect().has_point(mouse_pos):
 			can_move = false
-		
+
 		var screen_rect = get_viewport().get_visible_rect()
-		
+
 		# Clamp mouse_pos to viewport bounds
-		mouse_pos.x = clamp(mouse_pos.x, screen_rect.position.x + sidebar_node.size.x, screen_rect.position.x + screen_rect.size.x)
-		mouse_pos.y = clamp(mouse_pos.y, screen_rect.position.y, screen_rect.position.y + screen_rect.size.y)
-		
+		mouse_pos.x = clamp(
+			mouse_pos.x,
+			screen_rect.position.x + sidebar_node.size.x,
+			screen_rect.position.x + screen_rect.size.x
+		)
+		mouse_pos.y = clamp(
+			mouse_pos.y, screen_rect.position.y, screen_rect.position.y + screen_rect.size.y
+		)
+
 		# Update the world_uv metadata
 		if has_meta("world_uv"):
 			var base_level = get_parent()
