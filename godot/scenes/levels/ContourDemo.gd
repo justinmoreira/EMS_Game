@@ -2,12 +2,21 @@ class_name ContourGen
 extends BaseLevel
 
 # ── Labelling knobs ───────────────────────────────────────────────────────────
-const SUPPRESS_RADIUS_PEAK := 18
-const SUPPRESS_RADIUS_VALLEY := 14
-const LOCAL_WINDOW := 12
-const PEAK_MINOR_THRESH := 280.0
-const VALLEY_MINOR_THRESH := 160.0
-const OVERLAP_MARGIN := 40.0
+## Minimum grid-cell radius between any two labels of the same type.
+## Raise this if labels are still crowding each other.
+const SUPPRESS_RADIUS_PEAK := 18  # cells
+const SUPPRESS_RADIUS_VALLEY := 14  # cells
+
+## A candidate is only a peak/valley if it is the strict extremum within this
+## radius.  Larger = fewer, more prominent labels.
+const LOCAL_WINDOW := 12  # cells (half-width of the dominance window)
+
+## Height thresholds
+const PEAK_MINOR_THRESH := 280.0  # m  →  small gold label
+const VALLEY_MINOR_THRESH := 160.0  # m  →  small aqua label
+
+## Pixel distance below which two labels are considered overlapping.
+const OVERLAP_MARGIN := 40.0  # px
 
 var grid_w: int = 150
 var grid_h: int = 150
@@ -31,11 +40,16 @@ func _ready() -> void:
 	var tex := _create_height_texture(height_grid, grid_w, grid_h)
 	contour_rect.material.set_shader_parameter("height_map", tex)
 
-	contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))
-	contour_rect.material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0))
-	contour_rect.material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0))
+	# Terrain colors
+	contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))  # green
+	contour_rect.material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0))  # tan
+	contour_rect.material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0))  # snow
+
+	# Water
 	contour_rect.material.set_shader_parameter("water_color", Color(0.10, 0.30, 0.85, 1.0))
 	contour_rect.material.set_shader_parameter("sea_level", 100.0)
+
+	# Height scaling
 	contour_rect.material.set_shader_parameter("max_height", 500.0)
 	contour_rect.material.set_shader_parameter("mid_point", 0.6)
 
@@ -56,7 +70,7 @@ func _generate_terrain(w: int, h: int) -> Array:
 		g.append([])
 		for y in range(h):
 			var n := noise.get_noise_2d(float(x), float(y))
-			var h_m := (n + 1.0) * 0.5 * 500.0
+			var h_m := (n + 1.0) * 0.5 * 500.0 # 0 – 500 m
 			g[x].append(h_m)
 	return g
 
@@ -65,6 +79,7 @@ func _generate_terrain(w: int, h: int) -> Array:
 
 
 func _label_tactical_points(grid: Array, w: int, h: int) -> void:
+	# Step 1 – collect raw candidates
 	var peak_candidates: Array[Dictionary] = []
 	var valley_candidates: Array[Dictionary] = []
 
@@ -92,13 +107,16 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 			elif is_valley and val <= VALLEY_MINOR_THRESH:
 				valley_candidates.append({"x": x, "y": y, "val": val})
 
+	# Step 2 – non-maximum suppression: keep only the strongest within radius
 	var peaks := _suppress(peak_candidates, SUPPRESS_RADIUS_PEAK, true)
 	var valleys := _suppress(valley_candidates, SUPPRESS_RADIUS_VALLEY, false)
 
+	# Step 3 – convert grid positions to pixel positions
 	var container_size: Vector2 = map_container.size
 	var sx: float = container_size.x / float(w)
 	var sy: float = container_size.y / float(h)
 
+	# Collect label descriptors before spawning so we can deconflict
 	var label_descs: Array[Dictionary] = []
 
 	for p in peaks:
@@ -129,19 +147,24 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 			)
 		)
 
+	# Step 4 – pixel-space deconfliction (drop weaker overlapping labels)
 	var kept := _deconflict(label_descs)
 
+	# Step 5 – spawn
 	await get_tree().process_frame
 	for desc in kept:
 		_spawn_label(desc)
 
 
 # ── Non-maximum suppression ───────────────────────────────────────────────────
-
+## Sorts candidates by value (strongest first for peaks, lowest for valleys),
+## then greedily accepts each candidate only if no already-accepted candidate
+## lies within `radius` grid cells.
 
 func _suppress(
 	candidates: Array[Dictionary], radius: int, higher_is_better: bool
 ) -> Array[Dictionary]:
+	# Sort so the "best" candidate comes first
 	candidates.sort_custom(
 		func(a, b): return a["val"] > b["val"] if higher_is_better else a["val"] < b["val"]
 	)
@@ -163,10 +186,14 @@ func _suppress(
 
 
 # ── Pixel-space deconfliction ─────────────────────────────────────────────────
-
+## After suppression the labels are well-spaced in grid space, but scaled
+## pixel positions can still collide (especially at low resolutions).
+## Drop the lower-significance label when two are within OVERLAP_MARGIN px.
 
 func _deconflict(descs: Array[Dictionary]) -> Array[Dictionary]:
+	# Sort by height descending so major labels win ties
 	descs.sort_custom(func(a, b): return a["val"] > b["val"])
+
 	var kept: Array[Dictionary] = []
 	for desc in descs:
 		var pos: Vector2 = desc["px_pos"]
@@ -208,10 +235,11 @@ func _spawn_label(desc: Dictionary) -> void:
 	lbl.position = world_uv_to_screen(lbl.get_meta("world_uv")) - sz * 0.5
 
 
-# ── Override update_shader to reposition labels alongside units ───────────────
+# ── Texture creation ──────────────────────────────────────────────
 
 
 func update_shader() -> void:
+	# override for label/unit positions
 	super.update_shader()
 
 	var map := get_map_size()
