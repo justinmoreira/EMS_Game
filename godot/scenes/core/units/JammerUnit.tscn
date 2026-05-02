@@ -17,7 +17,6 @@ shape = SubResource("CircleShape2D_w5soc")
 [node name="Jammer" type="Node2D" parent="." unique_id=1057677908 instance=ExtResource("2_p83nw")]
 script = ExtResource("3_gwb5p")
 
-
 [node name="Visual" type="Node2D" parent="." unique_id=413501508]
 script = ExtResource("3_hkf84")
 unit_label = "J"
