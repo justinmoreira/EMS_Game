@@ -1,4 +1,6 @@
 /// <reference types="astro/client" />
+/// <reference types="vite-plugin-pwa/client" />
+/// <reference types="vite-plugin-pwa/info" />
 
 interface ImportMetaEnv {
   readonly PUBLIC_SUPABASE_URL: string;

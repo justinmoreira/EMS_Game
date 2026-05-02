@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:vite-pwa-org.netlify.app)",
+      "WebSearch",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}

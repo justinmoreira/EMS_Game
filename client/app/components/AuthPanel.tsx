@@ -313,7 +313,9 @@ export default function AccountModal() {
                 />
                 <span class="text-neutral-500">
                   {syncStatus.value === "online"
-                    ? "Synced"
+                    ? user
+                      ? "In sync"
+                      : "Online"
                     : syncStatus.value === "syncing"
                       ? "Syncing..."
                       : "Offline"}

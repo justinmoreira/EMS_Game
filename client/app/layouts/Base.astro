@@ -76,45 +76,53 @@ const { title } = Astro.props;
       </div>
     </nav>
     <slot />
-    <script is:inline define:vars={{ BASE_URL }}>
-      if (location.hostname === "localhost") {
-        setInterval(() => {
-          if (!navigator.onLine) return;
-          fetch(BASE_URL + "/godot/index.pck", {
-            method: "HEAD",
-            cache: "no-store",
-          })
-            .then((res) => res.headers.get("last-modified"))
-            .then((modified) => {
-              if (window.lastGodotBuild && window.lastGodotBuild !== modified) {
-                location.reload();
-              }
-              window.lastGodotBuild = modified;
-            })
-            .catch(() => {});
-        }, 2000);
-      }
-    </script>
-    <script is:inline define:vars={{ BASE_URL }}>
-      if ("serviceWorker" in navigator) {
-        const swUrl = BASE_URL + "/sw.js";
-        const swScope = BASE_URL + "/";
-        const wantedScope = new URL(swScope, location.origin).href;
+    <script>
+      import { registerSW } from "virtual:pwa-register";
 
-        navigator.serviceWorker.getRegistrations().then(async (regs) => {
-          // Drop any registration not at our scope (clears legacy root-scope SWs
-          // that were redirect-looping on /EMS_Game/* paths)
-          for (const reg of regs) {
-            if (reg.scope !== wantedScope) {
-              try { await reg.unregister(); } catch {}
+      if ("serviceWorker" in navigator) {
+        // In dev, unregister ALL service workers so iteration isn't blocked by
+        // a stale cached bundle from a previous prod build.
+        if (import.meta.env.DEV) {
+          (async () => {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            const hadSW = regs.length > 0;
+            for (const reg of regs) {
+              try {
+                await reg.unregister();
+              } catch {}
             }
-          }
-          try {
-            await navigator.serviceWorker.register(swUrl, { scope: swScope });
-          } catch (err) {
-            console.warn("SW registration failed:", err);
-          }
-        });
+            let hadCache = false;
+            if ("caches" in window) {
+              const keys = await caches.keys();
+              hadCache = keys.length > 0;
+              await Promise.all(keys.map((k) => caches.delete(k)));
+            }
+            // If we just cleared a stale SW/cache, reload once so the user
+            // doesn't have to. Use a session flag to avoid reload loops.
+            if ((hadSW || hadCache) && !sessionStorage.getItem("__sw_cleared")) {
+              sessionStorage.setItem("__sw_cleared", "1");
+              location.reload();
+            }
+          })();
+        } else {
+          const wantedScope = new URL(
+            import.meta.env.BASE_URL,
+            location.origin,
+          ).href;
+
+          // Drop legacy SWs at a different scope (clears root-scope SWs from
+          // earlier deploys that redirect-looped on /EMS_Game/* paths).
+          navigator.serviceWorker.getRegistrations().then(async (regs) => {
+            for (const reg of regs) {
+              if (reg.scope !== wantedScope) {
+                try {
+                  await reg.unregister();
+                } catch {}
+              }
+            }
+            registerSW({ immediate: true });
+          });
+        }
       }
     </script>
   </body>
