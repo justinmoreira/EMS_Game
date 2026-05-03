@@ -32,13 +32,8 @@ var unit_attributes_visible: bool = false
 
 
 func _ready():
-	# Handle window resizing and sidebar layout
-	get_tree().get_root().size_changed.connect(_on_window_resized)
-	if sidebar_node:
-		sidebar_node.resized.connect(_on_window_resized)
-	_on_window_resized()
-
 	GameEvents.units_changed.connect(_on_units_changed_for_tutorial)
+	GameEvents.unit_confirmed.connect(_deselect_current_unit)
 
 	# Check if tutorial was already completed
 	var tutorial_done := false
@@ -103,14 +98,6 @@ func _show_tutorial_hint(text: String) -> void:
 	var popup := TUTORIAL_HINT_POPUP.instantiate()
 	popup.hint_text = text
 	$CanvasLayer.add_child(popup)
-
-
-func _on_window_resized() -> void:
-	self.size = get_viewport_rect().size
-	sidebar_width = sidebar_node.size.x if sidebar_node else 0.0
-	if background:
-		background.offset_left = sidebar_width
-	update_shader()
 
 
 # --- Coordinate Space Math ---
@@ -194,6 +181,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 		return
 
 	var unit := scene.instantiate()
+
 	if unit == null:
 		return
 
@@ -201,7 +189,11 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	unit.set_meta("world_uv", screen_to_world_uv(at_position))
 	unit.position = at_position
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
+	# Mark this unit as not saved to the scene file (instantiated at runtime)
+	unit.owner = null
 	add_child(unit)
+
+	SimulationManager.simulate()
 
 	# Apply any pending attribute changes from the sidebar
 	if (
@@ -301,34 +293,16 @@ func _input(event: InputEvent) -> void:
 	# prevent gameplay after popup is open
 	if intro_popup_open:
 		return
-
 	if event is InputEventMouseButton:
 		if event.position.x < sidebar_width:
 			return
-
-		# Zooming in/out toward the mouse position
-		if event.pressed:
-			var old_zoom = zoom
-			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-				zoom = clamp(zoom * 0.9, 0.1, 1.0)
-			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-				zoom = clamp(zoom * 1.1, 0.1, 1.0)
-			else:
-				return  # Not a zoom event
-
-			# Adjust offset so we zoom toward the mouse position
-			var map = get_map_size()
-			var mouse_uv = (event.position - Vector2(sidebar_width, 0)) / map - Vector2(0.5, 0.5)
-			offset += mouse_uv * (old_zoom - zoom)
-			_clamp_offset()
-			update_shader()
+	return
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	# prevent map interaction when popup is active
 	if intro_popup_open:
 		return
-
 	if event is InputEventKey and event.pressed and not event.echo:
 		var focus_owner := get_viewport().gui_get_focus_owner()
 		if focus_owner is LineEdit or focus_owner is TextEdit:
@@ -366,6 +340,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 			dragging = true
 			last_mouse_pos = event.position
+
 		else:
 			dragging = false
 

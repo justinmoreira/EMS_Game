@@ -1,11 +1,11 @@
 class_name Transceiver
 extends Node2D
 
-@export_group("Settings")
-@export_range(0, 10) var power: int = 5
-@export_range(0, 10) var height: int = 5
-@export_range(30, 3000) var frequency: float = 1000.0
-@export_enum("Narrow", "Medium", "Wide") var transceiver_bandwidth: int = 1
+var power: int = 5
+var height: int = 5
+var frequency: float = 1000.0
+var transceiver_bandwidth: int = 1
+
 @export_group("Visual")
 @export var unit_label: String = "T"
 @export var circle_color: Color = Color("4fc3f7")
@@ -13,7 +13,7 @@ extends Node2D
 @export var frame_width: int = 974
 @export var frame_height: int = 970
 @export var animation_speed: float = 12.0
-@export var unit_name: String = "":
+var unit_name: String = "":
 	set(value):
 		unit_name = value
 		if _unit_visual:
