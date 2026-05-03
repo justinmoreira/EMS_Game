@@ -6,6 +6,8 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_l1"]
 shader = ExtResource("3_si7pu")
+shader_parameter/zoom = 1.0
+shader_parameter/offset = Vector2(0, 0)
 shader_parameter/color_low = Color(0, 0, 0, 1)
 shader_parameter/color_mid = Color(0, 0, 0, 1)
 shader_parameter/color_high = Color(0, 0, 0, 1)
