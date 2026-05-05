@@ -5,12 +5,6 @@ enum LinkState {
 }
 
 # Visual Constants
-const C_SUCCESS := Color.GREEN
-const C_CONNECTING := Color.YELLOW
-const C_OUT_OF_RANGE := Color.DARK_ORANGE
-const C_JAMMED := Color.RED
-const C_FREQUENCY_DIFF := Color.CYAN
-const C_BANDWIDTH_PENALTY := Color.MAGENTA
 
 const LINE_WIDTH := 4.0
 const ARROW_SIZE := 14.0
@@ -21,8 +15,32 @@ const VISUAL_TRANSITION_DELAY := 0.12
 const STATUS_VISUAL_SCRIPT := preload("res://scripts/UnitStatusVisual.gd")
 const STATUS_VISUAL_NODE_NAME := "UnitStatusVisual"
 
+
+class LinkData:
+	var source: Transceiver
+	var target: Transceiver
+	var line: PatternedLinkLine
+	var arrow: Polygon2D
+	var state: int = LinkState.CONNECTING
+	var final_state: int = LinkState.CONNECTING
+	var pattern: int = LinkVisuals.LINE_PATTERN_MOVING_DASHED
+	var color: Color = LinkVisuals.C_CONNECTING
+	var version: int = 1
+
+	func _init(
+		new_source: Transceiver,
+		new_target: Transceiver,
+		new_line: PatternedLinkLine,
+		new_arrow: Polygon2D
+	) -> void:
+		source = new_source
+		target = new_target
+		line = new_line
+		arrow = new_arrow
+
+
 #Data Storage
-var active_links: Dictionary = {}
+var active_links: Dictionary[String, LinkData] = {}
 var link_results: Dictionary = {}
 var detect_results: Dictionary = {}
 var timer: Timer
@@ -43,7 +61,8 @@ func _exit_tree() -> void:
 	clear_all_links()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_update_dash_offsets(delta)
 	_update_active_link_visuals()
 
 
@@ -140,33 +159,30 @@ func _draw_links_from_results(transceivers: Array) -> void:
 #Creates or updates the arrow for a single directed link
 func _draw_directional_link(source: Transceiver, target: Transceiver, final_state: int) -> void:
 	var key = _vis_key(source, target)
-	var version = 1
 
-	if active_links.has(key):
-		version = int(active_links[key].get("version", 0)) + 1
-	else:
+	if not active_links.has(key):
 		_create_link_nodes(source, target, key)
 
-	var data = active_links[key]
-	data["final_state"] = final_state
-	data["version"] = version
+	var data: LinkData = active_links[key]
+	data.version += 1
+	data.final_state = final_state
 
 	_set_link_visual_state(key, LinkState.CONNECTING)
 	_update_link_geometry(key)
 	_apply_visibility_for_key(key)
-	_resolve_link_visual_after_delay(key, version)
+	_resolve_link_visual_after_delay(key, data.version)
 
 
 # Instantiates the Line2D and arrowhead Polygon2D for a new link entry.
 func _create_link_nodes(source: Transceiver, target: Transceiver, key: String) -> void:
-	var scene = get_tree().current_scene
-	var line = Line2D.new()
-	line.width = LINE_WIDTH
-	line.antialiased = true
+	var scene := get_tree().current_scene
+
+	var line := PatternedLinkLine.new()
+	line.name = "PatternedLinkLine"
 	line.z_index = 100
 	scene.add_child(line)
 
-	var arrow = Polygon2D.new()
+	var arrow := Polygon2D.new()
 	arrow.polygon = PackedVector2Array(
 		[
 			Vector2(ARROW_SIZE, 0),
@@ -177,36 +193,32 @@ func _create_link_nodes(source: Transceiver, target: Transceiver, key: String) -
 	arrow.z_index = 101
 	scene.add_child(arrow)
 
-	active_links[key] = {
-		"source": source,
-		"target": target,
-		"line": line,
-		"arrow": arrow,
-		"state": LinkState.CONNECTING,
-		"version": 1
-	}
+	active_links[key] = LinkData.new(source, target, line, arrow)
 
 
 #Recalculates the screen-space positions of a link's line and arrowhead.
 func _update_link_geometry(key: String) -> void:
-	var data = active_links[key]
+	var data: LinkData = active_links[key]
+
 	if not is_instance_valid(data.source) or not is_instance_valid(data.target):
 		return
 
 	var start: Vector2 = data.source.global_position
 	var end: Vector2 = data.target.global_position
-	var delta = end - start
+	var delta := end - start
+
 	if delta.length() < 0.1:
 		return
 
-	var dir = delta.normalized()
-	var normal = Vector2(-dir.y, dir.x)
+	var dir := delta.normalized()
+	var normal := Vector2(-dir.y, dir.x)
 
-	var l_start = start + (dir * NODE_PADDING) + (normal * LINE_OFFSET)
-	var l_end = end - (dir * NODE_PADDING) + (normal * LINE_OFFSET)
+	var line_start := start + dir * NODE_PADDING + normal * LINE_OFFSET
+	var line_end := end - dir * NODE_PADDING + normal * LINE_OFFSET
 
-	data.line.points = PackedVector2Array([l_start, l_end])
-	data.arrow.global_position = l_end - dir * (ARROW_SIZE * 0.3)
+	data.line.set_points(line_start, line_end)
+
+	data.arrow.global_position = line_end - dir * (ARROW_SIZE * 0.3)
 	data.arrow.rotation = dir.angle()
 
 
@@ -214,44 +226,67 @@ func _update_link_geometry(key: String) -> void:
 func _set_link_visual_state(key: String, state: int) -> void:
 	if not active_links.has(key):
 		return
-	var data = active_links[key]
-	var color = C_CONNECTING
+
+	var data: LinkData = active_links[key]
+	var color := LinkVisuals.C_CONNECTING
+	var pattern := LinkVisuals.LINE_PATTERN_MOVING_DASHED
+
 	match state:
 		LinkState.SUCCESS:
-			color = C_SUCCESS
+			color = LinkVisuals.C_SUCCESS
+			pattern = LinkVisuals.LINE_PATTERN_SOLID
 		LinkState.FAILED_OUT_OF_RANGE:
-			color = C_OUT_OF_RANGE
+			color = LinkVisuals.C_OUT_OF_RANGE
+			pattern = LinkVisuals.LINE_PATTERN_DASHED
 		LinkState.FAILED_JAMMED:
-			color = C_JAMMED
+			color = LinkVisuals.C_JAMMED
+			pattern = LinkVisuals.LINE_PATTERN_ZIGZAG
 		LinkState.FREQUENCY_DIFF:
-			color = C_FREQUENCY_DIFF
+			color = LinkVisuals.C_FREQUENCY_DIFF
+			pattern = LinkVisuals.LINE_PATTERN_DASHED
 		LinkState.BANDWIDTH_PENALTY:
-			color = C_BANDWIDTH_PENALTY
-	if is_instance_valid(data.line):
-		data.line.default_color = color
-	if is_instance_valid(data.arrow):
-		data.arrow.color = color
-	data["state"] = state
+			color = LinkVisuals.C_BANDWIDTH_PENALTY
+			pattern = LinkVisuals.LINE_PATTERN_DASHED
+		_:
+			color = LinkVisuals.C_CONNECTING
+			pattern = LinkVisuals.LINE_PATTERN_MOVING_DASHED
+
+	data.color = color
+	data.pattern = pattern
+	data.state = state
+
+	data.line.set_visual(color, pattern)
+	data.arrow.color = color
 
 
 func _resolve_link_visual_after_delay(key: String, version: int) -> void:
 	await get_tree().create_timer(VISUAL_TRANSITION_DELAY).timeout
-	if active_links.has(key) and active_links[key].version == version:
-		_set_link_visual_state(key, active_links[key].final_state)
+
+	if not active_links.has(key):
+		return
+
+	var data: LinkData = active_links[key]
+
+	if data.version == version:
+		_set_link_visual_state(key, data.final_state)
 
 
 # Called every frame. Updates geometry for all active links
 func _update_active_link_visuals() -> void:
-	var dead_keys = []
+	var dead_keys := []
+
 	for key in active_links.keys():
-		var data = active_links[key]
+		var data: LinkData = active_links[key]
+
 		if not is_instance_valid(data.source) or not is_instance_valid(data.target):
 			dead_keys.append(key)
 			continue
+
 		_update_link_geometry(key)
-	for k in dead_keys:
-		_free_link_nodes(active_links[k])
-		active_links.erase(k)
+
+	for key in dead_keys:
+		_free_link_nodes(active_links[key])
+		active_links.erase(key)
 
 
 func _update_unit_status_visuals(transceivers: Array) -> void:
@@ -309,10 +344,11 @@ func _vis_key(a: Transceiver, b: Transceiver) -> String:
 	return str(a.get_instance_id()) + "_to_" + str(b.get_instance_id())
 
 
-func _free_link_nodes(data: Dictionary) -> void:
-	if is_instance_valid(data.get("line")):
+func _free_link_nodes(data: LinkData) -> void:
+	if is_instance_valid(data.line):
 		data.line.queue_free()
-	if is_instance_valid(data.get("arrow")):
+
+	if is_instance_valid(data.arrow):
 		data.arrow.queue_free()
 
 
@@ -323,9 +359,11 @@ func clear_all_links() -> void:
 
 
 func _apply_visibility_for_key(key: String) -> void:
-	var data = active_links[key]
+	var data: LinkData = active_links[key]
+
 	if is_instance_valid(data.line):
 		data.line.visible = links_visible
+
 	if is_instance_valid(data.arrow):
 		data.arrow.visible = links_visible
 
@@ -414,3 +452,11 @@ func print_max_height_along_link(tx: Transceiver, rx: Transceiver) -> void:
 
 	# value generated here will eventually be used for terrain interference via fresnel
 	# print("Max height between %s -> %s: %.2f m" % [tx.name, rx.name, max_h])
+
+
+func _update_dash_offsets(delta: float) -> void:
+	for key in active_links.keys():
+		var data: LinkData = active_links[key]
+
+		if is_instance_valid(data.line):
+			data.line.advance_dash(delta)
