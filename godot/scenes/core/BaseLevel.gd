@@ -39,7 +39,7 @@ var connection_legend: Control = null
 
 
 func _enter_tree() -> void:
-	call_deferred("_create_connection_legend")
+	_create_connection_legend.call_deferred()
 
 
 func _ready():
@@ -48,7 +48,6 @@ func _ready():
 	if sidebar_node:
 		sidebar_node.resized.connect(_on_window_resized)
 	_on_window_resized()
-	_create_connection_legend()
 
 	GameEvents.units_changed.connect(_on_units_changed_for_tutorial)
 
@@ -417,7 +416,6 @@ func _find_unit_component(unit: Node) -> Node:
 	return null
 
 
-# add legend display for line pattern
 # Add legend display for line pattern
 func _create_connection_legend() -> void:
 	if $CanvasLayer.get_node_or_null(CONNECTION_LEGEND_NODE_NAME) != null:
@@ -437,18 +435,13 @@ func _create_connection_legend() -> void:
 
 	_position_connection_legend()
 
-	print("Connection legend added at: ", connection_legend.position)
-
 
 func _position_connection_legend() -> void:
 	if connection_legend == null:
 		return
 
 	var viewport_size := get_viewport_rect().size
-	var legend_width := 280.0
-
-	if connection_legend.has_method("get_collapsed_width"):
-		legend_width = connection_legend.get_collapsed_width()
+	var legend_width: float = connection_legend.get_collapsed_width()
 
 	connection_legend.position = Vector2(
 		viewport_size.x - legend_width - CONNECTION_LEGEND_MARGIN.x, CONNECTION_LEGEND_MARGIN.y
