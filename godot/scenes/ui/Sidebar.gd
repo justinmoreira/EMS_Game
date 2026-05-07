@@ -35,11 +35,16 @@ var _simulate_btn: Button = null
 var _delete_btn: Button = null
 
 # ── Node refs ─────────────────────────────────
+# Slots come from Sidebar.tscn — script populates them on _ready.
+@onready var _header_slot: PanelContainer = $Layout/Header
+@onready var _tray_slot: PanelContainer = $Layout/Tray
+@onready var _divider_slot: HSeparator = $Layout/Divider
+@onready var _attr_section: PanelContainer = $Layout/AttrSection
+
 var _attr_header: Label
 var _attr_body: VBoxContainer
 var _attr_placeholder: Label
 var _entity_cards: Dictionary = {}  # EntityType -> Control
-var _attr_section: PanelContainer
 var _attr_content: VBoxContainer
 var _tutorial_active: bool = false
 
@@ -103,26 +108,17 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 
 
 func _build_sidebar() -> void:
+	# Root layout (VBoxContainer "Layout") + named section slots (Header/Tray/
+	# Divider/AttrSection) come from Sidebar.tscn. Styling + dynamic content
+	# still live in script for now (B4 skeleton extraction; theme migration TBD).
 	_apply_style(self, C_BG_DARK, C_BORDER, 0, 0, 0, 1)
-	custom_minimum_size = Vector2(300, 0)
-	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	var vbox := VBoxContainer.new()
-	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_theme_constant_override("separation", 0)
-	add_child(vbox)
-
-	vbox.add_child(_build_header())
-	vbox.add_child(_build_tray())
-	vbox.add_child(_build_divider())
-	_attr_section = _build_attr_section()
-	vbox.add_child(_attr_section)
+	_populate_header(_header_slot)
+	_populate_tray(_tray_slot)
+	_style_divider(_divider_slot)
+	_populate_attr_section(_attr_section)
 
 
-func _build_header() -> PanelContainer:
-	var panel := PanelContainer.new()
+func _populate_header(panel: PanelContainer) -> void:
 	_apply_style(panel, C_BG_MID, C_GREEN, 0, 2, 0, 0)
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_MID, 12))
 
@@ -195,14 +191,9 @@ func _build_header() -> PanelContainer:
 	_simulate_btn = btn
 	_update_simulate_button()
 
-	return panel
 
-
-func _build_tray() -> PanelContainer:
-	var panel := PanelContainer.new()
+func _populate_tray(panel: PanelContainer) -> void:
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_MID, 14))
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var vbox := VBoxContainer.new()
 	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -255,8 +246,6 @@ func _build_tray() -> PanelContainer:
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(hint)
 
-	return panel
-
 
 func _build_entity_card(
 	label: String,
@@ -282,17 +271,15 @@ func _build_entity_card(
 	card.pending_provider = func(): return pending_attributes.duplicate()
 	card.pressed.connect(
 		func():
-			_clear_selection()
+			# Drop any prior unit selection so the highlight clears with the panel.
+			GameEvents.clear_selection()
 			select_entity(type, label, null)
 	)
 	return card
 
 
-func _build_attr_section() -> PanelContainer:
-	var panel := PanelContainer.new()
+func _populate_attr_section(panel: PanelContainer) -> void:
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_MID, 14))
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	_attr_content = VBoxContainer.new()
 	_attr_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -353,15 +340,11 @@ func _build_attr_section() -> PanelContainer:
 	_attr_placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_child(_attr_placeholder)
 
-	return panel
 
-
-func _build_divider() -> HSeparator:
-	var sep := HSeparator.new()
+func _style_divider(sep: HSeparator) -> void:
 	var s := StyleBoxFlat.new()
 	s.bg_color = C_BORDER
 	sep.add_theme_stylebox_override("separator", s)
-	return sep
 
 
 func _refresh_attribute_panel() -> void:
@@ -665,14 +648,6 @@ func _add_text_input(label: String, current: String, accent: Color, on_change: C
 	input.text_submitted.connect(func(v): on_change.call(v))
 	input.focus_exited.connect(func(): on_change.call(input.text))
 	hbox.add_child(input)
-
-
-func _clear_selection() -> void:
-	# When clicking a sidebar entity type, deselect any currently viewed unit
-	# so we show fresh defaults instead of the previous unit's values
-	selected_node = null
-	selected_entity_name = ""
-	_refresh_attribute_panel()
 
 
 # ════════════════════════════════════════════
