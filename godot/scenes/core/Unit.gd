@@ -135,7 +135,7 @@ func _input(event: InputEvent) -> void:
 		and not event.pressed
 	):
 		if _drag_distance < CLICK_DRAG_THRESHOLD_PX:
-			GameEvents.unit_selected.emit(self)
+			GameEvents.select(self)
 		_is_being_dragged = false
 		get_tree().root.set_input_as_handled()
 		return

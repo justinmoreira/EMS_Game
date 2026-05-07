@@ -47,8 +47,7 @@ var _tutorial_active: bool = false
 func _ready() -> void:
 	GameEvents.units_changed.connect(_update_simulate_button)
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
-	GameEvents.unit_selected.connect(_on_unit_selected_event)
-	GameEvents.selection_cleared.connect(_on_selection_cleared_event)
+	GameEvents.selection_changed.connect(_on_selection_changed)
 	resized.connect(func(): GameEvents.sidebar_resized.emit(size.x))
 	_build_sidebar()
 	_refresh_attribute_panel()
@@ -56,14 +55,12 @@ func _ready() -> void:
 	GameEvents.sidebar_resized.emit.call_deferred(size.x)
 
 
-func _on_unit_selected_event(unit: Node) -> void:
+func _on_selection_changed(unit: Node) -> void:
 	if unit is Unit and unit.definition:
 		var t := _entity_type_for_def_id(unit.definition.id)
 		select_entity(t, unit.definition.display_name, unit)
-
-
-func _on_selection_cleared_event() -> void:
-	select_entity(EntityType.NONE)
+	else:
+		select_entity(EntityType.NONE)
 
 
 func _entity_type_for_def_id(id: StringName) -> EntityType:

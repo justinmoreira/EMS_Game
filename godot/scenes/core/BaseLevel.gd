@@ -15,8 +15,9 @@ var last_mouse_pos := Vector2.ZERO
 # Width is the live x-size of the sidebar; 0 if no sidebar in this scene.
 var sidebar_width: float = 0.0
 
-# Selection State
-var currently_selected_unit: Node = null
+# Selection visual cache — the *previous* selected unit, so we know which to
+# unhighlight when selection changes. Source of truth lives on GameEvents.
+var _last_highlighted: Unit = null
 var unit_attributes_visible: bool = false
 
 @onready var background := $BackgroundTexture
@@ -26,7 +27,7 @@ var unit_attributes_visible: bool = false
 
 func _ready():
 	get_tree().get_root().size_changed.connect(_on_window_resized)
-	GameEvents.unit_selected.connect(_on_unit_selected)
+	GameEvents.selection_changed.connect(_on_selection_changed)
 	GameEvents.simulation_requested.connect(SimulationManager.simulate)
 	GameEvents.reset_requested.connect(_on_reset_requested)
 	GameEvents.delete_requested.connect(_on_delete_requested)
@@ -143,7 +144,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	add_child(unit)
 	_on_unit_placed(unit)
 	# Newly-placed unit is treated as selected so its panel opens.
-	GameEvents.unit_selected.emit(unit)
+	GameEvents.select(unit)
 
 
 func _on_unit_placed(unit: Unit) -> void:
@@ -152,21 +153,17 @@ func _on_unit_placed(unit: Unit) -> void:
 		label.visible = unit_attributes_visible
 
 
-# --- Selection Logic ---
+# --- Selection Logic (visual highlight only — state lives on GameEvents) ---
 
 
-func _on_unit_selected(unit: Unit) -> void:
-	_deselect_current_unit()
-	currently_selected_unit = unit
-	_set_unit_selected_visual(unit, true)
-
-
-func _deselect_current_unit() -> void:
-	if currently_selected_unit == null:
-		return
-	_set_unit_selected_visual(currently_selected_unit, false)
-	currently_selected_unit = null
-	GameEvents.selection_cleared.emit()
+func _on_selection_changed(unit: Node) -> void:
+	# Single-shot handler covers both new selection and re-selection. Since
+	# `selected_unit` is the source of truth, just diff with our last paint.
+	if _last_highlighted and _last_highlighted != unit:
+		_set_unit_selected_visual(_last_highlighted, false)
+	_last_highlighted = unit if unit is Unit else null
+	if _last_highlighted:
+		_set_unit_selected_visual(_last_highlighted, true)
 
 
 func _set_unit_selected_visual(unit: Unit, selected: bool) -> void:
@@ -183,7 +180,7 @@ func _on_reset_requested() -> void:
 	for group in [&"transceivers", &"jammers", &"sensors"]:
 		for unit in get_tree().get_nodes_in_group(group):
 			unit.queue_free()
-	_deselect_current_unit()
+	GameEvents.clear_selection()
 
 
 func _on_delete_requested(unit: Node) -> void:
@@ -191,7 +188,7 @@ func _on_delete_requested(unit: Node) -> void:
 	# once is_instance_valid returns false post-queue_free.
 	if unit:
 		unit.queue_free()
-	_deselect_current_unit()
+	GameEvents.clear_selection()
 
 
 # --- Inputs (Camera Control) ---
@@ -248,7 +245,7 @@ func _unhandled_input(event: InputEvent) -> void:
 						clicked_unit = true
 						break
 				if not clicked_unit:
-					_deselect_current_unit()
+					GameEvents.clear_selection()
 					get_tree().root.set_input_as_handled()
 
 			dragging = true
