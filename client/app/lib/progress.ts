@@ -111,13 +111,11 @@ if (isBrowser) {
   authUser.subscribe((user) => {
     if (user) sync();
   });
-  window.addEventListener("online", () => sync());
   window.addEventListener("offline", () => {
     syncStatus.value = "offline";
   });
 
   window.addEventListener("online", () => {
-    syncStatus.value = "online";
     sync();
   });
 
