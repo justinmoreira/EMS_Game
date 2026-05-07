@@ -8,13 +8,11 @@ const PIXELS_PER_UNIT = 100.0
 # Prohibits communication at extreme distance with no power
 const NOISE_FLOOR = 0.5
 
-const BW_LOOKUP = ["Narrow", "Medium", "Wide"]
-
-# Different types of jammers (bandwidth power)
-const BANDWIDTH_POWER = {"Narrow": 1.0, "Medium": 0.5, "Wide": 0.3}  # 1 MHz  # 10 MHz  # 50 MHz
-
-# Actual bandwidth values in MHz for each jammer type
-const BANDWIDTH_VALUES = {"Narrow": 1.0, "Medium": 10.0, "Wide": 50.0}  # 1 MHz  # 10 MHz  # 50 MHz
+# Parallel arrays indexed by Bandwidth enum (0=Narrow, 1=Medium, 2=Wide).
+# Previously these were Dictionary[String, float] with a separate name lookup.
+const BANDWIDTH_NAMES := ["Narrow", "Medium", "Wide"]
+const BANDWIDTH_POWER := [1.0, 0.5, 0.3]
+const BANDWIDTH_MHZ := [1.0, 10.0, 50.0]
 
 
 static func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
@@ -43,8 +41,7 @@ static func bandwidth_penalty(receiver: Bandwidth) -> float:
 
 static func is_detected(tx: Transceiver, srx: Sensor, dis: float, terrain_loss: float = 1) -> bool:
 	var frequency_diff = abs(tx.frequency - srx.tuning_frequency)
-	var bw_key = PhysicsEngine.BW_LOOKUP[srx.sensor_bandwidth]
-	var bandwidth_half = PhysicsEngine.BANDWIDTH_VALUES.get(bw_key, 1.0) / 2.0
+	var bandwidth_half = BANDWIDTH_MHZ[srx.sensor_bandwidth] / 2.0
 
 	if frequency_diff > bandwidth_half:
 		return false
@@ -121,8 +118,8 @@ static func calculate_interference(
 
 	for jammer in jammers:
 		var frequency_diff = abs(rx_frequency - jammer.frequency)
-		var bw_key = BW_LOOKUP[jammer.jammer_bandwidth]
-		var bandwidth_half = BANDWIDTH_VALUES.get(bw_key, 1.0) / 2.0
+		var bw_idx: int = jammer.jammer_bandwidth
+		var bandwidth_half = BANDWIDTH_MHZ[bw_idx] / 2.0
 
 		if frequency_diff <= bandwidth_half:
 			var jammer_power_at_rx = calculate_received_power(
@@ -133,9 +130,7 @@ static func calculate_interference(
 				calculate_distance(jammer.global_position, rx_pos),
 				1.0
 			)
-
-			var bandwidth_power = BANDWIDTH_POWER.get(bw_key, 1.0)
-			total_interference += (jammer_power_at_rx * bandwidth_power)
+			total_interference += jammer_power_at_rx * BANDWIDTH_POWER[bw_idx]
 
 	return total_interference
 
