@@ -169,7 +169,7 @@ func toggle_shader(enabled: bool) -> void:
 func _reposition_units() -> void:
 	var unit_scale = 1.0 / zoom
 	for child in get_children():
-		if child is EMSUnit and child.has_meta("world_uv"):
+		if child is Unit and child.has_meta("world_uv"):
 			child.position = world_uv_to_screen(child.get_meta("world_uv"))
 			child.scale = Vector2(unit_scale, unit_scale)
 
@@ -205,18 +205,15 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	unit.position = at_position
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
 
-	# Apply pending attributes BEFORE add_child so the component's _ready sees
-	# the user-typed unit_name and skips its UnitNameManager.get_next_name call.
+	# Apply pending attributes BEFORE add_child so the unit's _ready sees the
+	# user-typed unit_name and skips its UnitNameManager.get_next_name call.
 	if (
 		sidebar_node
 		and sidebar_node.pending_attributes
 		and sidebar_node.pending_attributes.size() > 0
 	):
-		var component := EMSUnit.get_component_for(unit)
-		if component:
-			for attr_name in sidebar_node.pending_attributes:
-				component.set(attr_name, sidebar_node.pending_attributes[attr_name])
-
+		for attr_name in sidebar_node.pending_attributes:
+			unit.set(attr_name, sidebar_node.pending_attributes[attr_name])
 		sidebar_node.pending_attributes.clear()
 
 	add_child(unit)
@@ -226,7 +223,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	_on_unit_selected(unit)
 
 
-func _on_unit_placed(unit: EMSUnit) -> void:
+func _on_unit_placed(unit: Unit) -> void:
 	if not unit.selected.is_connected(_on_unit_selected):
 		unit.selected.connect(_on_unit_selected)
 	var label = _get_or_create_attribute_label(unit)
@@ -237,15 +234,11 @@ func _on_unit_placed(unit: EMSUnit) -> void:
 # --- Selection Logic ---
 
 
-func _on_unit_selected(unit: Node) -> void:
+func _on_unit_selected(unit: Unit) -> void:
 	_deselect_current_unit()
-
 	currently_selected_unit = unit
 	_set_unit_selected_visual(unit, true)
-
-	var component := EMSUnit.get_component_for(unit)
-	if component:
-		_show_attributes(component)
+	_show_attributes(unit)
 
 
 func _deselect_current_unit() -> void:
@@ -266,17 +259,20 @@ func _set_unit_selected_visual(unit: Node, selected: bool) -> void:
 		visual.set_selected(selected)
 
 
-func _show_attributes(component: Node) -> void:
-	if sidebar_node == null or component == null:
+func _show_attributes(component: Unit) -> void:
+	if sidebar_node == null or component == null or component.definition == null:
 		return
 
-	# Match by type rather than node name — survives node renames in scenes.
-	if component is Transceiver:
-		sidebar_node.select_entity(sidebar_node.EntityType.TRANSCEIVER, "Transceiver", component)
-	elif component is Jammer:
-		sidebar_node.select_entity(sidebar_node.EntityType.JAMMER, "Jammer", component)
-	elif component is Sensor:
-		sidebar_node.select_entity(sidebar_node.EntityType.SENSOR, "Sensor", component)
+	# Map definition.id to the sidebar's enum. Drives which attribute panel renders.
+	var entity_type = sidebar_node.EntityType.NONE
+	match component.definition.id:
+		&"transceiver":
+			entity_type = sidebar_node.EntityType.TRANSCEIVER
+		&"jammer":
+			entity_type = sidebar_node.EntityType.JAMMER
+		&"sensor":
+			entity_type = sidebar_node.EntityType.SENSOR
+	sidebar_node.select_entity(entity_type, component.definition.display_name, component)
 
 
 # --- Inputs (Camera Control) ---
@@ -335,8 +331,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				var clicked_unit := false
 				for child in get_children():
 					if (
-						child is EMSUnit
-						and child.global_position.distance_to(mouse_pos) < EMSUnit.SELECTION_RADIUS
+						child is Unit
+						and child.global_position.distance_to(mouse_pos) < Unit.SELECTION_RADIUS
 					):
 						clicked_unit = true
 						break
@@ -366,24 +362,23 @@ func _toggle_unit_attributes() -> void:
 
 func _apply_unit_attribute_visibility() -> void:
 	for child in get_children():
-		if child is EMSUnit:
+		if child is Unit:
 			var label = _get_or_create_attribute_label(child)
 			if label:
 				label.visible = unit_attributes_visible
 
 
-func _get_or_create_attribute_label(unit: Node) -> UnitAttributesLabel:
+func _get_or_create_attribute_label(unit: Unit) -> UnitAttributesLabel:
 	var existing = unit.get_node_or_null("UnitAttributesLabel")
 	if existing:
 		return existing as UnitAttributesLabel
-
-	var component := EMSUnit.get_component_for(unit)
-	if component == null:
+	if unit == null or unit.definition == null:
 		return null
 
 	var label := ATTRIBUTE_LABEL_SCRIPT.new()
 	label.name = "UnitAttributesLabel"
 	unit.add_child(label)
-	label.setup(unit, component)
+	# Pre-merge, attribute label took (wrapper, component); now they're the same node.
+	label.setup(unit, unit)
 	label.visible = unit_attributes_visible
 	return label

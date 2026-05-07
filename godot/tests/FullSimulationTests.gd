@@ -33,48 +33,42 @@ func run_sim_test():
 	sensor_folder.name = "Sensors"
 	units_folder.add_child(sensor_folder)
 
-	var transceiver1 = Transceiver.new()
+	var transceiver1 = make_unit(
+		"transceiver",
+		Vector2(1000, 1000),
+		{"power": 5, "height": 5, "frequency": 1000.0, "transceiver_bandwidth": 0}
+	)
 	transceiver1.name = "UnitA"
-	transceiver1.power = 5
-	transceiver1.height = 5
-	transceiver1.frequency = 1000.0
-	transceiver1.transceiver_bandwidth = 0
-	transceiver1.global_position = Vector2(1000, 1000)
 	tx_folder.add_child(transceiver1)
 
-	var transceiver2 = Transceiver.new()
+	var transceiver2 = make_unit(
+		"transceiver",
+		Vector2(1100, 1000),
+		{"power": 5, "height": 5, "frequency": 1000.0, "transceiver_bandwidth": 0}
+	)
 	transceiver2.name = "UnitB"
-	transceiver2.power = 5
-	transceiver2.height = 5
-	transceiver2.frequency = 1000.0
-	transceiver2.transceiver_bandwidth = 0
-	transceiver2.global_position = Vector2(1100, 1000)
 	tx_folder.add_child(transceiver2)
 
-	var jammer = Jammer.new()
-	jammer.power = 5
-	jammer.height = 5
-	jammer.frequency = 1000.0
-	jammer.jammer_bandwidth = 0
-	jammer.global_position = Vector2(1050, 1050)
+	var jammer = make_unit(
+		"jammer",
+		Vector2(1050, 1050),
+		{"power": 5, "height": 5, "frequency": 1000.0, "jammer_bandwidth": 0}
+	)
 	jam_folder.add_child(jammer)
 
 	var manager = load("res://scripts/SimulationManager.gd").new()
-
 	engine_root.add_child(manager)
 
 	print("\nStarting SimulationManager Validation...")
 
 	var jammers = [jammer]
 	var result = manager.calculate_link(transceiver1, transceiver2, jammers)
-
 	assert_true(
 		result == SimulationManager.LinkState.FAILED_JAMMED, "Link correctly identified as JAMMED."
 	)
 
 	jammer.global_position = Vector2(1500, 1500)
 	var result2 = manager.calculate_link(transceiver1, transceiver2, jammers)
-
 	assert_true(
 		result2 == SimulationManager.LinkState.SUCCESS, "Link correctly identified as CLEAR."
 	)

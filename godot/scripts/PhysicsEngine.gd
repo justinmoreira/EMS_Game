@@ -39,7 +39,7 @@ static func bandwidth_penalty(receiver: Bandwidth) -> float:
 			return 0.0
 
 
-static func is_detected(tx: Transceiver, srx: Sensor, dis: float, terrain_loss: float = 1) -> bool:
+static func is_detected(tx: Unit, srx: Unit, dis: float, terrain_loss: float = 1) -> bool:
 	var frequency_diff = abs(tx.frequency - srx.tuning_frequency)
 	var bandwidth_half = BANDWIDTH_MHZ[srx.sensor_bandwidth] / 2.0
 

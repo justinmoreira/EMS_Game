@@ -23,8 +23,8 @@ const STATUS_VISUAL_NODE_NAME := "UnitStatusVisual"
 
 #Data Storage
 var active_links: Dictionary = {}
-# link_results: Array of {"source": Transceiver, "target": Transceiver, "state": int}
-# detect_results: Array of {"sensor": Sensor, "transceiver": Transceiver, "detected": bool}
+# link_results: Array of {"source": Unit, "target": Unit, "state": int}
+# detect_results: Array of {"sensor": Unit, "transceiver": Unit, "detected": bool}
 var link_results: Array[Dictionary] = []
 var detect_results: Array[Dictionary] = []
 var links_visible: bool = true
@@ -51,11 +51,11 @@ func simulate() -> void:
 	var sensors = get_tree().get_nodes_in_group("sensors")
 
 	for i in range(transceivers.size()):
-		var unit_a = transceivers[i] as Transceiver
+		var unit_a = transceivers[i] as Unit
 		for j in range(transceivers.size()):
 			if i == j:
 				continue
-			var unit_b = transceivers[j] as Transceiver
+			var unit_b = transceivers[j] as Unit
 			link_results.append(
 				{
 					"source": unit_a,
@@ -76,7 +76,7 @@ func simulate() -> void:
 
 # tx is the transmitter, rx is the receiver — asymmetric by design.
 # Different power/height/bandwidth on each side means A->B != B->A.
-func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> int:
+func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 	var frequency_diff = abs(tx.frequency - rx.frequency)
 	var bw_idx: int = rx.transceiver_bandwidth
 	var bandwidth_half = PhysicsEngine.BANDWIDTH_MHZ[bw_idx] / 2.0
@@ -106,7 +106,7 @@ func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> int:
 	return LinkState.SUCCESS
 
 
-func calculate_detection(srx: Sensor, tx: Transceiver) -> bool:
+func calculate_detection(srx: Unit, tx: Unit) -> bool:
 	var dist = PhysicsEngine.calculate_distance(srx.global_position, tx.global_position)
 	return PhysicsEngine.is_detected(tx, srx, dist)
 
@@ -127,7 +127,7 @@ func _draw_links_from_results() -> void:
 
 
 #Creates or updates the arrow for a single directed link
-func _draw_directional_link(source: Transceiver, target: Transceiver, final_state: int) -> void:
+func _draw_directional_link(source: Unit, target: Unit, final_state: int) -> void:
 	var key = _vis_key(source, target)
 	var version = 1
 
@@ -147,7 +147,7 @@ func _draw_directional_link(source: Transceiver, target: Transceiver, final_stat
 
 
 # Instantiates the Line2D and arrowhead Polygon2D for a new link entry.
-func _create_link_nodes(source: Transceiver, target: Transceiver, key: String) -> void:
+func _create_link_nodes(source: Unit, target: Unit, key: String) -> void:
 	var scene = get_tree().current_scene
 	var line = Line2D.new()
 	line.width = LINE_WIDTH
@@ -264,7 +264,7 @@ func _get_or_create_status_visual(unit: Node) -> UnitStatusVisual:
 	return visual
 
 
-func _compute_status_for_transceiver(tx: Transceiver) -> int:
+func _compute_status_for_transceiver(tx: Unit) -> int:
 	var has_out_of_range := false
 
 	# Jammed/out-of-range applies only to the RECEIVER of a failed link.
@@ -286,7 +286,7 @@ func _compute_status_for_transceiver(tx: Transceiver) -> int:
 	return UnitStatusVisual.Status.NONE
 
 
-func _vis_key(a: Transceiver, b: Transceiver) -> String:
+func _vis_key(a: Unit, b: Unit) -> String:
 	return str(a.get_instance_id()) + "_to_" + str(b.get_instance_id())
 
 
