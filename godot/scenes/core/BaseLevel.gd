@@ -45,7 +45,9 @@ func _ready():
 	if OS.has_feature("web"):
 		var result = JavaScriptBridge.eval("localStorage.getItem('user_progress') || '{}'")
 		if result is String and result != "":
-			tutorial_done = result.find('"tutorial_complete":true') != -1
+			var data = JSON.parse_string(result)
+			if data is Dictionary:
+				tutorial_done = bool(data.get("tutorial_complete", false))
 		# Listen for reset tutorial from web UI
 		JavaScriptBridge.eval("if(window.initTutorialListener) window.initTutorialListener()")
 
@@ -201,7 +203,6 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	unit.set_meta("world_uv", screen_to_world_uv(at_position))
 	unit.position = at_position
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
-	add_child(unit)
 
 	# Apply any pending attribute changes from the sidebar
 	if (
@@ -220,6 +221,8 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 				component.set(attr_name, sidebar_node.pending_attributes[attr_name])
 
 		sidebar_node.pending_attributes.clear()
+
+	add_child(unit)
 
 	# Connect the selection signal
 	_on_unit_placed(unit)

@@ -25,12 +25,10 @@ const STATUS_VISUAL_NODE_NAME := "UnitStatusVisual"
 var active_links: Dictionary = {}
 var link_results: Dictionary = {}
 var detect_results: Dictionary = {}
-var timer: Timer
 var links_visible: bool = true
 
 
 func _ready() -> void:
-	setup_timer()
 	call_deferred("simulate")
 
 
@@ -321,26 +319,6 @@ func _apply_visibility_for_key(key: String) -> void:
 		data.line.visible = links_visible
 	if is_instance_valid(data.arrow):
 		data.arrow.visible = links_visible
-
-
-func setup_timer():
-	timer = Timer.new()
-	timer.one_shot = true
-	timer.timeout.connect(_on_timer_timeout)
-	add_child(timer)
-
-
-func set_transmission_speed(frequency: float) -> void:
-	var delay = remap(frequency, 30.0, 3000.0, 10.0, 0.1)
-	timer.wait_time = delay
-
-
-func send_message():
-	timer.start()
-
-
-func _on_timer_timeout():
-	pass
 
 
 func _input(event):

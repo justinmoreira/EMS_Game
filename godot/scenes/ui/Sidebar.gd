@@ -778,16 +778,6 @@ func _write(p: String, value) -> void:
 
 	c.set(p, value)
 
-	var unit = c.get_parent()
-	if unit:
-		var scene_path = unit.scene_file_path
-		if scene_path:
-			var packed_scene := PackedScene.new()
-			if packed_scene.pack(unit) == OK:
-				ResourceSaver.save(packed_scene, scene_path)
-			else:
-				push_error("Failed to pack unit")
-
 
 func _is_transceiver_unit(unit: Node) -> bool:
 	if unit == null:
@@ -809,14 +799,7 @@ func _write_node(p: String, value) -> void:
 		return
 
 	selected_node.set(p, value)
-
-	var scene_path = selected_node.scene_file_path
-	if scene_path:
-		var packed_scene := PackedScene.new()
-		if packed_scene.pack(selected_node) == OK:
-			ResourceSaver.save(packed_scene, scene_path)
-		else:
-			push_error("Failed to pack unit")
+	# _write: runtime values stay in-memory; no scene-file save.
 
 
 func _clear_selection() -> void:
