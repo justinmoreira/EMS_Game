@@ -47,8 +47,31 @@ var _tutorial_active: bool = false
 func _ready() -> void:
 	GameEvents.units_changed.connect(_update_simulate_button)
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
+	GameEvents.selection_changed.connect(_on_selection_changed)
+	resized.connect(func(): GameEvents.sidebar_resized.emit(size.x))
 	_build_sidebar()
 	_refresh_attribute_panel()
+	# Publish initial size so listeners (BaseLevel) get a value before any resize.
+	GameEvents.sidebar_resized.emit.call_deferred(size.x)
+
+
+func _on_selection_changed(unit: Node) -> void:
+	if unit is Unit and unit.definition:
+		var t := _entity_type_for_def_id(unit.definition.id)
+		select_entity(t, unit.definition.display_name, unit)
+	else:
+		select_entity(EntityType.NONE)
+
+
+func _entity_type_for_def_id(id: StringName) -> EntityType:
+	match id:
+		&"transceiver":
+			return EntityType.TRANSCEIVER
+		&"jammer":
+			return EntityType.JAMMER
+		&"sensor":
+			return EntityType.SENSOR
+	return EntityType.NONE
 
 
 func select_entity(type: EntityType, display_name: String = "", node: Node = null) -> void:
@@ -255,6 +278,8 @@ func _build_entity_card(
 		C_BG_LIGHT.lightened(0.08),
 		sprite_path
 	)
+	# Drag payload picks up the user's pending attribute tweaks.
+	card.pending_provider = func(): return pending_attributes.duplicate()
 	card.pressed.connect(
 		func():
 			_clear_selection()
@@ -572,16 +597,7 @@ func _on_reset_pressed() -> void:
 
 	dialog.confirmed.connect(
 		func():
-			# Reset unit name counters
-			UnitNameManager.reset()
-			for unit in get_tree().get_nodes_in_group("transceivers"):
-				unit.queue_free()
-			for unit in get_tree().get_nodes_in_group("sensors"):
-				unit.queue_free()
-			for unit in get_tree().get_nodes_in_group("jammers"):
-				unit.queue_free()
-			select_entity(EntityType.NONE)
-			SimulationManager.clear_all_links()
+			GameEvents.reset_requested.emit()
 			dialog.queue_free()
 	)
 	dialog.canceled.connect(func(): dialog.queue_free())
@@ -599,11 +615,10 @@ func _on_delete_pressed() -> void:
 	get_tree().root.add_child(dialog)
 	dialog.popup_centered()
 
+	var to_delete = selected_node
 	dialog.confirmed.connect(
 		func():
-			selected_node.queue_free()
-			select_entity(EntityType.NONE)
-			SimulationManager.clear_all_links()
+			GameEvents.delete_requested.emit(to_delete)
 			dialog.queue_free()
 	)
 	dialog.canceled.connect(func(): dialog.queue_free())
@@ -630,7 +645,7 @@ func _update_simulate_button() -> void:
 
 
 func _on_simulate_pressed() -> void:
-	SimulationManager.simulate()
+	GameEvents.simulation_requested.emit()
 
 
 func _add_text_input(label: String, current: String, accent: Color, on_change: Callable) -> void:
@@ -698,13 +713,15 @@ func _make_label(text: String, color: Color, txt_size: int, expand: bool = false
 	return lbl
 
 
-func _on_tutorial_filter(allowed_types: Array) -> void:
-	_tutorial_active = not allowed_types.is_empty()
+func _on_tutorial_filter(allowed_ids: Array) -> void:
+	# allowed_ids contains StringName definition.id values (e.g. &"transceiver").
+	_tutorial_active = not allowed_ids.is_empty()
 	_attr_content.modulate.a = 0.3 if _tutorial_active else 1.0
 	_set_interactivity(_attr_content, not _tutorial_active)
 	for type in _entity_cards:
 		var card = _entity_cards[type]
-		var enabled = not _tutorial_active or type in allowed_types
+		var def := _definition_for(type)
+		var enabled = not _tutorial_active or (def and def.id in allowed_ids)
 		card.modulate.a = 1.0 if enabled else 0.3
 		card.set_process_input(enabled)
 		card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
