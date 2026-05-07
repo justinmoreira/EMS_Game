@@ -1,7 +1,5 @@
 class_name Unit extends Node2D
 
-signal selected(unit: Node)
-
 # A press+release that moves the cursor less than this counts as a click,
 # not a drag. Above it, the unit is considered dragged.
 const CLICK_DRAG_THRESHOLD_PX := 5.0
@@ -16,15 +14,11 @@ var _unit_visual: UnitVisual
 var unit_visual: UnitVisual:
 	get:
 		return _unit_visual
+
 var _selection_area: Area2D
 var _is_being_dragged: bool = false
 var _drag_start_pos: Vector2 = Vector2.ZERO
 var _drag_distance: float = 0.0
-
-# Reuse the parent BaseLevel's already-resolved sidebar reference
-@onready var _sidebar_node = (
-	get_parent().sidebar_node if get_parent() and "sidebar_node" in get_parent() else null
-)
 
 
 func _ready() -> void:
@@ -135,47 +129,33 @@ func _input(event: InputEvent) -> void:
 	if not _is_being_dragged:
 		return
 
-	var mouse_pos = get_global_mouse_position()
-
 	if (
 		event is InputEventMouseButton
 		and event.button_index == MOUSE_BUTTON_LEFT
 		and not event.pressed
 	):
 		if _drag_distance < CLICK_DRAG_THRESHOLD_PX:
-			selected.emit(self)
+			GameEvents.unit_selected.emit(self)
 		_is_being_dragged = false
 		get_tree().root.set_input_as_handled()
 		return
 
 	if event is InputEventMouseMotion:
-		var can_move := true
+		# Clamp by converting through the level's UV space — which already
+		# accounts for sidebar/playable-area exclusion. No direct sidebar reach.
+		var base_level = get_parent()
+		if not (base_level and base_level.has_method("screen_to_world_uv")):
+			return
 
-		if _sidebar_node and _sidebar_node.get_global_rect().has_point(mouse_pos):
-			can_move = false
-
-		var screen_rect = get_viewport().get_visible_rect()
-		var sidebar_w: float = _sidebar_node.size.x if _sidebar_node else 0.0
-
-		mouse_pos.x = clamp(
-			mouse_pos.x,
-			screen_rect.position.x + sidebar_w,
-			screen_rect.position.x + screen_rect.size.x
-		)
-		mouse_pos.y = clamp(
-			mouse_pos.y, screen_rect.position.y, screen_rect.position.y + screen_rect.size.y
-		)
+		var mouse_pos = get_global_mouse_position()
+		var world_uv = base_level.screen_to_world_uv(mouse_pos)
+		var clamped := Vector2(clamp(world_uv.x, 0.0, 1.0), clamp(world_uv.y, 0.0, 1.0))
 
 		if has_meta("world_uv"):
-			var base_level = get_parent()
-			if base_level and base_level.has_method("screen_to_world_uv"):
-				var world_uv = base_level.screen_to_world_uv(mouse_pos)
-				set_meta("world_uv", world_uv)
+			set_meta("world_uv", clamped)
 
-		if can_move:
-			global_position = mouse_pos
-			_drag_distance = _drag_start_pos.distance_to(mouse_pos)
-
+		global_position = base_level.world_uv_to_screen(clamped)
+		_drag_distance = _drag_start_pos.distance_to(global_position)
 		get_tree().root.set_input_as_handled()
 
 

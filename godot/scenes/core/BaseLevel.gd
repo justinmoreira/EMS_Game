@@ -1,13 +1,6 @@
 class_name BaseLevel
 extends Control
 
-const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
-const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
-
-enum TutorialStep { WELCOME, PLACE_TRANSCEIVER, DONE }
-
-var _tutorial_step := TutorialStep.WELCOME
-
 # Unit attribute controls
 const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
 const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
@@ -17,99 +10,33 @@ var zoom := 1.0
 var offset := Vector2.ZERO
 var dragging := false
 var last_mouse_pos := Vector2.ZERO
-var intro_popup_open := false
 
-# Computed: always reads live so a stale 0.0
-# can't allow drops/coords under the sidebar.
-var sidebar_width: float:
-	get:
-		return sidebar_node.size.x if sidebar_node else 0.0
+# Sidebar layout — populated via signal, no global find_child reach.
+# Width is the live x-size of the sidebar; 0 if no sidebar in this scene.
+var sidebar_width: float = 0.0
 
 # Selection State
 var currently_selected_unit: Node = null
-
 var unit_attributes_visible: bool = false
 
 @onready var background := $BackgroundTexture
-@onready var sidebar_node = get_tree().root.find_child("Sidebar", true, false)
 
 # --- Initialization ---
 
 
 func _ready():
-	# Handle window resizing and sidebar layout
 	get_tree().get_root().size_changed.connect(_on_window_resized)
-	if sidebar_node:
-		sidebar_node.resized.connect(_on_window_resized)
+	GameEvents.unit_selected.connect(_on_unit_selected)
+	GameEvents.simulation_requested.connect(SimulationManager.simulate)
+	GameEvents.reset_requested.connect(_on_reset_requested)
+	GameEvents.delete_requested.connect(_on_delete_requested)
+	GameEvents.sidebar_resized.connect(_on_sidebar_resized)
 	_on_window_resized()
 
-	GameEvents.units_changed.connect(_on_units_changed_for_tutorial)
 
-	# Check if tutorial was already completed
-	var tutorial_done := false
-	if OS.has_feature("web"):
-		var result = JavaScriptBridge.eval("localStorage.getItem('user_progress') || '{}'")
-		if result is String and result != "":
-			var data = JSON.parse_string(result)
-			if data is Dictionary:
-				tutorial_done = bool(data.get("tutorial_complete", false))
-		# Listen for reset tutorial from web UI
-		JavaScriptBridge.eval("if(window.initTutorialListener) window.initTutorialListener()")
-
-	if tutorial_done:
-		_tutorial_step = TutorialStep.DONE
-	else:
-		_start_tutorial()
-
-
-func _start_tutorial() -> void:
-	if intro_popup_open:
-		return
-
-	var popup := SANDBOX_INTRO_POPUP.instantiate()
-	intro_popup_open = true
-
-	$CanvasLayer.add_child(popup)
-
-	if popup.has_signal("continued"):
-		popup.continued.connect(_on_intro_popup_closed)
-
-
-func _on_intro_popup_closed() -> void:
-	intro_popup_open = false
-	_advance_tutorial()
-
-
-func _advance_tutorial() -> void:
-	match _tutorial_step:
-		TutorialStep.WELCOME:
-			_tutorial_step = TutorialStep.PLACE_TRANSCEIVER
-			GameEvents.tutorial_filter_sidebar.emit([sidebar_node.EntityType.TRANSCEIVER])
-			_show_tutorial_hint("Drag a [b]Transceiver[/b] from the sidebar onto the map to begin.")
-		TutorialStep.PLACE_TRANSCEIVER:
-			_tutorial_step = TutorialStep.DONE
-			GameEvents.tutorial_filter_sidebar.emit([])
-			if OS.has_feature("web"):
-				JavaScriptBridge.eval(
-					"if(window.setProgress) window.setProgress('{\"tutorial_complete\":true}')"
-				)
-			_show_tutorial_hint(
-				"Great! You placed a transceiver.\nNow try adding Jammers and Sensors."
-			)
-		TutorialStep.DONE:
-			pass
-
-
-func _on_units_changed_for_tutorial() -> void:
-	if _tutorial_step == TutorialStep.PLACE_TRANSCEIVER:
-		if get_tree().get_nodes_in_group("transceivers").size() > 0:
-			_advance_tutorial()
-
-
-func _show_tutorial_hint(text: String) -> void:
-	var popup := TUTORIAL_HINT_POPUP.instantiate()
-	popup.hint_text = text
-	$CanvasLayer.add_child(popup)
+func _on_sidebar_resized(width: float) -> void:
+	sidebar_width = width
+	_on_window_resized()
 
 
 func _on_window_resized() -> void:
@@ -207,25 +134,19 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 
 	# Apply pending attributes BEFORE add_child so the unit's _ready sees the
 	# user-typed unit_name and skips its UnitNameManager.get_next_name call.
-	if (
-		sidebar_node
-		and sidebar_node.pending_attributes
-		and sidebar_node.pending_attributes.size() > 0
-	):
-		for attr_name in sidebar_node.pending_attributes:
-			unit.set(attr_name, sidebar_node.pending_attributes[attr_name])
-		sidebar_node.pending_attributes.clear()
+	# Pending attributes ride along in the drag payload — Sidebar attaches the
+	# snapshot via EntityCard. No reach into Sidebar from here.
+	var override: Dictionary = data.get("attributes_override", {})
+	for attr_name in override:
+		unit.set(attr_name, override[attr_name])
 
 	add_child(unit)
-
-	# Connect the selection signal
 	_on_unit_placed(unit)
-	_on_unit_selected(unit)
+	# Newly-placed unit is treated as selected so its panel opens.
+	GameEvents.unit_selected.emit(unit)
 
 
 func _on_unit_placed(unit: Unit) -> void:
-	if not unit.selected.is_connected(_on_unit_selected):
-		unit.selected.connect(_on_unit_selected)
 	var label = _get_or_create_attribute_label(unit)
 	if label:
 		label.visible = unit_attributes_visible
@@ -238,7 +159,6 @@ func _on_unit_selected(unit: Unit) -> void:
 	_deselect_current_unit()
 	currently_selected_unit = unit
 	_set_unit_selected_visual(unit, true)
-	_show_attributes(unit)
 
 
 func _deselect_current_unit() -> void:
@@ -246,42 +166,38 @@ func _deselect_current_unit() -> void:
 		return
 	_set_unit_selected_visual(currently_selected_unit, false)
 	currently_selected_unit = null
-	# Reset sidebar to show placeholder
-	if sidebar_node:
-		sidebar_node.select_entity(sidebar_node.EntityType.NONE)
+	GameEvents.selection_cleared.emit()
 
 
 func _set_unit_selected_visual(unit: Unit, selected: bool) -> void:
-	# Direct typed access — `find_child("Visual")` failed post-merge because the
-	# UnitVisual is created at runtime (no owner), so default owned=true filtered it out.
 	if unit and unit.unit_visual:
 		unit.unit_visual.set_selected(selected)
 
 
-func _show_attributes(component: Unit) -> void:
-	if sidebar_node == null or component == null or component.definition == null:
-		return
+# --- Sidebar button handlers ---
 
-	# Map definition.id to the sidebar's enum. Drives which attribute panel renders.
-	var entity_type = sidebar_node.EntityType.NONE
-	match component.definition.id:
-		&"transceiver":
-			entity_type = sidebar_node.EntityType.TRANSCEIVER
-		&"jammer":
-			entity_type = sidebar_node.EntityType.JAMMER
-		&"sensor":
-			entity_type = sidebar_node.EntityType.SENSOR
-	sidebar_node.select_entity(entity_type, component.definition.display_name, component)
+
+func _on_reset_requested() -> void:
+	# LinkRenderer also subscribes to reset_requested and clears its own visuals.
+	UnitNameManager.reset()
+	for group in [&"transceivers", &"jammers", &"sensors"]:
+		for unit in get_tree().get_nodes_in_group(group):
+			unit.queue_free()
+	_deselect_current_unit()
+
+
+func _on_delete_requested(unit: Node) -> void:
+	# LinkRenderer's per-frame purge will drop links involving this unit
+	# once is_instance_valid returns false post-queue_free.
+	if unit:
+		unit.queue_free()
+	_deselect_current_unit()
 
 
 # --- Inputs (Camera Control) ---
 
 
 func _input(event: InputEvent) -> void:
-	# prevent gameplay after popup is open
-	if intro_popup_open:
-		return
-
 	if event is InputEventMouseButton:
 		if event.position.x < sidebar_width:
 			return
@@ -305,10 +221,6 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# prevent map interaction when popup is active
-	if intro_popup_open:
-		return
-
 	if event is InputEventKey and event.pressed and not event.echo:
 		var focus_owner := get_viewport().gui_get_focus_owner()
 		if focus_owner is LineEdit or focus_owner is TextEdit:

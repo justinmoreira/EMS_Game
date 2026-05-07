@@ -20,6 +20,9 @@ config/icon="res://icon.svg"
 SimulationManager="*res://scripts/SimulationManager.gd"
 GameEvents="*res://scripts/GameEvents.gd"
 UnitNameManager="*res://scripts/UnitNameManager.gd"
+TutorialController="*res://scripts/TutorialController.gd"
+LinkRenderer="*res://scripts/LinkRenderer.gd"
+StatusBadgeRenderer="*res://scripts/StatusBadgeRenderer.gd"
 
 [display]
 
