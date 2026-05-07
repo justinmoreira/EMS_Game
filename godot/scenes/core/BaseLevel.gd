@@ -204,18 +204,14 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	unit.position = at_position
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
 
-	# Apply any pending attribute changes from the sidebar
+	# Apply pending attributes BEFORE add_child so the component's _ready sees
+	# the user-typed unit_name and skips its UnitNameManager.get_next_name call.
 	if (
 		sidebar_node
 		and sidebar_node.pending_attributes
 		and sidebar_node.pending_attributes.size() > 0
 	):
-		var component: Node = null
-		for child in unit.get_children():
-			if child.name in ["Transceiver", "Jammer", "Sensor"]:
-				component = child
-				break
-
+		var component := EMSUnit.get_component_for(unit)
 		if component:
 			for attr_name in sidebar_node.pending_attributes:
 				component.set(attr_name, sidebar_node.pending_attributes[attr_name])
@@ -229,14 +225,12 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	_on_unit_selected(unit)
 
 
-func _on_unit_placed(unit: Node) -> void:
-	# Connect selection signals
-	if unit.has_signal("selected") and not unit.selected.is_connected(_on_unit_selected):
+func _on_unit_placed(unit: EMSUnit) -> void:
+	if not unit.selected.is_connected(_on_unit_selected):
 		unit.selected.connect(_on_unit_selected)
-	if unit is EMSUnit:
-		var label = _get_or_create_attribute_label(unit)
-		if label:
-			label.visible = unit_attributes_visible
+	var label = _get_or_create_attribute_label(unit)
+	if label:
+		label.visible = unit_attributes_visible
 
 
 # --- Selection Logic ---
@@ -248,7 +242,7 @@ func _on_unit_selected(unit: Node) -> void:
 	currently_selected_unit = unit
 	_set_unit_selected_visual(unit, true)
 
-	var component := _get_unit_component(unit)
+	var component := EMSUnit.get_component_for(unit)
 	if component:
 		_show_attributes(component)
 
@@ -271,30 +265,17 @@ func _set_unit_selected_visual(unit: Node, selected: bool) -> void:
 		visual.set_selected(selected)
 
 
-func _get_unit_component(unit: Node) -> Node:
-	if unit == null:
-		return null
-	# Check children for functional components
-	for child in unit.get_children():
-		if child.name in ["Transceiver", "Jammer", "Sensor"]:
-			return child
-	return null
-
-
 func _show_attributes(component: Node) -> void:
 	if sidebar_node == null or component == null:
 		return
 
-	# Determine component type by node name and update Sidebar
-	match component.name:
-		"Transceiver":
-			sidebar_node.select_entity(
-				sidebar_node.EntityType.TRANSCEIVER, "Transceiver", component
-			)
-		"Jammer":
-			sidebar_node.select_entity(sidebar_node.EntityType.JAMMER, "Jammer", component)
-		"Sensor":
-			sidebar_node.select_entity(sidebar_node.EntityType.SENSOR, "Sensor", component)
+	# Match by type rather than node name — survives node renames in scenes.
+	if component is Transceiver:
+		sidebar_node.select_entity(sidebar_node.EntityType.TRANSCEIVER, "Transceiver", component)
+	elif component is Jammer:
+		sidebar_node.select_entity(sidebar_node.EntityType.JAMMER, "Jammer", component)
+	elif component is Sensor:
+		sidebar_node.select_entity(sidebar_node.EntityType.SENSOR, "Sensor", component)
 
 
 # --- Inputs (Camera Control) ---
@@ -400,7 +381,7 @@ func _get_or_create_attribute_label(unit: Node) -> UnitAttributesLabel:
 	if existing:
 		return existing as UnitAttributesLabel
 
-	var component := _find_unit_component(unit)
+	var component := EMSUnit.get_component_for(unit)
 	if component == null:
 		return null
 
@@ -410,15 +391,3 @@ func _get_or_create_attribute_label(unit: Node) -> UnitAttributesLabel:
 	label.setup(unit, component)
 	label.visible = unit_attributes_visible
 	return label
-
-
-func _find_unit_component(unit: Node) -> Node:
-	for child in unit.get_children():
-		if child is Transceiver or child is Jammer or child is Sensor:
-			return child
-
-		for grandchild in child.get_children():
-			if grandchild is Transceiver or grandchild is Jammer or grandchild is Sensor:
-				return grandchild
-
-	return null
