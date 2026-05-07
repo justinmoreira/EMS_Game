@@ -218,6 +218,8 @@ test:
 build_game: _init_godot
     @echo "🔨 Exporting Godot for Web..."
     @mkdir -p {{export_path}}
+    @rm -f {{project_path}}/.godot/global_script_class_cache.cfg
+    {{godot_linux_headless}} --headless --path {{project_path}} --import
     {{godot_linux_headless}} --headless --path {{project_path}} --export-release "{{export_preset}}" ../{{export_path}}/index.html
     @echo "✅ Godot export complete"
 

@@ -1,9 +1,26 @@
-[gd_scene format=3 uid="uid://7xh14ua2fjg0"]
+[gd_scene load_steps=2 format=3 uid="uid://7xh14ua2fjg0"]
 
 [ext_resource type="Script" uid="uid://lovad8bhjgbc" path="res://scenes/ui/Sidebar.gd" id="1_8cvjg"]
 
 [node name="Sidebar" type="PanelContainer" unique_id=831222554]
-layout_mode = 2
-offset_right = 40.0
-offset_bottom = 40.0
+custom_minimum_size = Vector2(300, 0)
+size_flags_horizontal = 3
+size_flags_vertical = 3
 script = ExtResource("1_8cvjg")
+
+[node name="Layout" type="VBoxContainer" parent="."]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+
+[node name="Header" type="PanelContainer" parent="Layout"]
+
+[node name="Tray" type="PanelContainer" parent="Layout"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Divider" type="HSeparator" parent="Layout"]
+
+[node name="AttrSection" type="PanelContainer" parent="Layout"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
