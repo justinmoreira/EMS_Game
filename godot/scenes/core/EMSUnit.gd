@@ -3,6 +3,11 @@ extends Node2D
 
 signal selected(unit: Node)
 
+# A press+release that moves the cursor less than this counts as a click,
+# not a drag. Above it, the unit is considered dragged.
+const CLICK_DRAG_THRESHOLD_PX := 5.0
+const SELECTION_RADIUS := 32.0
+
 var component: Node
 var selection_area: Area2D
 var is_being_dragged: bool = false
@@ -16,11 +21,7 @@ var drag_distance: float = 0.0
 
 
 func _ready() -> void:
-	# Find whichever component was instantiated
-	for child in get_all_children(self):
-		if child is Transceiver or child is Jammer or child is Sensor:
-			component = child
-			break
+	component = get_component_for(self)
 
 	# Create the selection area with a same collision radius as entity
 	selection_area = Area2D.new()
@@ -29,7 +30,7 @@ func _ready() -> void:
 
 	var collision = CollisionShape2D.new()
 	var circle = CircleShape2D.new()
-	circle.radius = 32
+	circle.radius = SELECTION_RADIUS
 	collision.shape = circle
 
 	selection_area.add_child(collision)
@@ -62,7 +63,7 @@ func _input(event: InputEvent) -> void:
 		and event.button_index == MOUSE_BUTTON_LEFT
 		and not event.pressed
 	):
-		if drag_distance < 5.0:
+		if drag_distance < CLICK_DRAG_THRESHOLD_PX:
 			selected.emit(self)
 		is_being_dragged = false
 		get_tree().root.set_input_as_handled()
@@ -102,12 +103,16 @@ func _input(event: InputEvent) -> void:
 		get_tree().root.set_input_as_handled()
 
 
-func get_all_children(node: Node) -> Array:
-	var children = []
-	for child in node.get_children():
-		children.append(child)
-		children.append_array(get_all_children(child))
-	return children
+# Single source of truth for "the Transceiver/Jammer/Sensor child of a unit".
+# Previously this logic was duplicated 5 times across BaseLevel/EMSUnit/Sidebar
+# with subtle variations (recursive vs direct, by-name vs by-type).
+static func get_component_for(unit: Node) -> Node:
+	if unit == null:
+		return null
+	for child in unit.get_children():
+		if child is Transceiver or child is Jammer or child is Sensor:
+			return child
+	return null
 
 
 func _process(_delta: float) -> void:

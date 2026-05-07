@@ -23,8 +23,10 @@ const STATUS_VISUAL_NODE_NAME := "UnitStatusVisual"
 
 #Data Storage
 var active_links: Dictionary = {}
-var link_results: Dictionary = {}
-var detect_results: Dictionary = {}
+# link_results: Array of {"source": Transceiver, "target": Transceiver, "state": int}
+# detect_results: Array of {"sensor": Sensor, "transceiver": Transceiver, "detected": bool}
+var link_results: Array[Dictionary] = []
+var detect_results: Array[Dictionary] = []
 var links_visible: bool = true
 
 
@@ -54,17 +56,21 @@ func simulate() -> void:
 			if i == j:
 				continue
 			var unit_b = transceivers[j] as Transceiver
-			var result = calculate_link(unit_a, unit_b, jammers)
-			# Instance ID key drives visuals (always unique)
-			link_results[_vis_key(unit_a, unit_b)] = result
+			link_results.append(
+				{
+					"source": unit_a,
+					"target": unit_b,
+					"state": calculate_link(unit_a, unit_b, jammers)
+				}
+			)
 
 	for sensor in sensors:
 		for tx in transceivers:
-			var detected := calculate_detection(sensor, tx)
-			var d_key := str(sensor.get_instance_id()) + "_detects_" + str(tx.get_instance_id())
-			detect_results[d_key] = detected
+			detect_results.append(
+				{"sensor": sensor, "transceiver": tx, "detected": calculate_detection(sensor, tx)}
+			)
 
-	_draw_links_from_results(transceivers)
+	_draw_links_from_results()
 	_update_unit_status_visuals(transceivers)
 
 
@@ -105,27 +111,19 @@ func calculate_detection(srx: Sensor, tx: Transceiver) -> bool:
 	return PhysicsEngine.is_detected(tx, srx, dist)
 
 
-# Iterates all ordered transceiver pairs and draw arrow pair
-func _draw_links_from_results(transceivers: Array) -> void:
-	var current_sim_keys = []
+# Renders one arrow per link_results entry; purges arrows for stale pairs.
+func _draw_links_from_results() -> void:
+	var current_sim_keys: Dictionary = {}  # set semantics
 
-	for src_tx in transceivers:
-		for tgt_tx in transceivers:
-			if src_tx == tgt_tx:
-				continue
-			var key = _vis_key(src_tx, tgt_tx)
-			if link_results.has(key):
-				current_sim_keys.append(key)
-				_draw_directional_link(src_tx, tgt_tx, link_results[key])
+	for r in link_results:
+		var key := _vis_key(r.source, r.target)
+		current_sim_keys[key] = true
+		_draw_directional_link(r.source, r.target, r.state)
 
-	## Remove any arrows that belong to pairs no longer in the simulation
-	var keys_to_purge = []
 	for active_key in active_links.keys():
-		if not active_key in current_sim_keys:
-			keys_to_purge.append(active_key)
-	for k in keys_to_purge:
-		_free_link_nodes(active_links[k])
-		active_links.erase(k)
+		if not current_sim_keys.has(active_key):
+			_free_link_nodes(active_links[active_key])
+			active_links.erase(active_key)
 
 
 #Creates or updates the arrow for a single directed link
@@ -267,27 +265,19 @@ func _get_or_create_status_visual(unit: Node) -> UnitStatusVisual:
 
 
 func _compute_status_for_transceiver(tx: Transceiver) -> int:
-	var tx_id := str(tx.get_instance_id())
-	var tx_incoming_suffix := "_to_" + tx_id
-
 	var has_out_of_range := false
 
-	# Jammed/out-of-range should only apply to the RECEIVER of a failed link.
-	for key in link_results.keys():
-		if !key.ends_with(tx_incoming_suffix):
+	# Jammed/out-of-range applies only to the RECEIVER of a failed link.
+	for r in link_results:
+		if r.target != tx:
 			continue
-
-		var state: int = link_results[key]
-
-		if state == LinkState.FAILED_JAMMED:
+		if r.state == LinkState.FAILED_JAMMED:
 			return UnitStatusVisual.Status.JAMMED
-
-		if state == LinkState.FAILED_OUT_OF_RANGE:
+		if r.state == LinkState.FAILED_OUT_OF_RANGE:
 			has_out_of_range = true
 
-	# Sensors detect emitters/transceivers.
-	for d_key in detect_results.keys():
-		if d_key.ends_with("_detects_" + tx_id) and detect_results[d_key]:
+	for d in detect_results:
+		if d.transceiver == tx and d.detected:
 			return UnitStatusVisual.Status.DETECTED
 
 	if has_out_of_range:

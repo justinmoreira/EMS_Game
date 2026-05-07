@@ -779,17 +779,6 @@ func _write(p: String, value) -> void:
 	c.set(p, value)
 
 
-func _is_transceiver_unit(unit: Node) -> bool:
-	if unit == null:
-		return false
-
-	for child in unit.get_children():
-		if child.name == "Transceiver":
-			return true
-
-	return false
-
-
 func _node_int(p: String, fallback: int) -> int:
 	return int(selected_node.get(p)) if selected_node and p in selected_node else fallback
 
