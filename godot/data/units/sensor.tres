@@ -1,0 +1,70 @@
+[gd_resource type="Resource" script_class="UnitDefinition" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scenes/core/UnitDefinition.gd" id="def"]
+[ext_resource type="Script" path="res://scenes/core/AttributeSpec.gd" id="spec"]
+
+[sub_resource type="Resource" id="a_unit_name"]
+script = ExtResource("spec")
+id = &"unit_name"
+display_name = "Name"
+kind = 2
+default_value = ""
+
+[sub_resource type="Resource" id="a_sensitivity"]
+script = ExtResource("spec")
+id = &"sensitivity"
+display_name = "Sensitivity"
+kind = 0
+min_value = 0.0
+max_value = 10.0
+step = 1.0
+unit = "dBm"
+default_value = 3
+
+[sub_resource type="Resource" id="a_tuning"]
+script = ExtResource("spec")
+id = &"tuning_frequency"
+display_name = "Tuning Frequency"
+kind = 0
+min_value = 30.0
+max_value = 3000.0
+step = 1.0
+unit = "MHz"
+default_value = 1000
+
+[sub_resource type="Resource" id="a_height"]
+script = ExtResource("spec")
+id = &"height"
+display_name = "Height"
+kind = 0
+min_value = 0.0
+max_value = 10.0
+step = 1.0
+unit = "m"
+default_value = 5
+
+[sub_resource type="Resource" id="a_bandwidth"]
+script = ExtResource("spec")
+id = &"sensor_bandwidth"
+display_name = "Bandwidth"
+kind = 4
+enum_options = PackedStringArray("Narrow", "Medium", "Wide")
+default_value = 1
+
+[sub_resource type="Resource" id="a_scanning"]
+script = ExtResource("spec")
+id = &"is_scanning"
+display_name = "Scanning"
+kind = 3
+default_value = true
+
+[resource]
+script = ExtResource("def")
+id = &"sensor"
+display_name = "Sensor"
+group = &"sensors"
+letter = "S"
+color = Color(1, 0.36078432, 0.36078432, 1)
+sprite_path = "res://assets/sprites/sensor.png"
+animated_sprite_path = "res://assets/sprites/sensorAni.png"
+attributes = [SubResource("a_unit_name"), SubResource("a_sensitivity"), SubResource("a_tuning"), SubResource("a_height"), SubResource("a_bandwidth"), SubResource("a_scanning")]

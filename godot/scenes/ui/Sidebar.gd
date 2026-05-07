@@ -7,6 +7,10 @@ extends PanelContainer
 
 enum EntityType { NONE, TRANSCEIVER, JAMMER, SENSOR }
 
+const TRANSCEIVER_DEF: UnitDefinition = preload("res://data/units/transceiver.tres")
+const JAMMER_DEF: UnitDefinition = preload("res://data/units/jammer.tres")
+const SENSOR_DEF: UnitDefinition = preload("res://data/units/sensor.tres")
+
 # ── Colors ────────────────────────────────────
 const C_BG_DARK := Color("0d0f14")
 const C_BG_MID := Color("13161e")
@@ -350,156 +354,89 @@ func _refresh_attribute_panel() -> void:
 	_attr_placeholder.visible = false
 	_attr_header.visible = true
 
-	match selected_entity:
+	var def := _definition_for(selected_entity)
+	if def == null:
+		return
+
+	_attr_header.text = def.display_name
+	_attr_header.add_theme_color_override("font_color", def.color)
+	_add_accent_bar(def.color)
+
+	for spec in def.attributes:
+		_add_attribute_input(spec, def)
+
+
+func _definition_for(t: EntityType) -> UnitDefinition:
+	match t:
 		EntityType.TRANSCEIVER:
-			_attr_header.text = "Transceiver"
-			_attr_header.add_theme_color_override("font_color", C_BLUE)
-			_add_accent_bar(C_BLUE)
-			_add_text_input(
-				"Name",
-				_prop_string("unit_name", UnitNameManager.peek_next_name("transceiver")),
-				C_BLUE,
-				func(v): _write("unit_name", v)
-			)
-			_add_slider(
-				"Tx Power",
-				0.0,
-				10.0,
-				_prop_float("power", 5.0),
-				"dBm",
-				C_BLUE,
-				func(v): _write("power", int(v)),
-				true
-			)
-			_add_slider(
-				"Frequency",
-				30.0,
-				3000.0,
-				_prop_float("frequency", 1000.0),
-				"MHz",
-				C_BLUE,
-				func(v): _write("frequency", v),
-				true
-			)
-			_add_slider(
-				"Height",
-				0.0,
-				10.0,
-				_prop_int("height", 5),
-				"m",
-				C_BLUE,
-				func(v): _write("height", int(v)),
-				true
-			)
-			_add_dropdown(
-				"Bandwidth",
-				["Narrow", "Medium", "Wide"],
-				_prop_int("transceiver_bandwidth", 1),
-				C_BLUE,
-				func(v): _write("transceiver_bandwidth", v)
-			)
-
+			return TRANSCEIVER_DEF
 		EntityType.JAMMER:
-			_attr_header.text = "Jammer"
-			_attr_header.add_theme_color_override("font_color", C_RED)
-			_add_accent_bar(C_RED)
-			_add_text_input(
-				"Name",
-				_prop_string("unit_name", UnitNameManager.peek_next_name("jammer")),
-				C_AMBER,
-				func(v): _write("unit_name", v)
-			)
+			return JAMMER_DEF
+		EntityType.SENSOR:
+			return SENSOR_DEF
+	return null
+
+
+func _add_attribute_input(spec: AttributeSpec, def: UnitDefinition) -> void:
+	var accent := def.color
+	var current = _read_attribute(spec, def)
+	match spec.kind:
+		AttributeSpec.Kind.INT:
 			_add_slider(
-				"Power",
-				0.0,
-				10.0,
-				_prop_int("power", 5),
-				"dBm",
-				C_RED,
-				func(v): _write("power", int(v)),
+				spec.display_name,
+				spec.min_value,
+				spec.max_value,
+				float(current),
+				spec.unit,
+				accent,
+				func(v): _write_attribute(spec.id, int(v)),
 				true
 			)
+		AttributeSpec.Kind.FLOAT:
 			_add_slider(
-				"Frequency",
-				30.0,
-				3000.0,
-				_prop_float("frequency", 1000.0),
-				"MHz",
-				C_RED,
-				func(v): _write("frequency", v),
-				true
+				spec.display_name,
+				spec.min_value,
+				spec.max_value,
+				float(current),
+				spec.unit,
+				accent,
+				func(v): _write_attribute(spec.id, v),
+				false
 			)
-			_add_slider(
-				"Height",
-				0.0,
-				10.0,
-				_prop_int("height", 5),
-				"m",
-				C_RED,
-				func(v): _write("height", int(v)),
-				true
-			)
+		AttributeSpec.Kind.ENUM:
 			_add_dropdown(
-				"Bandwidth",
-				["Narrow", "Medium", "Wide"],
-				_prop_int("jammer_bandwidth", 1),
-				C_RED,
-				func(v): _write("jammer_bandwidth", v)
+				spec.display_name,
+				Array(spec.enum_options),
+				int(current),
+				accent,
+				func(v): _write_attribute(spec.id, v)
+			)
+		AttributeSpec.Kind.BOOL:
+			_add_toggle(
+				spec.display_name, bool(current), accent, func(v): _write_attribute(spec.id, v)
+			)
+		AttributeSpec.Kind.STRING:
+			_add_text_input(
+				spec.display_name, str(current), accent, func(v): _write_attribute(spec.id, v)
 			)
 
-		EntityType.SENSOR:
-			_attr_header.text = "Sensor"
-			_attr_header.add_theme_color_override("font_color", C_PURPLE)
-			_add_accent_bar(C_PURPLE)
-			_add_text_input(
-				"Name",
-				_prop_string("unit_name", UnitNameManager.peek_next_name("sensor")),
-				C_RED,
-				func(v): _write("unit_name", v)
-			)
-			_add_slider(
-				"Sensitivity",
-				0.0,
-				10.0,
-				_prop_int("sensitivity", 3),
-				"dBm",
-				C_PURPLE,
-				func(v): _write("sensitivity", int(v)),
-				true
-			)
-			_add_slider(
-				"Tuning Frequency",
-				30.0,
-				3000.0,
-				_node_int("tuning_frequency", 1000),
-				"MHz",
-				C_PURPLE,
-				func(v): _write_node("tuning_frequency", int(v)),
-				true
-			)
-			_add_slider(
-				"Height",
-				0.0,
-				10.0,
-				_prop_int("height", 5),
-				"m",
-				C_PURPLE,
-				func(v): _write("height", int(v)),
-				true
-			)
-			_add_dropdown(
-				"Bandwidth",
-				["Narrow", "Medium", "Wide"],
-				_prop_int("sensor_bandwidth", 1),
-				C_PURPLE,
-				func(v): _write("sensor_bandwidth", v)
-			)
-			_add_toggle(
-				"Scanning",
-				_prop_bool("is_scanning", true),
-				C_PURPLE,
-				func(v): _write("is_scanning", v)
-			)
+
+func _read_attribute(spec: AttributeSpec, def: UnitDefinition):
+	if selected_node and selected_node is Unit:
+		return selected_node.get_value(spec.id, spec.default_value)
+	if pending_attributes.has(spec.id):
+		return pending_attributes[spec.id]
+	# Special case: name placeholder shows the next auto-name.
+	if spec.id == &"unit_name":
+		return UnitNameManager.peek_next_name(def.id)
+	return spec.default_value
+
+
+func _write_attribute(id: StringName, value) -> void:
+	if selected_node and selected_node is Unit:
+		selected_node.set_value(id, value)
+	else:
+		pending_attributes[id] = value
 
 
 func _add_accent_bar(accent: Color) -> void:
@@ -638,11 +575,11 @@ func _on_reset_pressed() -> void:
 			# Reset unit name counters
 			UnitNameManager.reset()
 			for unit in get_tree().get_nodes_in_group("transceivers"):
-				unit.get_parent().queue_free()
+				unit.queue_free()
 			for unit in get_tree().get_nodes_in_group("sensors"):
-				unit.get_parent().queue_free()
+				unit.queue_free()
 			for unit in get_tree().get_nodes_in_group("jammers"):
-				unit.get_parent().queue_free()
+				unit.queue_free()
 			select_entity(EntityType.NONE)
 			SimulationManager.clear_all_links()
 			dialog.queue_free()
@@ -664,7 +601,7 @@ func _on_delete_pressed() -> void:
 
 	dialog.confirmed.connect(
 		func():
-			selected_node.get_parent().queue_free()
+			selected_node.queue_free()
 			select_entity(EntityType.NONE)
 			SimulationManager.clear_all_links()
 			dialog.queue_free()
@@ -696,10 +633,6 @@ func _on_simulate_pressed() -> void:
 	SimulationManager.simulate()
 
 
-func _component() -> Node:
-	return selected_node
-
-
 func _add_text_input(label: String, current: String, accent: Color, on_change: Callable) -> void:
 	var vbox := _make_row_container()
 	var hbox := HBoxContainer.new()
@@ -717,71 +650,6 @@ func _add_text_input(label: String, current: String, accent: Color, on_change: C
 	input.text_submitted.connect(func(v): on_change.call(v))
 	input.focus_exited.connect(func(): on_change.call(input.text))
 	hbox.add_child(input)
-
-
-func _prop_string(p: String, fallback: String) -> String:
-	var c := _component()
-	if c:
-		var val = c.get(p)
-		if val != null:
-			return str(val)
-	if pending_attributes.has(p):
-		return str(pending_attributes[p])
-	return fallback
-
-
-func _prop_float(p: String, fallback: float) -> float:
-	var c := _component()
-	if c:
-		var val = c.get(p)
-		if val != null:
-			return float(val)
-	if pending_attributes.has(p):
-		return float(pending_attributes[p])
-	return fallback
-
-
-func _prop_int(p: String, fallback: int) -> int:
-	var c := _component()
-	if c:
-		var val = c.get(p)
-		if val != null:
-			return int(val)
-	if pending_attributes.has(p):
-		return int(pending_attributes[p])
-	return fallback
-
-
-func _prop_bool(p: String, fallback: bool) -> bool:
-	var c := _component()
-	if c and p in c:
-		return bool(c.get(p))
-	if pending_attributes.has(p):
-		return bool(pending_attributes[p])
-	return fallback
-
-
-func _write(p: String, value) -> void:
-	var c := _component()
-	if not c:
-		# If no component is selected, this is a pending entity being configured
-		# Store the attribute for when it's placed
-		pending_attributes[p] = value
-		return
-
-	c.set(p, value)
-
-
-func _node_int(p: String, fallback: int) -> int:
-	return int(selected_node.get(p)) if selected_node and p in selected_node else fallback
-
-
-func _write_node(p: String, value) -> void:
-	if not (selected_node and p in selected_node):
-		return
-
-	selected_node.set(p, value)
-	# _write: runtime values stay in-memory; no scene-file save.
 
 
 func _clear_selection() -> void:

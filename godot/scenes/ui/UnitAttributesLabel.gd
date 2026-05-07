@@ -91,58 +91,54 @@ func _is_mouse_over_label(mouse_global: Vector2) -> bool:
 
 
 func _build_text() -> String:
-	if target_component == null:
+	if target_component == null or not target_component is Unit:
+		return ""
+
+	var unit: Unit = target_component
+	if unit.definition == null:
 		return ""
 
 	var lines: PackedStringArray = []
+	for spec in unit.definition.attributes:
+		# unit_name is rendered next to the sprite, not in this label.
+		if spec.id == &"unit_name":
+			continue
+		var value = unit.get_value(spec.id, spec.default_value)
+		lines.append("%s: %s" % [_short_label(spec), _format_value(spec, value)])
 
-	match target_component.name:
-		"Transceiver":
-			lines.append("Pwr: %s  H: %s" % [_safe_get("power", 0), _safe_get("height", 0)])
-			lines.append("Freq: %s" % _fmt(_safe_get("frequency", 0.0)))
-			lines.append("BW: %s" % _bandwidth_name(_safe_get("transceiver_bandwidth", 1)))
-
-		"Jammer":
-			lines.append("Pwr: %s  H: %s" % [_safe_get("power", 0), _safe_get("height", 0)])
-			lines.append("Freq: %s" % _fmt(_safe_get("frequency", 0.0)))
-			lines.append("BW: %s" % _bandwidth_name(_safe_get("jammer_bandwidth", 1)))
-
-		"Sensor":
-			lines.append("H: %s  Sens: %s" % [_safe_get("height", 0), _safe_get("sensitivity", 0)])
-			lines.append("Tune: %s" % _fmt(_safe_get("tuning_frequency", 0)))
-			lines.append("BW: %s" % _bandwidth_name(_safe_get("sensor_bandwidth", 1)))
-			lines.append("Scan: %s" % ("On" if _safe_get("is_scanning", false) else "Off"))
-
-		_:
-			lines.append("No attributes")
+	if lines.is_empty():
+		lines.append("No attributes")
 
 	return "\n".join(lines)
 
 
-func _safe_get(property_name: String, fallback: Variant) -> Variant:
-	if target_component == null:
-		return fallback
-
-	for property in target_component.get_property_list():
-		if property.name == property_name:
-			return target_component.get(property_name)
-
-	return fallback
-
-
-func _fmt(value: Variant) -> String:
-	if value is float:
-		return "%.0f" % value
-	return str(value)
+# Compact display name for the floating label (e.g. "Power" → "Pwr").
+const _SHORT_LABELS := {
+	&"power": "Pwr",
+	&"frequency": "Freq",
+	&"tuning_frequency": "Tune",
+	&"transceiver_bandwidth": "BW",
+	&"jammer_bandwidth": "BW",
+	&"sensor_bandwidth": "BW",
+	&"sensitivity": "Sens",
+	&"is_scanning": "Scan",
+	&"height": "H"
+}
 
 
-func _bandwidth_name(value: int) -> String:
-	match value:
-		0:
-			return "Narrow"
-		1:
-			return "Medium"
-		2:
-			return "Wide"
-		_:
+func _short_label(spec: AttributeSpec) -> String:
+	return _SHORT_LABELS.get(spec.id, spec.display_name)
+
+
+func _format_value(spec: AttributeSpec, value) -> String:
+	match spec.kind:
+		AttributeSpec.Kind.FLOAT:
+			return "%.0f" % float(value)
+		AttributeSpec.Kind.ENUM:
+			var idx := int(value)
+			if idx >= 0 and idx < spec.enum_options.size():
+				return spec.enum_options[idx]
 			return str(value)
+		AttributeSpec.Kind.BOOL:
+			return "On" if value else "Off"
+	return str(value)
