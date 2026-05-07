@@ -20,9 +20,6 @@ const C_TEXT := Color("e8eaf0")
 const C_DIM := Color("6b7594")
 const C_PURPLE := Color("e099ff")
 
-# Constants
-var invalid_props = ["script", "name", "owner", "unique_name_in_owner"]
-
 # ── State ─────────────────────────────────────
 var selected_entity: EntityType = EntityType.NONE
 var selected_entity_name: String = ""
@@ -765,10 +762,6 @@ func _prop_bool(p: String, fallback: bool) -> bool:
 
 
 func _write(p: String, value) -> void:
-	# Don't write properties that aren't actual component attributes
-	if p in invalid_props:
-		return
-
 	var c := _component()
 	if not c:
 		# If no component is selected, this is a pending entity being configured

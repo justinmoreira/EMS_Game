@@ -78,8 +78,8 @@ func simulate() -> void:
 # Different power/height/bandwidth on each side means A->B != B->A.
 func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> int:
 	var frequency_diff = abs(tx.frequency - rx.frequency)
-	var bw_key = PhysicsEngine.BW_LOOKUP[rx.transceiver_bandwidth]
-	var bandwidth_half = PhysicsEngine.BANDWIDTH_VALUES.get(bw_key, 1.0) / 2.0
+	var bw_idx: int = rx.transceiver_bandwidth
+	var bandwidth_half = PhysicsEngine.BANDWIDTH_MHZ[bw_idx] / 2.0
 
 	if frequency_diff > bandwidth_half:
 		return LinkState.FREQUENCY_DIFF
@@ -95,7 +95,7 @@ func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> int:
 		rx.frequency, rx.height, rx.global_position, jammers
 	)
 
-	var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER.get(bw_key, 1.0)
+	var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
 
 	if !PhysicsEngine.range_check(received_power):
 		return LinkState.FAILED_OUT_OF_RANGE

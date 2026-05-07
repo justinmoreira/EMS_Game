@@ -17,8 +17,13 @@ var zoom := 1.0
 var offset := Vector2.ZERO
 var dragging := false
 var last_mouse_pos := Vector2.ZERO
-var sidebar_width: float = 0.0
 var intro_popup_open := false
+
+# Computed: always reads live so a stale 0.0
+# can't allow drops/coords under the sidebar.
+var sidebar_width: float:
+	get:
+		return sidebar_node.size.x if sidebar_node else 0.0
 
 # Selection State
 var currently_selected_unit: Node = null
@@ -109,7 +114,6 @@ func _show_tutorial_hint(text: String) -> void:
 
 func _on_window_resized() -> void:
 	self.size = get_viewport_rect().size
-	sidebar_width = sidebar_node.size.x if sidebar_node else 0.0
 	if background:
 		background.offset_left = sidebar_width
 	update_shader()
@@ -182,11 +186,8 @@ func _clamp_offset() -> void:
 func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 	if not (data is Dictionary and data.has("scene_path")):
 		return false
-
-	var live_sidebar_w: float = sidebar_node.size.x if sidebar_node else sidebar_width
-	if at_position.x < live_sidebar_w:
+	if at_position.x < sidebar_width:
 		return false
-
 	return true
 
 
@@ -328,22 +329,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 		if event.pressed:
-			# Check if click is on empty map (not on sidebar)
+			# Click on empty map (not on a unit) → deselect.
 			if event.position.x > sidebar_width:
-				# Check if any unit was clicked by seeing if any unit emits "selected"
-				# If no unit handles the input, we deselect
 				var mouse_pos = get_global_mouse_position()
-				var clicked_unit = false
-
-				# Check all units to see if one is under the cursor
+				var clicked_unit := false
 				for child in get_children():
-					if child is EMSUnit:
-						var distance = child.global_position.distance_to(mouse_pos)
-						if distance < 32:  # Matches the selection radius in EMSUnit.gd
-							clicked_unit = true
-							break
-
-				# If no unit was clicked, deselect
+					if (
+						child is EMSUnit
+						and child.global_position.distance_to(mouse_pos) < EMSUnit.SELECTION_RADIUS
+					):
+						clicked_unit = true
+						break
 				if not clicked_unit:
 					_deselect_current_unit()
 					get_tree().root.set_input_as_handled()
