@@ -9,7 +9,10 @@ var is_being_dragged: bool = false
 var drag_start_pos: Vector2 = Vector2.ZERO
 var drag_distance: float = 0.0
 
-@onready var sidebar_node = get_tree().root.find_child("Sidebar", true, false)
+# Reuse the parent BaseLevel's already-resolved sidebar reference
+@onready var sidebar_node = (
+	get_parent().sidebar_node if get_parent() and "sidebar_node" in get_parent() else null
+)
 
 
 func _ready() -> void:
