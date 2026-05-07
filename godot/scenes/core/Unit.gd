@@ -11,6 +11,11 @@ const SELECTION_RADIUS := 32.0
 var physical_state: Dictionary = {}
 
 var _unit_visual: UnitVisual
+
+# Public accessor — used by BaseLevel for selection highlight.
+var unit_visual: UnitVisual:
+	get:
+		return _unit_visual
 var _selection_area: Area2D
 var _is_being_dragged: bool = false
 var _drag_start_pos: Vector2 = Vector2.ZERO

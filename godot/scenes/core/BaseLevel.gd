@@ -251,12 +251,11 @@ func _deselect_current_unit() -> void:
 		sidebar_node.select_entity(sidebar_node.EntityType.NONE)
 
 
-func _set_unit_selected_visual(unit: Node, selected: bool) -> void:
-	if unit == null:
-		return
-	var visual := unit.find_child("Visual")
-	if visual and visual.has_method("set_selected"):
-		visual.set_selected(selected)
+func _set_unit_selected_visual(unit: Unit, selected: bool) -> void:
+	# Direct typed access — `find_child("Visual")` failed post-merge because the
+	# UnitVisual is created at runtime (no owner), so default owned=true filtered it out.
+	if unit and unit.unit_visual:
+		unit.unit_visual.set_selected(selected)
 
 
 func _show_attributes(component: Unit) -> void:
