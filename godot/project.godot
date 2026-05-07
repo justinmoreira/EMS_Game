@@ -17,7 +17,6 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-PhysicsEngine="*res://scripts/PhysicsEngine.gd"
 SimulationManager="*res://scripts/SimulationManager.gd"
 GameEvents="*res://scripts/GameEvents.gd"
 UnitNameManager="*res://scripts/UnitNameManager.gd"
