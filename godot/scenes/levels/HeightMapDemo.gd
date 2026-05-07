@@ -2,6 +2,7 @@ extends BaseLevel
 
 
 func _ready():
+	super._ready()
 	var sidebar = $CanvasLayer/Control/Sidebar
 	sidebar.select_entity(Sidebar.EntityType.JAMMER, "Test Jammer")
 

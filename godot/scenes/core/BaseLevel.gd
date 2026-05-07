@@ -181,11 +181,11 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 	if not (data is Dictionary and data.has("scene_path")):
 		return false
 
-	# Still reject sidebar drops
-	if at_position.x < sidebar_width:
+	var live_sidebar_w: float = sidebar_node.size.x if sidebar_node else sidebar_width
+	if at_position.x < live_sidebar_w:
 		return false
 
-	return data is Dictionary and data.has("scene_path")
+	return true
 
 
 func _drop_data(at_position: Vector2, data: Variant) -> void:

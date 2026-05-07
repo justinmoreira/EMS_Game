@@ -1,37 +1,56 @@
 extends Node
 
-# Counters for each unit type
-var transceiver_count: int = 0
-var jammer_count: int = 0
-var sensor_count: int = 0
+const _LS_KEY := "unit_counters"
+const _DISPLAY := {"transceiver": "Transceiver", "jammer": "Jammer", "sensor": "Sensor"}
+
+var _counters: Dictionary = {"transceiver": 0, "jammer": 0, "sensor": 0}
+
+
+func _ready() -> void:
+	_load()
 
 
 func get_next_name(unit_type: String) -> String:
-	match unit_type.to_lower():
-		"transceiver":
-			transceiver_count += 1
-			return "Transceiver %d" % transceiver_count
-		"jammer":
-			jammer_count += 1
-			return "Jammer %d" % jammer_count
-		"sensor":
-			sensor_count += 1
-			return "Sensor %d" % sensor_count
-	return ""
+	var key := unit_type.to_lower()
+	if not _counters.has(key):
+		return ""
+	_counters[key] += 1
+	_save()
+	return "%s %d" % [_DISPLAY[key], _counters[key]]
 
 
 func peek_next_name(unit_type: String) -> String:
-	match unit_type.to_lower():
-		"transceiver":
-			return "Transceiver %d" % (transceiver_count + 1)
-		"jammer":
-			return "Jammer %d" % (jammer_count + 1)
-		"sensor":
-			return "Sensor %d" % (sensor_count + 1)
-	return ""
+	var key := unit_type.to_lower()
+	if not _counters.has(key):
+		return ""
+	return "%s %d" % [_DISPLAY[key], _counters[key] + 1]
 
 
 func reset() -> void:
-	transceiver_count = 0
-	jammer_count = 0
-	sensor_count = 0
+	for k in _counters:
+		_counters[k] = 0
+	_save()
+
+
+# Local-only persistence so reload doesn't collide names with prior session.
+# Doesn't go through Supabase — cross-device counter sync would need a schema
+# migration and isn't worth it; local "no immediate dup" is the actual goal.
+func _save() -> void:
+	if not OS.has_feature("web"):
+		return
+	var json := JSON.stringify(_counters)
+	JavaScriptBridge.eval("localStorage.setItem('%s', `%s`)" % [_LS_KEY, json])
+
+
+func _load() -> void:
+	if not OS.has_feature("web"):
+		return
+	var raw = JavaScriptBridge.eval("localStorage.getItem('%s') || ''" % _LS_KEY)
+	if not raw is String or raw == "":
+		return
+	var data = JSON.parse_string(raw)
+	if not data is Dictionary:
+		return
+	for k in _counters:
+		if data.has(k):
+			_counters[k] = int(data[k])
