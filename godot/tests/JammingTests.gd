@@ -82,16 +82,28 @@ func test_range_check():
 	print("Running Range Check Tests...\n")
 
 	# Test 1: Signal above noise floor (in range)
-	assert_true(PhysicsEngine.range_check(1.0 * PhysicsEngine.GAME_CALCULATION_RATIO), "Signal above noise floor: true")
+	assert_true(
+		PhysicsEngine.range_check(1.0 * PhysicsEngine.GAME_CALCULATION_RATIO),
+		"Signal above noise floor: true"
+	)
 
 	# Test 2: Signal below noise floor (out of range)
-	assert_false(PhysicsEngine.range_check(0.3 / PhysicsEngine.GAME_CALCULATION_RATIO), "Signal below noise floor: false")
+	assert_false(
+		PhysicsEngine.range_check(0.3 / PhysicsEngine.GAME_CALCULATION_RATIO),
+		"Signal below noise floor: false"
+	)
 
 	# Test 3: Signal exactly at noise floor (out of range)
-	assert_false(PhysicsEngine.range_check(0.5 / PhysicsEngine.GAME_CALCULATION_RATIO), "Signal at noise floor: false")
+	assert_false(
+		PhysicsEngine.range_check(0.5 / PhysicsEngine.GAME_CALCULATION_RATIO),
+		"Signal at noise floor: false"
+	)
 
 	# Test 4: Signal just above noise floor (in range)
-	assert_true(PhysicsEngine.range_check(0.51 * PhysicsEngine.GAME_CALCULATION_RATIO), "Signal just above noise floor: true")
+	assert_true(
+		PhysicsEngine.range_check(0.51 * PhysicsEngine.GAME_CALCULATION_RATIO),
+		"Signal just above noise floor: true"
+	)
 
 	print("\n")
 
