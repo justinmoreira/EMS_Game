@@ -93,7 +93,8 @@ func calculate_received_power(
 		terrain_loss = 1.0
 
 	var received_power = (
-		(GAME_CALCULATION_RATIO * tx_power * height_factor * frequency_factor) / (distance_loss * terrain_loss)
+		(GAME_CALCULATION_RATIO * tx_power * height_factor * frequency_factor)
+		/ (distance_loss * terrain_loss)
 	)
 	return received_power
 
