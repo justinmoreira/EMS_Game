@@ -29,7 +29,7 @@ func test_calculate_interference():
 	# JammerPowerAtRx = calculate_received_power(5, 5, 5, 1000, 1, 1) = 1.875 * GAME_RATIO = 5.625
 	# BandwidthPower = 1.0 (Narrow)
 	# Total = 5.625 * 1.0 = 5.625
-	assert_eq(interference, 5.625, "Single jammer same frequency: Got 5.625")
+	assert_eq(interference, 1.875 * PhysicsEngine.GAME_CALCULATION_RATIO, "Single jammer same frequency: Got 5.625")
 
 	jammer_a.free()
 
@@ -71,7 +71,7 @@ func test_calculate_interference():
 	# Jammer 1: 1.875 * 1.0 = 1.875
 	# Jammer 2: calculate_received_power(3, 5, 5, 1000.5, 1, 1) ≈ 2.25 * 0.5 = 1.125
 	# Total ≈ 2.437 * GAME_RATIO ~ 7.311
-	assert_approx(interference, 7.311, 0.01, "Multiple jammers: Got ~7.311")
+	assert_approx(interference, 2.437 * PhysicsEngine.GAME_CALCULATION_RATIO, 0.01, "Multiple jammers: Got ~7.311")
 
 	jammer1.free()
 	jammer2.free()
