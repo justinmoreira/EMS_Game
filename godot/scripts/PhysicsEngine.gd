@@ -16,6 +16,9 @@ const BANDWIDTH_POWER = {"Narrow": 1.0, "Medium": 0.5, "Wide": 0.3}  # 1 MHz  # 
 # Actual bandwidth values in MHz for each jammer type
 const BANDWIDTH_VALUES = {"Narrow": 1.0, "Medium": 10.0, "Wide": 50.0}  # 1 MHz  # 10 MHz  # 50 MHz
 
+# Increase or decrease to adjust gameplay success
+const GAME_CALCULATION_RATIO = 3.0
+
 
 func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
 	return pos1.distance_to(pos2) / PIXELS_PER_UNIT
@@ -90,7 +93,7 @@ func calculate_received_power(
 		terrain_loss = 1.0
 
 	var received_power = (
-		(tx_power * height_factor * frequency_factor) / (distance_loss * terrain_loss)
+		(GAME_CALCULATION_RATIO * tx_power * height_factor * frequency_factor) / (distance_loss * terrain_loss)
 	)
 	return received_power
 

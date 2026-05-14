@@ -409,7 +409,7 @@ func _refresh_attribute_panel() -> void:
 			_add_text_input(
 				"Name",
 				_prop_string("unit_name", UnitNameManager.peek_next_name("jammer")),
-				C_AMBER,
+				C_RED,
 				func(v): _write("unit_name", v)
 			)
 			_add_slider(
@@ -457,7 +457,7 @@ func _refresh_attribute_panel() -> void:
 			_add_text_input(
 				"Name",
 				_prop_string("unit_name", UnitNameManager.peek_next_name("sensor")),
-				C_RED,
+				C_PURPLE,
 				func(v): _write("unit_name", v)
 			)
 			_add_slider(
@@ -496,12 +496,6 @@ func _refresh_attribute_panel() -> void:
 				_prop_int("sensor_bandwidth", 1),
 				C_PURPLE,
 				func(v): _write("sensor_bandwidth", v)
-			)
-			_add_toggle(
-				"Scanning",
-				_prop_bool("is_scanning", true),
-				C_PURPLE,
-				func(v): _write("is_scanning", v)
 			)
 
 
@@ -858,6 +852,7 @@ func _apply_style(
 func _make_label(text: String, color: Color, txt_size: int, expand: bool = false) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
+	lbl.custom_minimum_size.x = 120
 	lbl.add_theme_color_override("font_color", color)
 	lbl.add_theme_font_size_override("font_size", txt_size)
 	if expand:
