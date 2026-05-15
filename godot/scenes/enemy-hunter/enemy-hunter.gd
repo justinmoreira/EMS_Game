@@ -360,9 +360,9 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 			continue
 
 		# Determine detection tier from sensor bandwidth enum (0=narrow, 1=medium, 2=wide)
-		var _bw = sensor.get("sensor_bandwidth")
-		var sensor_bw: int = int(_bw) if _bw != null else 0
-		var tier := _detection_tier_from_enum(sensor_bw)
+		var bw = sensor.get("sensor_bandwidth")
+		var sensor_bw_enum: int = int(bw) if bw != null else 0
+		var tier := _detection_tier_from_enum(sensor_bw_enum)
 
 		match tier:
 			"wide":
