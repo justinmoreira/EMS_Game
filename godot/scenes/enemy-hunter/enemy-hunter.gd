@@ -19,7 +19,7 @@ var _hinted_transceivers: Array[int] = []  # hints revealed
 var _jammed_transceivers: Array[int] = []
 var _start_time: float = 0.0
 var _completion_time: float = 0.0
-var _timer_label: Label  = null
+var _timer_label: Label = null
 var _total_transceivers: int = 0
 var _hud: Node = null
 var _reveal_button: Button = null
@@ -30,7 +30,8 @@ var _hint_overlay: _DetectionHintOverlay = null
 
 
 # Draws all active detection hints via _draw()
-class _DetectionHintOverlay extends Node2D:
+class _DetectionHintOverlay:
+	extends Node2D
 
 	# Each entry: { sensor_pos, transceiver_pos, tier }
 	# tier: "wide" | "medium"  (narrow entries are never stored, they reveal directly)
@@ -45,7 +46,7 @@ class _DetectionHintOverlay extends Node2D:
 					h.tier = "medium"
 					queue_redraw()
 				return
-		hints.append({ "sensor_pos": sensor_pos, "transceiver_pos": transceiver_pos, "tier": tier })
+		hints.append({"sensor_pos": sensor_pos, "transceiver_pos": transceiver_pos, "tier": tier})
 		queue_redraw()
 
 	func remove_hints_for(transceiver_pos: Vector2) -> void:
@@ -73,10 +74,10 @@ class _DetectionHintOverlay extends Node2D:
 		var color := Color(1.0, 0.85, 0.1, 0.85)  # golden yellow
 
 		# Dashed line
-		var dash_len  := 10.0
-		var gap_len   := 6.0
+		var dash_len := 10.0
+		var gap_len := 6.0
 		var travelled := 0.0
-		var drawing   := true
+		var drawing := true
 		while travelled < arrow_len - 12.0:
 			var seg: float = min(dash_len if drawing else gap_len, arrow_len - 12.0 - travelled)
 			if drawing:
@@ -108,8 +109,10 @@ class _DetectionHintOverlay extends Node2D:
 			draw_line(
 				center + Vector2(cos(a0), sin(a0)) * noisy_r,
 				center + Vector2(cos(a1), sin(a1)) * noisy_r,
-				color, 2.0
+				color,
+				2.0
 			)
+
 
 func _ready() -> void:
 	super._ready()
@@ -180,9 +183,10 @@ func _advance() -> void:
 			_start_time = Time.get_ticks_msec() / 1000.0
 			_show_timer_and_reveal()
 			_show_hint(
-				"Hunt down all %d transceivers!\n"
-				% _total_transceivers
-				+ "Use wide/medium band to locate them,\nthen narrow band to reveal and jam."
+				(
+					"Hunt down all %d transceivers!\n" % _total_transceivers
+					+ "Use wide/medium band to locate them,\nthen narrow band to reveal and jam."
+				)
 			)
 
 		Step.HUNTING:
@@ -265,9 +269,10 @@ func _check_victory() -> void:
 	if _step != Step.HUNTING:
 		return
 
-	if (_detected_transceivers.size() == _total_transceivers
-			and _jammed_transceivers.size() == _total_transceivers):
-
+	if (
+		_detected_transceivers.size() == _total_transceivers
+		and _jammed_transceivers.size() == _total_transceivers
+	):
 		_completion_time = Time.get_ticks_msec() / 1000.0 - _start_time
 
 		# Stop timer updates
@@ -297,9 +302,9 @@ func _show_scoreboard() -> void:
 		popup.button_string = "Finish"
 	popup.title_string = "Mission Complete!"
 	popup.body_string = (
-		"[i]All %d transceivers jammed![/i]\n\n" % _total_transceivers +
-		"[b]Time:[/b] %d:%02d\n" % [minutes, seconds] +
-		"[b]Score:[/b] %d\n" % score
+		"[i]All %d transceivers jammed![/i]\n\n" % _total_transceivers
+		+ "[b]Time:[/b] %d:%02d\n" % [minutes, seconds]
+		+ "[b]Score:[/b] %d\n" % score
 	)
 
 	var cl := CanvasLayer.new()
@@ -395,10 +400,12 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 			if tx_id not in _jammed_transceivers:
 				_jammed_transceivers.append(tx_id)
 
-				print("Enemy Hunter: Transceiver jammed! (%d/%d)" % [
-					_jammed_transceivers.size(),
-					_total_transceivers
-				])
+				print(
+					(
+						"Enemy Hunter: Transceiver jammed! (%d/%d)"
+						% [_jammed_transceivers.size(), _total_transceivers]
+					)
+				)
 
 	# Final win check
 	_check_victory()
@@ -406,9 +413,12 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 
 func _detection_tier_from_enum(bw_enum: int) -> String:
 	match bw_enum:
-		2: return "wide" # direction hint only
-		1: return "medium" # direction + range ring
-		_: return "narrow" # full reveal
+		2:
+			return "wide"  # direction hint only
+		1:
+			return "medium"  # direction + range ring
+		_:
+			return "narrow"  # full reveal
 
 
 func _apply_wide_hint(sensor: Node, transceiver: Node, tx_id: int) -> void:
@@ -416,14 +426,14 @@ func _apply_wide_hint(sensor: Node, transceiver: Node, tx_id: int) -> void:
 		return
 	_hinted_transceivers.append(tx_id)
 
-	var sensor_pos :Vector2= sensor.global_position
-	var transceiver_pos :Vector2= transceiver.global_position
+	var sensor_pos: Vector2 = sensor.global_position
+	var transceiver_pos: Vector2 = transceiver.global_position
 	_hint_overlay.add_hint(sensor_pos, transceiver_pos, "wide")
 
 
 func _apply_medium_hint(sensor: Node, transceiver: Node, tx_id: int) -> void:
-	var sensor_pos :Vector2= sensor.global_position
-	var transceiver_pos :Vector2= transceiver.global_position
+	var sensor_pos: Vector2 = sensor.global_position
+	var transceiver_pos: Vector2 = transceiver.global_position
 	_hint_overlay.add_hint(sensor_pos, transceiver_pos, "medium")
 
 	if tx_id not in _hinted_transceivers:
@@ -442,11 +452,12 @@ func _apply_narrow_reveal(transceiver: Node, tx_id: int) -> void:
 func _check_jammed() -> void:
 	for transceiver in get_tree().get_nodes_in_group("transceivers"):
 		var tx_id: int = transceiver.get_instance_id()
-		if (tx_id in _detected_transceivers
-				and tx_id not in _jammed_transceivers
-				and transceiver.has_method("is_jammed")
-				and transceiver.is_jammed()):
-
+		if (
+			tx_id in _detected_transceivers
+			and tx_id not in _jammed_transceivers
+			and transceiver.has_method("is_jammed")
+			and transceiver.is_jammed()
+		):
 			_jammed_transceivers.append(tx_id)
 
 			_check_victory()
@@ -491,7 +502,7 @@ func _generate_terrain(w: int, h: int) -> Array:
 	for x in range(w):
 		g.append([])
 		for y in range(h):
-			var n   := noise.get_noise_2d(float(x), float(y))
+			var n := noise.get_noise_2d(float(x), float(y))
 			var h_m := (n + 1.0) * 0.5 * 500.0
 			g[x].append(h_m)
 	return g
