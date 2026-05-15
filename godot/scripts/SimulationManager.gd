@@ -51,6 +51,8 @@ func simulate() -> void:
 	link_results.clear()
 	detect_results.clear()
 
+	_update_unit_ranges()
+
 	var transceivers = get_tree().get_nodes_in_group("transceivers")
 	var jammers = get_tree().get_nodes_in_group("jammers")
 	var sensors = get_tree().get_nodes_in_group("sensors")
@@ -320,6 +322,63 @@ func clear_all_links() -> void:
 	for key in active_links:
 		_free_link_nodes(active_links[key])
 	active_links.clear()
+
+
+func _update_unit_ranges() -> void:
+	# For each transceiver and jammer, compute the theoretical max range (km) via PhysicsEngine
+	# and convert to pixels (PhysicsEngine.PIXELS_PER_UNIT = pixels per km).
+	var transceivers = get_tree().get_nodes_in_group("transceivers")
+	var jammers = get_tree().get_nodes_in_group("jammers")
+
+	for tx in transceivers:
+		if not is_instance_valid(tx):
+			continue
+		var visual = tx.find_child("Visual")
+		if visual == null:
+			continue
+		if not visual.is_selected and not visual.is_hovered:
+			continue
+
+		var max_range = PhysicsEngine.calculate_signal_range(
+			tx.power, tx.height, tx.height, tx.frequency
+		)
+
+		var bw_penalty = PhysicsEngine.BANDWIDTH_POWER.get(
+			PhysicsEngine.BW_LOOKUP[tx.transceiver_bandwidth], 1.0
+		)
+		var strong_range = max_range
+
+		if bw_penalty > 0.0:
+			strong_range = PhysicsEngine.calculate_signal_range(
+				tx.power, tx.height, tx.height, tx.frequency, PhysicsEngine.NOISE_FLOOR / bw_penalty
+			)
+			if strong_range > max_range:
+				strong_range = max_range
+
+		if visual and visual.has_method("set_ring"):
+			# !BUG: Currently, an old named ring named good_range will appear before the simulate
+			# !BUG: button is pressed, leading to 3 rings appearing. Something is caching unused
+			# !BUG: rings but I can't find what it is. The work around is clearing the dict each
+			# !BUG: sim update which is COSTLY!!!
+			visual.clear_rings()
+			visual.set_ring("max_range", max_range, "MAX TRANSMIT. RANGE")
+			visual.set_ring("strong_range", strong_range, "STRONG SIGNAL")
+
+	for jm in jammers:
+		if not is_instance_valid(jm):
+			continue
+		var visual = jm.find_child("Visual")
+		if visual == null:
+			continue
+		if not visual.is_selected and not visual.is_hovered:
+			continue
+
+		var max_range = PhysicsEngine.calculate_signal_range(
+			jm.power, jm.height, jm.height, jm.frequency
+		)
+		if visual and visual.has_method("set_ring"):
+			visual.clear_rings()
+			visual.set_ring("max_range", max_range, "MAX JAM RANGE")
 
 
 func _apply_visibility_for_key(key: String) -> void:

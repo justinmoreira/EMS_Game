@@ -33,3 +33,9 @@ unique_name_in_owner = true
 layout_mode = 2
 button_pressed = true
 text = "GRID"
+
+[node name="RangeToggle" type="CheckButton" parent="Panel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "RANGE"

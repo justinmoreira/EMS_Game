@@ -24,6 +24,7 @@ var intro_popup_open := false
 var currently_selected_unit: Node = null
 var currently_hovered_unit: Node = null
 @export var base_hover_radius: float = 32.0
+@export var show_signal_ranges: bool = true
 
 var unit_attributes_visible: bool = false
 
@@ -242,6 +243,9 @@ func _on_unit_placed(unit: Node) -> void:
 		if label:
 			label.visible = unit_attributes_visible
 
+	# Apply current visual settings (show/hide ranges)
+	_set_unit_show_range_visual(unit, show_signal_ranges)
+
 
 # --- Selection Logic ---
 
@@ -281,6 +285,22 @@ func _set_unit_hover_visual(unit: Node, hovered: bool) -> void:
 	var visual := unit.find_child("Visual")
 	if visual and visual.has_method("set_hovered"):
 		visual.set_hovered(hovered)
+
+
+func _set_unit_show_range_visual(unit: Node, enabled: bool) -> void:
+	if unit == null:
+		return
+	var visual := unit.find_child("Visual")
+	if visual and visual.has_method("set_show_range"):
+		visual.set_show_range(enabled)
+
+
+func toggle_signal_ranges(enabled: bool) -> void:
+	# Toggle display of signal ranges for all unit visuals
+	show_signal_ranges = enabled
+	for child in get_children():
+		if child is EMSUnit:
+			_set_unit_show_range_visual(child, enabled)
 
 
 func _get_unit_component(unit: Node) -> Node:
