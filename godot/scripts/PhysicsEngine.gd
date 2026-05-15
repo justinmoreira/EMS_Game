@@ -140,6 +140,39 @@ func calculate_interference(
 	return total_interference
 
 
+func calculate_signal_range(
+	tx_power: float,
+	height_tx: float,
+	height_rx: float,
+	frequency: float,
+	target: float = NOISE_FLOOR
+) -> float:
+	"""
+	Calculates the maximum communication range (radius) based on the given parameters, ignoring
+	interference and requiring only that the signal is above the noise floor.
+
+	Args:
+		tx_power: Transmission power (0-10)
+		height_tx: Transmitter height in meters
+		height_rx: Receiver height in meters
+		frequency: Frequency in MHz (30-3000)
+		target: Minimum required received power to be considered "in range" (default is
+			NOISE_FLOOR)
+
+	Returns:
+		Maximum range in kilometers as a float
+	"""
+	# Validate inputs
+	if frequency <= 0.0 or target <= 0.0:
+		return 0.0
+
+	var height_factor = calculate_height_factor(height_tx, height_rx)
+	var frequency_factor = 1000.0 / frequency
+	var max_distance = sqrt((tx_power * height_factor * frequency_factor) / target) - 1.0
+
+	return max(0.0, max_distance)
+
+
 func range_check(received_power: float) -> bool:
 	"""
 	Checks if receivedpower is abovenoisefloor
