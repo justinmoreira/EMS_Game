@@ -12,7 +12,7 @@ const NOISE_FLOOR = 0.5
 # Previously these were Dictionary[String, float] with a separate name lookup.
 const BANDWIDTH_NAMES := ["Narrow", "Medium", "Wide"]
 const BANDWIDTH_POWER := [1.0, 0.5, 0.3]
-const BANDWIDTH_MHZ := [1.0, 10.0, 50.0]
+const BANDWIDTH_MHZ := [50.0, 500.0, 1000.0]
 
 
 static func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
@@ -87,7 +87,7 @@ static func calculate_received_power(
 		terrain_loss = 1.0
 
 	var received_power = (
-		(tx_power * height_factor * frequency_factor) / (distance_loss * terrain_loss)
+		(3 * tx_power * height_factor * frequency_factor) / (distance_loss * terrain_loss)
 	)
 	return received_power
 

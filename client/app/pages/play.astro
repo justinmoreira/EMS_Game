@@ -40,6 +40,9 @@ import { BASE_URL } from "@/utils";
 
   <!-- Bootstrap the game -->
   <script is:inline define:vars={{ BASE_URL }}>
+    // Scene loading is handled by Godot's SceneLoader autoload script
+    // based on the 'scene' query parameter
+
     const GODOT_CONFIG = {
       args: [],
       canvasResizePolicy: 0,

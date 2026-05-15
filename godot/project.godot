@@ -17,6 +17,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+SceneLoader="*res://scripts/SceneLoader.gd"
 SimulationManager="*res://scripts/SimulationManager.gd"
 GameEvents="*res://scripts/GameEvents.gd"
 UnitNameManager="*res://scripts/UnitNameManager.gd"

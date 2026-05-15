@@ -608,6 +608,9 @@ func _on_delete_pressed() -> void:
 
 
 func _update_simulate_button() -> void:
+	if !is_inside_tree():
+		return
+	
 	var has_units = (
 		get_tree().get_nodes_in_group("transceivers").size() > 0
 		or get_tree().get_nodes_in_group("jammers").size() > 0

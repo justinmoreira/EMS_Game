@@ -1,4 +1,4 @@
-class_name ContourGen
+class_name ContourDemo
 extends BaseLevel
 
 # ── Labelling knobs ───────────────────────────────────────────────────────────

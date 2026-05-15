@@ -6,6 +6,7 @@ const CLICK_DRAG_THRESHOLD_PX := 5.0
 const SELECTION_RADIUS := 32.0
 
 @export var definition: UnitDefinition
+@export var is_immovable: bool = false  # If true, this unit cannot be dragged
 var physical_state: Dictionary = {}
 
 var _unit_visual: UnitVisual
@@ -119,6 +120,12 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 	# Only the initial press starts a drag here. Release and motion live in
 	# _input so they keep working when the cursor leaves the shape mid-drag.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		if is_immovable:
+			# Still allow selection, but not dragging
+			if event.is_pressed():
+				GameEvents.select(self)
+				get_tree().root.set_input_as_handled()
+			return
 		_is_being_dragged = true
 		_drag_start_pos = get_global_mouse_position()
 		_drag_distance = 0.0
@@ -126,7 +133,7 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 
 
 func _input(event: InputEvent) -> void:
-	if not _is_being_dragged:
+	if not _is_being_dragged or is_immovable:
 		return
 
 	if (
