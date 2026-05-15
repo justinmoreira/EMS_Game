@@ -356,11 +356,6 @@ func _update_unit_ranges() -> void:
 				strong_range = max_range
 
 		if visual and visual.has_method("set_ring"):
-			# !BUG: Currently, an old named ring named good_range will appear before the simulate
-			# !BUG: button is pressed, leading to 3 rings appearing. Something is caching unused
-			# !BUG: rings but I can't find what it is. The work around is clearing the dict each
-			# !BUG: sim update which is COSTLY!!!
-			visual.clear_rings()
 			visual.set_ring("max_range", max_range, "MAX TRANSMIT. RANGE")
 			visual.set_ring("strong_range", strong_range, "STRONG SIGNAL")
 
