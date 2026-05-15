@@ -22,6 +22,8 @@ var intro_popup_open := false
 
 # Selection State
 var currently_selected_unit: Node = null
+var currently_hovered_unit: Node = null
+@export var base_hover_radius: float = 32.0
 
 var unit_attributes_visible: bool = false
 
@@ -174,6 +176,11 @@ func _clamp_offset() -> void:
 	offset.y = clamp(offset.y, -margin, margin)
 
 
+func _get_hover_radius_pixels() -> float:
+	# TODO: Implement for selection too?
+	return base_hover_radius * (1.0 / zoom)
+
+
 # --- Drag and Drop Logic ---
 
 
@@ -268,6 +275,14 @@ func _set_unit_selected_visual(unit: Node, selected: bool) -> void:
 		visual.set_selected(selected)
 
 
+func _set_unit_hover_visual(unit: Node, hovered: bool) -> void:
+	if unit == null:
+		return
+	var visual := unit.find_child("Visual")
+	if visual and visual.has_method("set_hovered"):
+		visual.set_hovered(hovered)
+
+
 func _get_unit_component(unit: Node) -> Node:
 	if unit == null:
 		return null
@@ -322,6 +337,27 @@ func _input(event: InputEvent) -> void:
 			offset += mouse_uv * (old_zoom - zoom)
 			_clamp_offset()
 			update_shader()
+
+	# Hover logic
+	elif event is InputEventMouseMotion:
+		if dragging or event.position.x < sidebar_width:
+			return
+
+		var mouse_pos = get_global_mouse_position()
+		var new_hover: Node = null
+		for child in get_children():
+			if child is EMSUnit:
+				var distance = child.global_position.distance_to(mouse_pos)
+				if distance < _get_hover_radius_pixels():  # hover radius (pixels)
+					new_hover = child
+					break
+
+		if new_hover != currently_hovered_unit:
+			if currently_hovered_unit:
+				_set_unit_hover_visual(currently_hovered_unit, false)
+			currently_hovered_unit = new_hover
+			if currently_hovered_unit:
+				_set_unit_hover_visual(currently_hovered_unit, true)
 
 
 func _unhandled_input(event: InputEvent) -> void:
