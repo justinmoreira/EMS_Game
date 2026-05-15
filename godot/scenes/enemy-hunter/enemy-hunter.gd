@@ -4,7 +4,6 @@ extends ContourDemo
 
 const ENEMY_HUNTER_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
 const ENEMY_HUNTER_HINT := preload("res://scenes/ui/TutorialHintPopup.tscn")
-const SCOREBOARD_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
 
 # Range-hint noise: ± this many pixels so the ring isn't perfectly accurate
 const RANGE_HINT_NOISE_PX := 40.0
@@ -295,7 +294,7 @@ func _show_scoreboard() -> void:
 	var minutes := int(_completion_time) / 60
 	var seconds := int(_completion_time) % 60
 
-	var popup := SCOREBOARD_POPUP.instantiate()
+	var popup := ENEMY_HUNTER_INTRO_POPUP.instantiate()
 	if _current_level < MAX_LEVEL:
 		popup.button_string = "Next Level"
 	else:
@@ -330,8 +329,8 @@ func _on_next_level_pressed() -> void:
 		print("Campaign complete!")
 		get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")
 		return
-	else:
-		get_tree().change_scene_to_file("res://scenes/enemy-hunter/level-%d.tscn" % _current_level)
+
+	get_tree().change_scene_to_file("res://scenes/enemy-hunter/level-%d.tscn" % _current_level)
 
 
 func _on_simulation_complete(link_results: Array, detect_results: Array) -> void:
@@ -362,9 +361,8 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 
 		# Determine detection tier from sensor bandwidth enum (0=narrow, 1=medium, 2=wide)
 		var _bw = sensor.get("sensor_bandwidth")
-		var sensor_bw_enum: int = int(_bw) if _bw != null else 0
-		var tier := _detection_tier_from_enum(sensor_bw_enum)
-		print("Enemy Hunter DEBUG: sensor_bw_enum=", sensor_bw_enum, " tier=", tier)
+		var sensor_bw: int = int(_bw) if _bw != null else 0
+		var tier := _detection_tier_from_enum(sensor_bw)
 
 		match tier:
 			"wide":
