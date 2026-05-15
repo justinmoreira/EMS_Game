@@ -7,6 +7,10 @@ extends PanelContainer
 
 enum EntityType { NONE, TRANSCEIVER, JAMMER, SENSOR }
 
+const TRANSCEIVER_DEF: UnitDefinition = preload("res://data/units/transceiver.tres")
+const JAMMER_DEF: UnitDefinition = preload("res://data/units/jammer.tres")
+const SENSOR_DEF: UnitDefinition = preload("res://data/units/sensor.tres")
+
 # ── Colors ────────────────────────────────────
 const C_BG_DARK := Color("0d0f14")
 const C_BG_MID := Color("13161e")
@@ -20,9 +24,6 @@ const C_TEXT := Color("e8eaf0")
 const C_DIM := Color("6b7594")
 const C_PURPLE := Color("e099ff")
 
-# Constants
-var invalid_props = ["script", "name", "owner", "unique_name_in_owner"]
-
 # ── State ─────────────────────────────────────
 var selected_entity: EntityType = EntityType.NONE
 var selected_entity_name: String = ""
@@ -34,11 +35,16 @@ var _simulate_btn: Button = null
 var _delete_btn: Button = null
 
 # ── Node refs ─────────────────────────────────
+# Slots come from Sidebar.tscn — script populates them on _ready.
+@onready var _header_slot: PanelContainer = $Layout/Header
+@onready var _tray_slot: PanelContainer = $Layout/Tray
+@onready var _divider_slot: HSeparator = $Layout/Divider
+@onready var _attr_section: PanelContainer = $Layout/AttrSection
+
 var _attr_header: Label
 var _attr_body: VBoxContainer
 var _attr_placeholder: Label
 var _entity_cards: Dictionary = {}  # EntityType -> Control
-var _attr_section: PanelContainer
 var _attr_content: VBoxContainer
 var _tutorial_active: bool = false
 
@@ -46,8 +52,31 @@ var _tutorial_active: bool = false
 func _ready() -> void:
 	GameEvents.units_changed.connect(_update_simulate_button)
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
+	GameEvents.selection_changed.connect(_on_selection_changed)
+	resized.connect(func(): GameEvents.sidebar_resized.emit(size.x))
 	_build_sidebar()
 	_refresh_attribute_panel()
+	# Publish initial size so listeners (BaseLevel) get a value before any resize.
+	GameEvents.sidebar_resized.emit.call_deferred(size.x)
+
+
+func _on_selection_changed(unit: Node) -> void:
+	if unit is Unit and unit.definition:
+		var t := _entity_type_for_def_id(unit.definition.id)
+		select_entity(t, unit.definition.display_name, unit)
+	else:
+		select_entity(EntityType.NONE)
+
+
+func _entity_type_for_def_id(id: StringName) -> EntityType:
+	match id:
+		&"transceiver":
+			return EntityType.TRANSCEIVER
+		&"jammer":
+			return EntityType.JAMMER
+		&"sensor":
+			return EntityType.SENSOR
+	return EntityType.NONE
 
 
 func select_entity(type: EntityType, display_name: String = "", node: Node = null) -> void:
@@ -79,26 +108,17 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 
 
 func _build_sidebar() -> void:
+	# Root layout (VBoxContainer "Layout") + named section slots (Header/Tray/
+	# Divider/AttrSection) come from Sidebar.tscn. Styling + dynamic content
+	# still live in script for now (B4 skeleton extraction; theme migration TBD).
 	_apply_style(self, C_BG_DARK, C_BORDER, 0, 0, 0, 1)
-	custom_minimum_size = Vector2(300, 0)
-	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	var vbox := VBoxContainer.new()
-	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_theme_constant_override("separation", 0)
-	add_child(vbox)
-
-	vbox.add_child(_build_header())
-	vbox.add_child(_build_tray())
-	vbox.add_child(_build_divider())
-	_attr_section = _build_attr_section()
-	vbox.add_child(_attr_section)
+	_populate_header(_header_slot)
+	_populate_tray(_tray_slot)
+	_style_divider(_divider_slot)
+	_populate_attr_section(_attr_section)
 
 
-func _build_header() -> PanelContainer:
-	var panel := PanelContainer.new()
+func _populate_header(panel: PanelContainer) -> void:
 	_apply_style(panel, C_BG_MID, C_GREEN, 0, 2, 0, 0)
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_MID, 12))
 
@@ -171,14 +191,9 @@ func _build_header() -> PanelContainer:
 	_simulate_btn = btn
 	_update_simulate_button()
 
-	return panel
 
-
-func _build_tray() -> PanelContainer:
-	var panel := PanelContainer.new()
+func _populate_tray(panel: PanelContainer) -> void:
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_MID, 14))
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var vbox := VBoxContainer.new()
 	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -231,8 +246,6 @@ func _build_tray() -> PanelContainer:
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(hint)
 
-	return panel
-
 
 func _build_entity_card(
 	label: String,
@@ -254,19 +267,19 @@ func _build_entity_card(
 		C_BG_LIGHT.lightened(0.08),
 		sprite_path
 	)
+	# Drag payload picks up the user's pending attribute tweaks.
+	card.pending_provider = func(): return pending_attributes.duplicate()
 	card.pressed.connect(
 		func():
-			_clear_selection()
+			# Drop any prior unit selection so the highlight clears with the panel.
+			GameEvents.clear_selection()
 			select_entity(type, label, null)
 	)
 	return card
 
 
-func _build_attr_section() -> PanelContainer:
-	var panel := PanelContainer.new()
+func _populate_attr_section(panel: PanelContainer) -> void:
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_MID, 14))
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	_attr_content = VBoxContainer.new()
 	_attr_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -327,15 +340,11 @@ func _build_attr_section() -> PanelContainer:
 	_attr_placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_child(_attr_placeholder)
 
-	return panel
 
-
-func _build_divider() -> HSeparator:
-	var sep := HSeparator.new()
+func _style_divider(sep: HSeparator) -> void:
 	var s := StyleBoxFlat.new()
 	s.bg_color = C_BORDER
 	sep.add_theme_stylebox_override("separator", s)
-	return sep
 
 
 func _refresh_attribute_panel() -> void:
@@ -353,156 +362,89 @@ func _refresh_attribute_panel() -> void:
 	_attr_placeholder.visible = false
 	_attr_header.visible = true
 
-	match selected_entity:
+	var def := _definition_for(selected_entity)
+	if def == null:
+		return
+
+	_attr_header.text = def.display_name
+	_attr_header.add_theme_color_override("font_color", def.color)
+	_add_accent_bar(def.color)
+
+	for spec in def.attributes:
+		_add_attribute_input(spec, def)
+
+
+func _definition_for(t: EntityType) -> UnitDefinition:
+	match t:
 		EntityType.TRANSCEIVER:
-			_attr_header.text = "Transceiver"
-			_attr_header.add_theme_color_override("font_color", C_BLUE)
-			_add_accent_bar(C_BLUE)
-			_add_text_input(
-				"Name",
-				_prop_string("unit_name", UnitNameManager.peek_next_name("transceiver")),
-				C_BLUE,
-				func(v): _write("unit_name", v)
-			)
-			_add_slider(
-				"Tx Power",
-				0.0,
-				10.0,
-				_prop_float("power", 5.0),
-				"dBm",
-				C_BLUE,
-				func(v): _write("power", int(v)),
-				true
-			)
-			_add_slider(
-				"Frequency",
-				30.0,
-				3000.0,
-				_prop_float("frequency", 1000.0),
-				"MHz",
-				C_BLUE,
-				func(v): _write("frequency", v),
-				true
-			)
-			_add_slider(
-				"Height",
-				0.0,
-				10.0,
-				_prop_int("height", 5),
-				"m",
-				C_BLUE,
-				func(v): _write("height", int(v)),
-				true
-			)
-			_add_dropdown(
-				"Bandwidth",
-				["Narrow", "Medium", "Wide"],
-				_prop_int("transceiver_bandwidth", 1),
-				C_BLUE,
-				func(v): _write("transceiver_bandwidth", v)
-			)
-
+			return TRANSCEIVER_DEF
 		EntityType.JAMMER:
-			_attr_header.text = "Jammer"
-			_attr_header.add_theme_color_override("font_color", C_RED)
-			_add_accent_bar(C_RED)
-			_add_text_input(
-				"Name",
-				_prop_string("unit_name", UnitNameManager.peek_next_name("jammer")),
-				C_AMBER,
-				func(v): _write("unit_name", v)
-			)
+			return JAMMER_DEF
+		EntityType.SENSOR:
+			return SENSOR_DEF
+	return null
+
+
+func _add_attribute_input(spec: AttributeSpec, def: UnitDefinition) -> void:
+	var accent := def.color
+	var current = _read_attribute(spec, def)
+	match spec.kind:
+		AttributeSpec.Kind.INT:
 			_add_slider(
-				"Power",
-				0.0,
-				10.0,
-				_prop_int("power", 5),
-				"dBm",
-				C_RED,
-				func(v): _write("power", int(v)),
+				spec.display_name,
+				spec.min_value,
+				spec.max_value,
+				float(current),
+				spec.unit,
+				accent,
+				func(v): _write_attribute(spec.id, int(v)),
 				true
 			)
+		AttributeSpec.Kind.FLOAT:
 			_add_slider(
-				"Frequency",
-				30.0,
-				3000.0,
-				_prop_float("frequency", 1000.0),
-				"MHz",
-				C_RED,
-				func(v): _write("frequency", v),
-				true
+				spec.display_name,
+				spec.min_value,
+				spec.max_value,
+				float(current),
+				spec.unit,
+				accent,
+				func(v): _write_attribute(spec.id, v),
+				false
 			)
-			_add_slider(
-				"Height",
-				0.0,
-				10.0,
-				_prop_int("height", 5),
-				"m",
-				C_RED,
-				func(v): _write("height", int(v)),
-				true
-			)
+		AttributeSpec.Kind.ENUM:
 			_add_dropdown(
-				"Bandwidth",
-				["Narrow", "Medium", "Wide"],
-				_prop_int("jammer_bandwidth", 1),
-				C_RED,
-				func(v): _write("jammer_bandwidth", v)
+				spec.display_name,
+				Array(spec.enum_options),
+				int(current),
+				accent,
+				func(v): _write_attribute(spec.id, v)
+			)
+		AttributeSpec.Kind.BOOL:
+			_add_toggle(
+				spec.display_name, bool(current), accent, func(v): _write_attribute(spec.id, v)
+			)
+		AttributeSpec.Kind.STRING:
+			_add_text_input(
+				spec.display_name, str(current), accent, func(v): _write_attribute(spec.id, v)
 			)
 
-		EntityType.SENSOR:
-			_attr_header.text = "Sensor"
-			_attr_header.add_theme_color_override("font_color", C_PURPLE)
-			_add_accent_bar(C_PURPLE)
-			_add_text_input(
-				"Name",
-				_prop_string("unit_name", UnitNameManager.peek_next_name("sensor")),
-				C_RED,
-				func(v): _write("unit_name", v)
-			)
-			_add_slider(
-				"Sensitivity",
-				0.0,
-				10.0,
-				_prop_int("sensitivity", 3),
-				"dBm",
-				C_PURPLE,
-				func(v): _write("sensitivity", int(v)),
-				true
-			)
-			_add_slider(
-				"Tuning Frequency",
-				30.0,
-				3000.0,
-				_node_int("tuning_frequency", 1000),
-				"MHz",
-				C_PURPLE,
-				func(v): _write_node("tuning_frequency", int(v)),
-				true
-			)
-			_add_slider(
-				"Height",
-				0.0,
-				10.0,
-				_prop_int("height", 5),
-				"m",
-				C_PURPLE,
-				func(v): _write("height", int(v)),
-				true
-			)
-			_add_dropdown(
-				"Bandwidth",
-				["Narrow", "Medium", "Wide"],
-				_prop_int("sensor_bandwidth", 1),
-				C_PURPLE,
-				func(v): _write("sensor_bandwidth", v)
-			)
-			_add_toggle(
-				"Scanning",
-				_prop_bool("is_scanning", true),
-				C_PURPLE,
-				func(v): _write("is_scanning", v)
-			)
+
+func _read_attribute(spec: AttributeSpec, def: UnitDefinition):
+	if selected_node and selected_node is Unit:
+		return selected_node.get_value(spec.id, spec.default_value)
+	if pending_attributes.has(spec.id):
+		return pending_attributes[spec.id]
+	# Special case: name placeholder shows the next auto-name.
+	if spec.id == &"unit_name":
+		return UnitNameManager.peek_next_name(def.id)
+	return spec.default_value
+
+
+func _write_attribute(id: StringName, value) -> void:
+	if selected_node and selected_node is Unit:
+		selected_node.set_value(id, value)
+	else:
+		pending_attributes[id] = value
 
 
 func _add_accent_bar(accent: Color) -> void:
@@ -638,16 +580,7 @@ func _on_reset_pressed() -> void:
 
 	dialog.confirmed.connect(
 		func():
-			# Reset unit name counters
-			UnitNameManager.reset()
-			for unit in get_tree().get_nodes_in_group("transceivers"):
-				unit.get_parent().queue_free()
-			for unit in get_tree().get_nodes_in_group("sensors"):
-				unit.get_parent().queue_free()
-			for unit in get_tree().get_nodes_in_group("jammers"):
-				unit.get_parent().queue_free()
-			select_entity(EntityType.NONE)
-			SimulationManager.clear_all_links()
+			GameEvents.reset_requested.emit()
 			dialog.queue_free()
 	)
 	dialog.canceled.connect(func(): dialog.queue_free())
@@ -665,11 +598,10 @@ func _on_delete_pressed() -> void:
 	get_tree().root.add_child(dialog)
 	dialog.popup_centered()
 
+	var to_delete = selected_node
 	dialog.confirmed.connect(
 		func():
-			selected_node.get_parent().queue_free()
-			select_entity(EntityType.NONE)
-			SimulationManager.clear_all_links()
+			GameEvents.delete_requested.emit(to_delete)
 			dialog.queue_free()
 	)
 	dialog.canceled.connect(func(): dialog.queue_free())
@@ -696,11 +628,7 @@ func _update_simulate_button() -> void:
 
 
 func _on_simulate_pressed() -> void:
-	SimulationManager.simulate()
-
-
-func _component() -> Node:
-	return selected_node
+	GameEvents.simulation_requested.emit()
 
 
 func _add_text_input(label: String, current: String, accent: Color, on_change: Callable) -> void:
@@ -720,111 +648,6 @@ func _add_text_input(label: String, current: String, accent: Color, on_change: C
 	input.text_submitted.connect(func(v): on_change.call(v))
 	input.focus_exited.connect(func(): on_change.call(input.text))
 	hbox.add_child(input)
-
-
-func _prop_string(p: String, fallback: String) -> String:
-	var c := _component()
-	if c:
-		var val = c.get(p)
-		if val != null:
-			return str(val)
-	if pending_attributes.has(p):
-		return str(pending_attributes[p])
-	return fallback
-
-
-func _prop_float(p: String, fallback: float) -> float:
-	var c := _component()
-	if c:
-		var val = c.get(p)
-		if val != null:
-			return float(val)
-	if pending_attributes.has(p):
-		return float(pending_attributes[p])
-	return fallback
-
-
-func _prop_int(p: String, fallback: int) -> int:
-	var c := _component()
-	if c:
-		var val = c.get(p)
-		if val != null:
-			return int(val)
-	if pending_attributes.has(p):
-		return int(pending_attributes[p])
-	return fallback
-
-
-func _prop_bool(p: String, fallback: bool) -> bool:
-	var c := _component()
-	if c and p in c:
-		return bool(c.get(p))
-	if pending_attributes.has(p):
-		return bool(pending_attributes[p])
-	return fallback
-
-
-func _write(p: String, value) -> void:
-	# Don't write properties that aren't actual component attributes
-	if p in invalid_props:
-		return
-
-	var c := _component()
-	if not c:
-		# If no component is selected, this is a pending entity being configured
-		# Store the attribute for when it's placed
-		pending_attributes[p] = value
-		return
-
-	c.set(p, value)
-
-	var unit = c.get_parent()
-	if unit:
-		var scene_path = unit.scene_file_path
-		if scene_path:
-			var packed_scene := PackedScene.new()
-			if packed_scene.pack(unit) == OK:
-				ResourceSaver.save(packed_scene, scene_path)
-			else:
-				push_error("Failed to pack unit")
-
-
-func _is_transceiver_unit(unit: Node) -> bool:
-	if unit == null:
-		return false
-
-	for child in unit.get_children():
-		if child.name == "Transceiver":
-			return true
-
-	return false
-
-
-func _node_int(p: String, fallback: int) -> int:
-	return int(selected_node.get(p)) if selected_node and p in selected_node else fallback
-
-
-func _write_node(p: String, value) -> void:
-	if not (selected_node and p in selected_node):
-		return
-
-	selected_node.set(p, value)
-
-	var scene_path = selected_node.scene_file_path
-	if scene_path:
-		var packed_scene := PackedScene.new()
-		if packed_scene.pack(selected_node) == OK:
-			ResourceSaver.save(packed_scene, scene_path)
-		else:
-			push_error("Failed to pack unit")
-
-
-func _clear_selection() -> void:
-	# When clicking a sidebar entity type, deselect any currently viewed unit
-	# so we show fresh defaults instead of the previous unit's values
-	selected_node = null
-	selected_entity_name = ""
-	_refresh_attribute_panel()
 
 
 # ════════════════════════════════════════════
@@ -865,13 +688,15 @@ func _make_label(text: String, color: Color, txt_size: int, expand: bool = false
 	return lbl
 
 
-func _on_tutorial_filter(allowed_types: Array) -> void:
-	_tutorial_active = not allowed_types.is_empty()
+func _on_tutorial_filter(allowed_ids: Array) -> void:
+	# allowed_ids contains StringName definition.id values (e.g. &"transceiver").
+	_tutorial_active = not allowed_ids.is_empty()
 	_attr_content.modulate.a = 0.3 if _tutorial_active else 1.0
 	_set_interactivity(_attr_content, not _tutorial_active)
 	for type in _entity_cards:
 		var card = _entity_cards[type]
-		var enabled = not _tutorial_active or type in allowed_types
+		var def := _definition_for(type)
+		var enabled = not _tutorial_active or (def and def.id in allowed_ids)
 		card.modulate.a = 1.0 if enabled else 0.3
 		card.set_process_input(enabled)
 		card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE

@@ -2,8 +2,9 @@ extends BaseLevel
 
 
 func _ready():
+	super._ready()
 	var sidebar = $CanvasLayer/Control/Sidebar
-	sidebar.select_entity(1, "Test Jammer")
+	sidebar.select_entity(Sidebar.EntityType.JAMMER, "Test Jammer")
 
 
 func update_shader():
