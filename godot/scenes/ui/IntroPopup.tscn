@@ -1,15 +1,15 @@
 [gd_scene format=3 uid="uid://bv7hog3yvvesb"]
 
-[ext_resource type="Script" uid="uid://b4gpau4rlxmkd" path="res://scenes/ui/SandboxIntroPopup.gd" id="1"]
+[ext_resource type="Script" uid="uid://b4gpau4rlxmkd" path="res://scenes/ui/IntroPopup.gd" id="1_iumml"]
 
-[node name="SandboxIntroPopup" type="Control" unique_id=594745470]
+[node name="IntroPopup" type="Control" unique_id=594745470]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1")
+script = ExtResource("1_iumml")
 
 [node name="Dim" type="ColorRect" parent="." unique_id=1883281244]
 layout_mode = 1

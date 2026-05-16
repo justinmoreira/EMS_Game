@@ -2,8 +2,8 @@ extends ContourDemo
 
 # Enemy Hunter Mode Controller - Event-driven state machine matching TutorialController structure
 
-const ENEMY_HUNTER_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
-const ENEMY_HUNTER_HINT := preload("res://scenes/ui/TutorialHintPopup.tscn")
+const ENEMY_HUNTER_INTRO_POPUP := preload("res://scenes/ui/IntroPopup.tscn")
+const ENEMY_HUNTER_HINT := preload("res://scenes/ui/HintPopup.tscn")
 
 # Range-hint noise: ± this many pixels so the ring isn't perfectly accurate
 const RANGE_HINT_NOISE_PX := 40.0
