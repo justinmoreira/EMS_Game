@@ -4,6 +4,7 @@ extends Control
 # Unit attribute controls
 const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
 const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
+const ERROR_POPUP := preload("res://scenes/ui/HintPopup.tscn")
 
 # Camera / Viewport State
 var zoom := 1.0
@@ -179,15 +180,20 @@ func _on_reset_requested() -> void:
 	UnitNameManager.reset()
 	for group in [&"transceivers", &"jammers", &"sensors"]:
 		for unit in get_tree().get_nodes_in_group(group):
-			unit.queue_free()
+			if unit.is_removable:
+				unit.queue_free()
 	GameEvents.clear_selection()
 
 
 func _on_delete_requested(unit: Node) -> void:
 	# LinkRenderer's per-frame purge will drop links involving this unit
 	# once is_instance_valid returns false post-queue_free.
-	if unit:
+	if unit && unit.is_removable:
 		unit.queue_free()
+	if unit && !unit.is_removable:
+		var popup = ERROR_POPUP.instantiate()
+		popup.hint_text = "This unit can not be removed."
+		add_child(popup)
 	GameEvents.clear_selection()
 
 

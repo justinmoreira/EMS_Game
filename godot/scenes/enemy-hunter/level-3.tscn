@@ -39,10 +39,12 @@ size_flags_vertical = 1
 
 [node name="TransceiverUnit" parent="." index="3" unique_id=2117697803 instance=ExtResource("4_v3l5i")]
 visible = false
-position = Vector2(1105, 622)
+position = Vector2(1378, 760)
 is_immovable = true
+is_removable = false
 
 [node name="TransceiverUnit2" parent="." index="4" unique_id=1393893384 instance=ExtResource("4_v3l5i")]
 visible = false
-position = Vector2(766, 565)
+position = Vector2(1082, 816)
 is_immovable = true
+is_removable = false

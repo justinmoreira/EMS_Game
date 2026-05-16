@@ -7,6 +7,7 @@ const SELECTION_RADIUS := 32.0
 
 @export var definition: UnitDefinition
 @export var is_immovable: bool = false  # If true, this unit cannot be dragged
+@export var is_removable: bool = true  # If false, this unit cannot be removed
 var physical_state: Dictionary = {}
 
 var _unit_visual: UnitVisual
