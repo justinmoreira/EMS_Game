@@ -19,9 +19,9 @@ func _ready() -> void:
 	GameEvents.units_changed.connect(_on_units_changed)
 
 	#if _is_tutorial_complete():
-		#_step = Step.DONE
+	#_step = Step.DONE
 	#else:
-		#_start()
+	#_start()
 
 	if OS.has_feature("web"):
 		# Reset hook from the web UI's "Tutorial" button.
