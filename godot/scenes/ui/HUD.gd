@@ -31,6 +31,20 @@ func _ready():
 	_load_settings()
 
 
+func _input(event: InputEvent):
+	# Close popup when clicking outside of it
+	if event is InputEventMouseButton and event.pressed:
+		var popup = %SettingsPopup
+		if popup.visible:
+			# Get mouse position
+			var mouse_pos = get_viewport().get_mouse_position()
+			# Get popup rect using position and size
+			var popup_rect = Rect2(popup.position, popup.size)
+			if not popup_rect.has_point(mouse_pos):
+				_close_popup()
+				get_tree().root.set_input_as_handled()
+
+
 func _on_settings_button_pressed():
 	var popup = %SettingsPopup
 
@@ -49,7 +63,7 @@ func _on_settings_button_pressed():
 		popup.grab_focus()
 
 
-func _on_popup_focus_exited():
+func _close_popup():
 	%SettingsPopup.hide()
 
 
@@ -69,49 +83,44 @@ func _on_link_lines_toggled(is_pressed: bool):
 	settings["link_lines"] = is_pressed
 	_save_settings()
 
-	# Call SimulationManager if it exists
+	# Apply change immediately to SimulationManager
 	if SimulationManager:
 		SimulationManager.links_visible = is_pressed
+		# Update all active link visuals immediately
+		for key in SimulationManager.active_links:
+			var data = SimulationManager.active_links[key]
+			if is_instance_valid(data.get("line")):
+				data.line.visible = is_pressed
+			if is_instance_valid(data.get("arrow")):
+				data.arrow.visible = is_pressed
 
 
 func _on_unit_ranges_toggled(is_pressed: bool):
 	settings["unit_ranges"] = is_pressed
 	_save_settings()
 
-	# Call method on level if it exists
-	var level = get_tree().current_scene
-	if level.has_method("toggle_unit_ranges"):
-		level.toggle_unit_ranges(is_pressed)
+	# ADD LATER
 
 
 func _on_unit_details_toggled(is_pressed: bool):
 	settings["unit_details"] = is_pressed
 	_save_settings()
 
-	# Call method on level if it exists
-	var level = get_tree().current_scene
-	if level.has_method("toggle_unit_details"):
-		level.toggle_unit_details(is_pressed)
+	# ADD LATER
 
 
 func _on_suggestions_toggled(is_pressed: bool):
 	settings["suggestions"] = is_pressed
 	_save_settings()
 
-	# Call method on level if it exists
-	var level = get_tree().current_scene
-	if level.has_method("toggle_suggestions"):
-		level.toggle_suggestions(is_pressed)
+	# ADD LATER
 
 
 func _on_bidirectional_link_lines_toggled(is_pressed: bool):
 	settings["bidirectional_link_lines"] = is_pressed
 	_save_settings()
 
-	# Call method on level if it exists
-	var level = get_tree().current_scene
-	if level.has_method("toggle_bidirectional_links"):
-		level.toggle_bidirectional_links(is_pressed)
+	# ADD LATER
 
 
 func _save_settings() -> void:
