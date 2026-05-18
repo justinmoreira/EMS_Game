@@ -40,7 +40,7 @@ class _DetectionHintOverlay:
 	const RIPPLE_INTERVAL := 0.9
 	const CIRCLE_WIDTH := 3.5
 	const SEGMENTS := 48
-	
+
 	var _time: float = 0.0
 
 	func _process(delta: float) -> void:
@@ -57,14 +57,19 @@ class _DetectionHintOverlay:
 					h.tier = "medium"
 				queue_redraw()
 				return
-		hints.append({
-			"tx_id": tx_id,
-			"sensor_pos": sensor_pos,
-			"transceiver_pos": transceiver_pos,
-			"tier": tier,
-		})
+		(
+			hints
+			. append(
+				{
+					"tx_id": tx_id,
+					"sensor_pos": sensor_pos,
+					"transceiver_pos": transceiver_pos,
+					"tier": tier,
+				}
+			)
+		)
 		queue_redraw()
- 
+
 	func retain_only(detected_tx_ids: Array[int]) -> void:
 		var before := hints.size()
 		hints = hints.filter(func(h): return h.tx_id in detected_tx_ids)
@@ -83,13 +88,13 @@ class _DetectionHintOverlay:
 			var blue_c := Color(0.30, 0.70, 1.00, 1.00)
 			_draw_ring(h.sensor_pos, blue_r, blue_c, CIRCLE_WIDTH)
 			_draw_ripples(h.sensor_pos, PRESENCE_RADIUS1, blue_c)
- 
+
 			# 30° pulsing arc per detected transceiver (directional)
 			if h.tier == "medium":
-				var dir :Vector2= (h.transceiver_pos - h.sensor_pos).normalized()
+				var dir: Vector2 = (h.transceiver_pos - h.sensor_pos).normalized()
 				var orange_c := Color(1.0, 0.55, 0.05, 1.0)
 				_draw_directional_ripples(h.sensor_pos, dir, orange_c, h.tx_id)
- 
+
 	# Solid full circle ring
 	func _draw_ring(center: Vector2, radius: float, color: Color, width: float) -> void:
 		for i in range(SEGMENTS):
@@ -98,13 +103,18 @@ class _DetectionHintOverlay:
 			draw_line(
 				center + Vector2(cos(a0), sin(a0)) * radius,
 				center + Vector2(cos(a1), sin(a1)) * radius,
-				color, width
+				color,
+				width
 			)
- 
+
 	# Solid arc spanning ±half_span_rad around base_angle
 	func _draw_arc(
-		center: Vector2, radius: float, base_angle: float,
-		half_span: float, color: Color, width: float
+		center: Vector2,
+		radius: float,
+		base_angle: float,
+		half_span: float,
+		color: Color,
+		width: float
 	) -> void:
 		var steps := int(SEGMENTS * (half_span * 2.0 / TAU)) + 2
 		steps = max(steps, 4)
@@ -116,29 +126,27 @@ class _DetectionHintOverlay:
 			draw_line(
 				center + Vector2(cos(a0), sin(a0)) * radius,
 				center + Vector2(cos(a1), sin(a1)) * radius,
-				color, width
+				color,
+				width
 			)
- 
 
-	func _draw_directional_ripples(
-		center: Vector2, dir: Vector2, color: Color, tx_id: int
-	) -> void:
+	func _draw_directional_ripples(center: Vector2, dir: Vector2, color: Color, tx_id: int) -> void:
 		var base_angle := dir.angle()
-		var half_span := deg_to_rad(15.0)   # ±15° = 30° total cone
+		var half_span := deg_to_rad(15.0)  # ±15° = 30° total cone
 		var base_radius := PRESENCE_RADIUS2
- 
+
 		for i in range(RIPPLE_COUNT):
 			# Stagger each ring by RIPPLE_INTERVAL; use tx_id to desync
 			# multiple arcs so two transceivers don't pulse identically
 			var offset := i * RIPPLE_INTERVAL + float(tx_id % 7) * 0.13
 			var phase := fmod(_time + offset, RIPPLE_COUNT * RIPPLE_INTERVAL)
-			var t := phase / (RIPPLE_COUNT * RIPPLE_INTERVAL)   # 0 → 1
+			var t := phase / (RIPPLE_COUNT * RIPPLE_INTERVAL)  # 0 → 1
 			var r := base_radius + t * RIPPLE_TRAVEL
 			var alpha := (1.0 - t) * 0.80
 			var width := lerpf(CIRCLE_WIDTH, 0.8, t)
 			var arc_c := Color(color.r, color.g, color.b, 1.0)
 			_draw_arc(center, r, base_angle, half_span, arc_c, width)
- 
+
 	# Staggered full-circle ripples
 	func _draw_ripples(center: Vector2, base_radius: float, color: Color) -> void:
 		for i in range(RIPPLE_COUNT):
@@ -371,34 +379,34 @@ func _on_next_level_pressed() -> void:
 
 func _on_simulation_complete(link_results: Array, detect_results: Array) -> void:
 	_clear_link_visuals()
- 
+
 	if _step != Step.HUNTING:
 		return
- 
+
 	# Collect which transceiver ids get a hint this simulation pass.
 	# Any hint not refreshed means the sensor moved out of range — remove it.
 	var hinted_this_sim: Array[int] = []
- 
+
 	for detect_result in detect_results:
 		if not detect_result is Dictionary:
 			continue
- 
-		var sensor      = detect_result.get("sensor")
+
+		var sensor = detect_result.get("sensor")
 		var transceiver = detect_result.get("transceiver")
 		var detected: bool = detect_result.get("detected", false)
- 
+
 		if not detected or not sensor or not transceiver:
 			continue
- 
+
 		var tx_id: int = transceiver.get_instance_id()
- 
+
 		if tx_id in _detected_transceivers:
 			continue
- 
+
 		var bw = sensor.get("sensor_bandwidth")
 		var bw_enum: int = int(bw) if bw != null else 0
 		var tier := _detection_tier_from_enum(bw_enum)
- 
+
 		match tier:
 			"wide":
 				_apply_wide_hint(sensor, transceiver, tx_id)
@@ -408,26 +416,26 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 				hinted_this_sim.append(tx_id)
 			"narrow":
 				_apply_narrow_reveal(transceiver, tx_id)
- 
+
 	# Drop any hints whose transceiver wasn't detected this round
 	_hint_overlay.retain_only(hinted_this_sim)
- 
+
 	# Process jamming from link results
 	for result in link_results:
 		if not result is Dictionary:
 			continue
- 
+
 		var state: int = result.get("state", 0)
 		if state != 3:  # 3 = FAILED_JAMMED
 			continue
- 
+
 		for tx in [result.get("source"), result.get("target")]:
 			if tx == null:
 				continue
 			var tx_id: int = tx.get_instance_id()
 			if tx_id not in _jammed_transceivers:
 				_jammed_transceivers.append(tx_id)
- 
+
 	_check_victory()
 
 
@@ -445,14 +453,14 @@ func _apply_wide_hint(sensor: Node, transceiver: Node, tx_id: int) -> void:
 	_hint_overlay.set_hint(sensor.global_position, transceiver.global_position, "wide", tx_id)
 	if tx_id not in _hinted_transceivers:
 		_hinted_transceivers.append(tx_id)
- 
- 
+
+
 func _apply_medium_hint(sensor: Node, transceiver: Node, tx_id: int) -> void:
 	_hint_overlay.set_hint(sensor.global_position, transceiver.global_position, "medium", tx_id)
 	if tx_id not in _hinted_transceivers:
 		_hinted_transceivers.append(tx_id)
- 
- 
+
+
 func _apply_narrow_reveal(transceiver: Node, tx_id: int) -> void:
 	_detected_transceivers.append(tx_id)
 	_hint_overlay.remove_hints_for(transceiver.global_position)
