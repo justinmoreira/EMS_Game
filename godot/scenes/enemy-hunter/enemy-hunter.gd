@@ -5,8 +5,6 @@ extends ContourDemo
 const ENEMY_HUNTER_INTRO_POPUP := preload("res://scenes/ui/IntroPopup.tscn")
 const ENEMY_HUNTER_HINT := preload("res://scenes/ui/HintPopup.tscn")
 
-# Range-hint noise: ± this many pixels so the ring isn't perfectly accurate
-const RANGE_HINT_NOISE_PX := 40.0
 const MAX_LEVEL := 5
 
 enum Step { WELCOME, HUNTING, COMPLETE }
@@ -32,21 +30,46 @@ var _hint_overlay: _DetectionHintOverlay = null
 class _DetectionHintOverlay:
 	extends Node2D
 
-	# Each entry: { sensor_pos, transceiver_pos, tier }
-	# tier: "wide" | "medium"  (narrow entries are never stored, they reveal directly)
 	var hints: Array[Dictionary] = []
+	const PRESENCE_RADIUS1 := 18.0
+	const PRESENCE_RADIUS2 := 60.0
+	const PULSE_AMPLITUDE := 5.0
+	const PULSE_SPEED := 3.5
+	const RIPPLE_TRAVEL := 40.0
+	const RIPPLE_COUNT := 3
+	const RIPPLE_INTERVAL := 0.9
+	const CIRCLE_WIDTH := 3.5
+	const SEGMENTS := 48
+	
+	var _time: float = 0.0
 
-	func add_hint(sensor_pos: Vector2, transceiver_pos: Vector2, tier: String) -> void:
-		# Avoid duplicate hints for the same transceiver position
+	func _process(delta: float) -> void:
+		_time += delta
+		queue_redraw()
+
+	func set_hint(sensor_pos: Vector2, transceiver_pos: Vector2, tier: String, tx_id: int) -> void:
 		for h in hints:
-			if h.transceiver_pos.distance_to(transceiver_pos) < 4.0:
-				# Upgrade tier if there is a better reading
+			if h.tx_id == tx_id:
+				h.sensor_pos = sensor_pos
+				h.transceiver_pos = transceiver_pos
+				# Only upgrade tier, never downgrade
 				if tier == "medium" and h.tier == "wide":
 					h.tier = "medium"
-					queue_redraw()
+				queue_redraw()
 				return
-		hints.append({"sensor_pos": sensor_pos, "transceiver_pos": transceiver_pos, "tier": tier})
+		hints.append({
+			"tx_id": tx_id,
+			"sensor_pos": sensor_pos,
+			"transceiver_pos": transceiver_pos,
+			"tier": tier,
+		})
 		queue_redraw()
+ 
+	func retain_only(detected_tx_ids: Array[int]) -> void:
+		var before := hints.size()
+		hints = hints.filter(func(h): return h.tx_id in detected_tx_ids)
+		if hints.size() != before:
+			queue_redraw()
 
 	func remove_hints_for(transceiver_pos: Vector2) -> void:
 		hints = hints.filter(func(h): return h.transceiver_pos.distance_to(transceiver_pos) >= 4.0)
@@ -54,63 +77,78 @@ class _DetectionHintOverlay:
 
 	func _draw() -> void:
 		for h in hints:
-			var s: Vector2 = h.sensor_pos
-			var t: Vector2 = h.transceiver_pos
-			var dir := (t - s).normalized()
-			var dist := s.distance_to(t)
-
-			match h.tier:
-				"wide":
-					_draw_direction_arrow(s, dir)
-				"medium":
-					_draw_direction_arrow(s, dir)
-					_draw_range_ring(s, dist)
-
-	# Dashed arrow pointing from sensor toward transceiver
-	func _draw_direction_arrow(origin: Vector2, dir: Vector2) -> void:
-		var arrow_len := 80.0
-		var tip := origin + dir * arrow_len
-		var color := Color(1.0, 0.85, 0.1, 0.85)  # golden yellow
-
-		# Dashed line
-		var dash_len := 10.0
-		var gap_len := 6.0
-		var travelled := 0.0
-		var drawing := true
-		while travelled < arrow_len - 12.0:
-			var seg: float = min(dash_len if drawing else gap_len, arrow_len - 12.0 - travelled)
-			if drawing:
-				draw_line(origin + dir * travelled, origin + dir * (travelled + seg), color, 2.5)
-			travelled += seg
-			drawing = not drawing
-
-		# Arrow
-		var perp := Vector2(-dir.y, dir.x)
-		draw_line(tip, tip - dir * 12.0 + perp * 6.0, color, 2.5)
-		draw_line(tip, tip - dir * 12.0 - perp * 6.0, color, 2.5)
-
-	# Circle ring at approximate range from sensor
-	func _draw_range_ring(center: Vector2, radius: float) -> void:
-		# Add noise so the ring isn't a perfect giveaway
-		var noisy_r := radius + randf_range(-RANGE_HINT_NOISE_PX, RANGE_HINT_NOISE_PX)
-		noisy_r = max(noisy_r, 20.0)
-
-		var color := Color(0.3, 0.85, 1.0, 0.55)
-		var segments := 48
-		var dash_segs := 3
-		var pattern := [true, true, true, false, false]
-
-		for i in range(segments):
-			if not pattern[i % pattern.size()]:
-				continue
-			var a0 := (float(i) / segments) * TAU
-			var a1 := (float(i + 1) / segments) * TAU
+			# Full pulsing circle (signal detected)
+			var pulse := sin(_time * PULSE_SPEED) * PULSE_AMPLITUDE
+			var blue_r := PRESENCE_RADIUS1 + pulse
+			var blue_c := Color(0.30, 0.70, 1.00, 1.00)
+			_draw_ring(h.sensor_pos, blue_r, blue_c, CIRCLE_WIDTH)
+			_draw_ripples(h.sensor_pos, PRESENCE_RADIUS1, blue_c)
+ 
+			# 30° pulsing arc per detected transceiver (directional)
+			if h.tier == "medium":
+				var dir :Vector2= (h.transceiver_pos - h.sensor_pos).normalized()
+				var orange_c := Color(1.0, 0.55, 0.05, 1.0)
+				_draw_directional_ripples(h.sensor_pos, dir, orange_c, h.tx_id)
+ 
+	# Solid full circle ring
+	func _draw_ring(center: Vector2, radius: float, color: Color, width: float) -> void:
+		for i in range(SEGMENTS):
+			var a0 := (float(i) / SEGMENTS) * TAU
+			var a1 := (float(i + 1) / SEGMENTS) * TAU
 			draw_line(
-				center + Vector2(cos(a0), sin(a0)) * noisy_r,
-				center + Vector2(cos(a1), sin(a1)) * noisy_r,
-				color,
-				2.0
+				center + Vector2(cos(a0), sin(a0)) * radius,
+				center + Vector2(cos(a1), sin(a1)) * radius,
+				color, width
 			)
+ 
+	# Solid arc spanning ±half_span_rad around base_angle
+	func _draw_arc(
+		center: Vector2, radius: float, base_angle: float,
+		half_span: float, color: Color, width: float
+	) -> void:
+		var steps := int(SEGMENTS * (half_span * 2.0 / TAU)) + 2
+		steps = max(steps, 4)
+		for i in range(steps):
+			var t0 := float(i) / steps
+			var t1 := float(i + 1) / steps
+			var a0 := base_angle - half_span + t0 * half_span * 2.0
+			var a1 := base_angle - half_span + t1 * half_span * 2.0
+			draw_line(
+				center + Vector2(cos(a0), sin(a0)) * radius,
+				center + Vector2(cos(a1), sin(a1)) * radius,
+				color, width
+			)
+ 
+
+	func _draw_directional_ripples(
+		center: Vector2, dir: Vector2, color: Color, tx_id: int
+	) -> void:
+		var base_angle := dir.angle()
+		var half_span := deg_to_rad(15.0)   # ±15° = 30° total cone
+		var base_radius := PRESENCE_RADIUS2
+ 
+		for i in range(RIPPLE_COUNT):
+			# Stagger each ring by RIPPLE_INTERVAL; use tx_id to desync
+			# multiple arcs so two transceivers don't pulse identically
+			var offset := i * RIPPLE_INTERVAL + float(tx_id % 7) * 0.13
+			var phase := fmod(_time + offset, RIPPLE_COUNT * RIPPLE_INTERVAL)
+			var t := phase / (RIPPLE_COUNT * RIPPLE_INTERVAL)   # 0 → 1
+			var r := base_radius + t * RIPPLE_TRAVEL
+			var alpha := (1.0 - t) * 0.80
+			var width := lerpf(CIRCLE_WIDTH, 0.8, t)
+			var arc_c := Color(color.r, color.g, color.b, 1.0)
+			_draw_arc(center, r, base_angle, half_span, arc_c, width)
+ 
+	# Staggered full-circle ripples
+	func _draw_ripples(center: Vector2, base_radius: float, color: Color) -> void:
+		for i in range(RIPPLE_COUNT):
+			var phase := fmod(_time + i * RIPPLE_INTERVAL, RIPPLE_COUNT * RIPPLE_INTERVAL)
+			var t := phase / (RIPPLE_COUNT * RIPPLE_INTERVAL)
+			var r := base_radius + t * RIPPLE_TRAVEL
+			var alpha := (1.0 - t) * 0.55
+			var ripple_c := Color(color.r, color.g, color.b, 1.0)
+			var width := lerpf(CIRCLE_WIDTH * 0.9, 0.5, t)
+			_draw_ring(center, r, ripple_c, width)
 
 
 func _ready() -> void:
@@ -142,7 +180,6 @@ func _process(_delta: float) -> void:
 
 func _count_transceivers() -> void:
 	_total_transceivers = get_tree().get_nodes_in_group("transceivers").size()
-	print("Enemy Hunter: Found %d transceivers to hunt" % _total_transceivers)
 
 
 func _start() -> void:
@@ -326,7 +363,6 @@ func _on_next_level_pressed() -> void:
 	set_physics_process(false)
 
 	if _current_level > MAX_LEVEL:
-		print("Campaign complete!")
 		get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")
 		return
 
@@ -334,116 +370,92 @@ func _on_next_level_pressed() -> void:
 
 
 func _on_simulation_complete(link_results: Array, detect_results: Array) -> void:
-	# Prevent link lines from presenting on simulate
 	_clear_link_visuals()
-
-	for r in link_results:
-		print(r)
+ 
 	if _step != Step.HUNTING:
 		return
-
+ 
+	# Collect which transceiver ids get a hint this simulation pass.
+	# Any hint not refreshed means the sensor moved out of range — remove it.
+	var hinted_this_sim: Array[int] = []
+ 
 	for detect_result in detect_results:
 		if not detect_result is Dictionary:
 			continue
-
-		var sensor = detect_result.get("sensor")
+ 
+		var sensor      = detect_result.get("sensor")
 		var transceiver = detect_result.get("transceiver")
 		var detected: bool = detect_result.get("detected", false)
-
+ 
 		if not detected or not sensor or not transceiver:
 			continue
-
+ 
 		var tx_id: int = transceiver.get_instance_id()
-
-		# Already revealed
+ 
 		if tx_id in _detected_transceivers:
 			continue
-
-		# Determine detection tier from sensor bandwidth enum (0=narrow, 1=medium, 2=wide)
+ 
 		var bw = sensor.get("sensor_bandwidth")
-		var sensor_bw_enum: int = int(bw) if bw != null else 0
-		var tier := _detection_tier_from_enum(sensor_bw_enum)
-
+		var bw_enum: int = int(bw) if bw != null else 0
+		var tier := _detection_tier_from_enum(bw_enum)
+ 
 		match tier:
 			"wide":
 				_apply_wide_hint(sensor, transceiver, tx_id)
-
+				hinted_this_sim.append(tx_id)
 			"medium":
 				_apply_medium_hint(sensor, transceiver, tx_id)
-
+				hinted_this_sim.append(tx_id)
 			"narrow":
 				_apply_narrow_reveal(transceiver, tx_id)
-
-	# Check for jammed transceivers
-	# Process jamming results
+ 
+	# Drop any hints whose transceiver wasn't detected this round
+	_hint_overlay.retain_only(hinted_this_sim)
+ 
+	# Process jamming from link results
 	for result in link_results:
 		if not result is Dictionary:
 			continue
-
+ 
 		var state: int = result.get("state", 0)
-
-		# Not jammed
-		if state != 3:
+		if state != 3:  # 3 = FAILED_JAMMED
 			continue
-
-		var source = result.get("source")
-		var target = result.get("target")
-
-		for tx in [source, target]:
+ 
+		for tx in [result.get("source"), result.get("target")]:
 			if tx == null:
 				continue
-
 			var tx_id: int = tx.get_instance_id()
-
 			if tx_id not in _jammed_transceivers:
 				_jammed_transceivers.append(tx_id)
-
-				print(
-					(
-						"Enemy Hunter: Transceiver jammed! (%d/%d)"
-						% [_jammed_transceivers.size(), _total_transceivers]
-					)
-				)
-
-	# Final win check
+ 
 	_check_victory()
 
 
 func _detection_tier_from_enum(bw_enum: int) -> String:
 	match bw_enum:
 		2:
-			return "wide"  # direction hint only
+			return "wide"  # signal detected hint
 		1:
-			return "medium"  # direction + range ring
+			return "medium"  # signal detected + direction hint
 		_:
 			return "narrow"  # full reveal
 
 
 func _apply_wide_hint(sensor: Node, transceiver: Node, tx_id: int) -> void:
-	if tx_id in _hinted_transceivers:
-		return
-	_hinted_transceivers.append(tx_id)
-
-	var sensor_pos: Vector2 = sensor.global_position
-	var transceiver_pos: Vector2 = transceiver.global_position
-	_hint_overlay.add_hint(sensor_pos, transceiver_pos, "wide")
-
-
-func _apply_medium_hint(sensor: Node, transceiver: Node, tx_id: int) -> void:
-	var sensor_pos: Vector2 = sensor.global_position
-	var transceiver_pos: Vector2 = transceiver.global_position
-	_hint_overlay.add_hint(sensor_pos, transceiver_pos, "medium")
-
+	_hint_overlay.set_hint(sensor.global_position, transceiver.global_position, "wide", tx_id)
 	if tx_id not in _hinted_transceivers:
 		_hinted_transceivers.append(tx_id)
-
-
+ 
+ 
+func _apply_medium_hint(sensor: Node, transceiver: Node, tx_id: int) -> void:
+	_hint_overlay.set_hint(sensor.global_position, transceiver.global_position, "medium", tx_id)
+	if tx_id not in _hinted_transceivers:
+		_hinted_transceivers.append(tx_id)
+ 
+ 
 func _apply_narrow_reveal(transceiver: Node, tx_id: int) -> void:
 	_detected_transceivers.append(tx_id)
-
-	# Remove hints
 	_hint_overlay.remove_hints_for(transceiver.global_position)
-
 	_reveal_transceiver(transceiver)
 
 
