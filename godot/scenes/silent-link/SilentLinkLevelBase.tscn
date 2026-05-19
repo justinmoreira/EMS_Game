@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3]
+
+[node name="SilentLinkLevelBase" type="Node2D"]
+
+# Main game controller
+[node name="SilentLink" type="Node2D" parent="."]
+
+script = ExtResource( 1 )
+
+# Example HUD node
+[node name="HUD" type="CanvasLayer" parent="."]
+groups = [ "hud" ]
+
+# Place Tranciever and EnemyUnit instances in inheriting scenes
+
+[ext_resource path="res://scripts/SilentLink.gd" type="Script" id=1]
