@@ -1,11 +1,7 @@
 class_name UnitStatusVisual
 extends Node2D
 
-enum Status {
-	NONE,
-	JAMMED,
-	DETECTED
-}
+enum Status { NONE, JAMMED, DETECTED }
 
 const COLOR_JAMMED := Color(1.0, 0.2, 0.2, 0.95)
 const COLOR_DETECTED := Color(0.75, 0.4, 1.0, 0.95)
