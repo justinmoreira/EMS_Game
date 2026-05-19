@@ -26,6 +26,7 @@ func _ready() -> void:
 	GameEvents.simulation_complete.connect(_refresh)
 	hide()
 
+
 func _on_selection_changed(unit: Node) -> void:
 	if unit == null:
 		_selected_unit = null
@@ -35,7 +36,7 @@ func _on_selection_changed(unit: Node) -> void:
 	_rebuild()
 	_reposition()
 	show()
-		
+
 
 func _refresh(_link_results = null, _detect = null) -> void:
 	if _selected_unit:
@@ -54,11 +55,11 @@ func _rebuild() -> void:
 	for data in links:
 		if data.source != _selected_unit:
 			continue
-			
+
 		var other: Node = data.target
 		var state: int = data.get("final_state", data.state)
-		var name :String= other.get_value(&"unit_name", "?")
-		var status :String= STATE_LABELS.get(state, "Unknown")
+		var name: String = other.get_value(&"unit_name", "?")
+		var status: String = STATE_LABELS.get(state, "Unknown")
 		var line := "→ %s: %s" % [name, status]
 		if SUGGESTIONS.has(state):
 			line += "\n💡 " + SUGGESTIONS[state]
