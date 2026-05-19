@@ -45,7 +45,4 @@ func _compute_status(tx: Unit, link_results: Array, detect_results: Array) -> in
 		if d.transceiver == tx and d.detected:
 			return UnitStatusVisual.Status.DETECTED
 
-	if has_out_of_range:
-		return UnitStatusVisual.Status.OUT_OF_RANGE
-
 	return UnitStatusVisual.Status.NONE
