@@ -4,8 +4,8 @@ extends CanvasLayer
 var settings = {
 	"link_lines": true,
 	"unit_ranges": false,
-	"unit_details": true,
-	"suggestions": true,
+	"unit_details": false,
+	"suggestions": false,
 	"bidirectional_link_lines": false,
 	"heightmap_shader": true,
 	"grid": true
@@ -106,7 +106,9 @@ func _on_unit_details_toggled(is_pressed: bool):
 	settings["unit_details"] = is_pressed
 	_save_settings()
 
-	# ADD LATER
+	var level = get_tree().current_scene
+	if level.has_method("toggle_unit_details"):
+		level.toggle_unit_details(is_pressed)
 
 
 func _on_suggestions_toggled(is_pressed: bool):

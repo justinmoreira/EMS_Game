@@ -380,6 +380,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		update_shader()
 
 
+func toggle_unit_details(enabled: bool) -> void:
+	unit_attributes_visible = enabled
+	_apply_unit_attribute_visibility()
+
+
 #show unit attribute helper function
 func _toggle_unit_attributes() -> void:
 	unit_attributes_visible = not unit_attributes_visible
