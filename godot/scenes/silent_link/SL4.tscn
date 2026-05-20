@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://d1o6rej0osh8g"]
+
+[ext_resource type="PackedScene" uid="uid://bftgj4kdlwald" path="res://scenes/silent_link/SLBaseLevel.tscn" id="1_awg07"]
+[ext_resource type="Script" uid="uid://ddqox1i38acoc" path="res://scenes/silent_link/SilentLink.gd" id="2_d8jnl"]
+
+[node name="SL4" unique_id=96113750 instance=ExtResource("1_awg07")]
+script = ExtResource("2_d8jnl")

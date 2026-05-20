@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://dpo55j784we5x"]
+
+[ext_resource type="PackedScene" uid="uid://bftgj4kdlwald" path="res://scenes/silent_link/SLBaseLevel.tscn" id="1_fwkpm"]
+[ext_resource type="Script" uid="uid://ddqox1i38acoc" path="res://scenes/silent_link/SilentLink.gd" id="2_584bq"]
+
+[node name="SL2" unique_id=2081685838 instance=ExtResource("1_fwkpm")]
+script = ExtResource("2_584bq")
