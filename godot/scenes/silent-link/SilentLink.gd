@@ -1,6 +1,7 @@
 extends ContourDemo
 
-# Silent Link Mode Controller – Event-driven state machine for "create a link without being detected/jammed"
+# Silent Link Mode Controller – Event-driven state machine for
+# "create a link without being detected/jammed"
 
 const SILENT_LINK_INTRO_POPUP := preload("res://scenes/ui/IntroPopup.tscn")
 const SILENT_LINK_HINT := preload("res://scenes/ui/HintPopup.tscn")
@@ -150,7 +151,7 @@ func on_player_units_placed(player_units: Array) -> void:
 	# Show "Begin Link" button in your interface that triggers _begin_simulation()
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	if _step == Step.SIMULATING and _timer_label:
 		var elapsed := Time.get_ticks_msec() / 1000.0 - _start_time
 		_timer_label.text = "Time: %.1fs" % elapsed
