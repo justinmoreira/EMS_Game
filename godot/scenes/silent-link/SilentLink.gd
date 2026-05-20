@@ -27,6 +27,7 @@ var _enemy_units: Array = []
 var _transceivers: Array = []
 var _scene_ready := false
 
+
 func _ready() -> void:
 	super._ready()
 	# Extract scene level from scene name
@@ -41,13 +42,14 @@ func _ready() -> void:
 	var hud_nodes = get_tree().get_nodes_in_group("hud")
 	if hud_nodes.size() > 0:
 		_hud = hud_nodes[0]
-		
+
 	# Locate (preplaced) transceivers and enemy units
 	_transceivers = get_tree().get_nodes_in_group("transceivers")
 	_enemy_units = get_tree().get_nodes_in_group("enemy_units")
-	
+
 	_scene_ready = true
 	_start()
+
 
 func _start() -> void:
 	if _intro_popup_open:
@@ -74,16 +76,20 @@ func _start() -> void:
 	if popup.has_signal("continued"):
 		popup.continued.connect(_on_intro_closed)
 
+
 func _on_intro_closed() -> void:
 	_intro_popup_open = false
 	_advance()
+
 
 func _advance() -> void:
 	match _step:
 		Step.WELCOME:
 			_step = Step.PLANNING
 			_show_timer()
-			_show_hint("Drag and place your units to establish a silent link between the transceivers.")
+			_show_hint(
+				"Drag and place your units to establish a silent link between the transceivers."
+			)
 		Step.PLANNING:
 			# Wait for player to finish unit placement (linked to your placement UI)
 			pass
@@ -94,11 +100,12 @@ func _advance() -> void:
 		Step.COMPLETE:
 			_show_scoreboard()
 
+
 func _show_timer() -> void:
 	var canvas := CanvasLayer.new()
 	canvas.layer = 500
 	add_child(canvas)
-	
+
 	var ui := Control.new()
 	ui.set_anchors_preset(Control.PRESET_FULL_RECT)
 	ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -119,6 +126,7 @@ func _show_timer() -> void:
 
 	ui.add_child(_timer_label)
 
+
 func _show_hint(text: String) -> void:
 	var popup := SILENT_LINK_HINT.instantiate()
 	popup.hint_text = text
@@ -127,17 +135,20 @@ func _show_hint(text: String) -> void:
 	add_child(cl)
 	cl.add_child(popup)
 
+
 func _begin_simulation() -> void:
 	if _step != Step.PLANNING:
 		return
 	_step = Step.SIMULATING
 	_advance()
 
+
 # Call this from your placement UI
 func on_player_units_placed(player_units: Array) -> void:
 	_player_units = player_units
 	_show_hint("When ready, press 'Begin Link' to attempt the connection.")
 	# Show "Begin Link" button in your interface that triggers _begin_simulation()
+
 
 func _process(delta: float) -> void:
 	if _step == Step.SIMULATING and _timer_label:
@@ -150,6 +161,7 @@ func _process(delta: float) -> void:
 		elif _player_detected or _jammed:
 			_finish(false)
 
+
 func _simulate_link() -> void:
 	if _check_link_possible():
 		# Link is possible, wait for process/detection checks to finish the round
@@ -157,6 +169,7 @@ func _simulate_link() -> void:
 	else:
 		_show_hint("Link not possible - check your placements!")
 		_finish(false)
+
 
 func _check_link_possible() -> bool:
 	# Placeholder: return true if player placed at least 2 units and not overlapping enemies
@@ -168,6 +181,7 @@ func _check_link_possible() -> bool:
 				return false
 	return true
 
+
 func _check_detection() -> void:
 	for unit in _player_units:
 		for enemy in _enemy_units:
@@ -175,12 +189,14 @@ func _check_detection() -> void:
 				_player_detected = true
 				return
 
+
 func _unit_in_detection_zone(unit: Node, enemy: Node) -> bool:
 	var dist = unit.global_position.distance_to(enemy.global_position)
 	var detection_radius = 100
 	if enemy.has_method("detection_radius"):
 		detection_radius = enemy.detection_radius()
 	return dist < detection_radius
+
 
 func _check_jamming() -> void:
 	for unit in _player_units:
@@ -194,10 +210,12 @@ func _check_jamming() -> void:
 					_jammed = true
 					return
 
+
 func _finish(success: bool) -> void:
 	_completion_time = Time.get_ticks_msec() / 1000.0 - _start_time
 	_step = Step.COMPLETE
 	_show_scoreboard(success)
+
 
 func _show_scoreboard(success: bool = true) -> void:
 	var score = _calculate_score(success)
@@ -235,6 +253,7 @@ func _show_scoreboard(success: bool = true) -> void:
 	else:
 		popup.continue_button.pressed.connect(_on_finish_pressed)
 
+
 func _calculate_score(success: bool = true) -> int:
 	if not success:
 		return 0
@@ -260,6 +279,7 @@ func _calculate_score(success: bool = true) -> int:
 
 	return max(1000, 10000 - time_penalty * 100 - frequency_penalty + stealth_bonus)
 
+
 func _on_next_level_pressed() -> void:
 	_current_level += 1
 	set_process(false)
@@ -270,6 +290,7 @@ func _on_next_level_pressed() -> void:
 		return
 
 	get_tree().change_scene_to_file("res://scenes/silent-link/level-%d.tscn" % _current_level)
+
 
 func _on_finish_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")
