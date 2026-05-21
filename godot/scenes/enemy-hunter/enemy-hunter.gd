@@ -52,9 +52,7 @@ class _DetectionHintOverlay:
 			if h.tx_id == tx_id:
 				h.sensor_pos = sensor_pos
 				h.transceiver_pos = transceiver_pos
-				# Only upgrade tier, never downgrade
-				if tier == "medium" and h.tier == "wide":
-					h.tier = "medium"
+				h.tier = tier
 				queue_redraw()
 				return
 		(
@@ -399,14 +397,13 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 			continue
 
 		var tx_id: int = transceiver.get_instance_id()
-
-		if tx_id in _detected_transceivers:
-			continue
-
 		var bw = sensor.get("sensor_bandwidth")
 		var bw_enum: int = int(bw) if bw != null else 0
 		var tier := _detection_tier_from_enum(bw_enum)
-
+		
+		if tx_id in _detected_transceivers:
+			continue
+		
 		match tier:
 			"wide":
 				_apply_wide_hint(sensor, transceiver, tx_id)
