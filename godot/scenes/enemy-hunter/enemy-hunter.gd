@@ -400,10 +400,10 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 		var bw = sensor.get("sensor_bandwidth")
 		var bw_enum: int = int(bw) if bw != null else 0
 		var tier := _detection_tier_from_enum(bw_enum)
-		
+
 		if tx_id in _detected_transceivers:
 			continue
-		
+
 		match tier:
 			"wide":
 				_apply_wide_hint(sensor, transceiver, tx_id)
