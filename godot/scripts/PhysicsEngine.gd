@@ -1,4 +1,4 @@
-extends Node
+class_name PhysicsEngine extends RefCounted
 
 enum Bandwidth { BW_NARROW, BW_MED, BW_WIDE }
 
@@ -17,19 +17,19 @@ const BANDWIDTH_POWER = {"Narrow": 1.0, "Medium": 0.5, "Wide": 0.3}  # 1 MHz  # 
 const BANDWIDTH_VALUES = {"Narrow": 1.0, "Medium": 10.0, "Wide": 50.0}  # 1 MHz  # 10 MHz  # 50 MHz
 
 
-func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
+static func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
 	return pos1.distance_to(pos2) / PIXELS_PER_UNIT
 
 
-func calculate_height_factor(height_tx: float, height_rx: float) -> float:
+static func calculate_height_factor(height_tx: float, height_rx: float) -> float:
 	return 1.0 + (height_tx + height_rx) / 20.0
 
 
-func calculate_distance_loss(dis: float) -> float:
+static func calculate_distance_loss(dis: float) -> float:
 	return pow(dis + 1.0, 2.0)
 
 
-func bandwidth_penalty(receiver: Bandwidth) -> float:
+static func bandwidth_penalty(receiver: Bandwidth) -> float:
 	match receiver:
 		Bandwidth.BW_NARROW:
 			return 0.0
@@ -41,7 +41,7 @@ func bandwidth_penalty(receiver: Bandwidth) -> float:
 			return 0.0
 
 
-func is_detected(tx: Transceiver, srx: Sensor, dis: float, terrain_loss: float = 1) -> bool:
+static func is_detected(tx: Transceiver, srx: Sensor, dis: float, terrain_loss: float = 1) -> bool:
 	var frequency_diff = abs(tx.frequency - srx.tuning_frequency)
 	var bw_key = PhysicsEngine.BW_LOOKUP[srx.sensor_bandwidth]
 	var bandwidth_half = PhysicsEngine.BANDWIDTH_VALUES.get(bw_key, 1.0) / 2.0
@@ -57,7 +57,7 @@ func is_detected(tx: Transceiver, srx: Sensor, dis: float, terrain_loss: float =
 	return received_power > threshold
 
 
-func calculate_received_power(
+static func calculate_received_power(
 	tx_power: float,
 	height_tx: float,
 	height_rx: float,
@@ -95,7 +95,7 @@ func calculate_received_power(
 	return received_power
 
 
-func calculate_interference(
+static func calculate_interference(
 	rx_frequency: float, rx_height: float, rx_pos: Vector2, jammers: Array
 ) -> float:
 	"""
@@ -140,7 +140,7 @@ func calculate_interference(
 	return total_interference
 
 
-func range_check(received_power: float) -> bool:
+static func range_check(received_power: float) -> bool:
 	"""
 	Checks if receivedpower is abovenoisefloor
 
@@ -153,7 +153,7 @@ func range_check(received_power: float) -> bool:
 	return received_power > NOISE_FLOOR
 
 
-func jamming_check(received_power: float, interference_power: float) -> bool:
+static func jamming_check(received_power: float, interference_power: float) -> bool:
 	"""
 	Checks if receivedpowerovercomesinterference and noisefloor
 
@@ -167,17 +167,17 @@ func jamming_check(received_power: float, interference_power: float) -> bool:
 	return received_power > (interference_power + NOISE_FLOOR)
 
 
-func bandwidth_penalty_check(received_power: float, bandwidth_penalty: float) -> bool:
+static func bandwidth_penalty_check(received_power: float, penalty: float) -> bool:
 	"""
 	Checks if receivedpowerovercomesbandwidthpenalty and noisefloor
 
 	Args:
 		received_power: Thecalculatedreceivedpower
-		bandwidth_penalty: Penaltybasedonreceiverbandwidth
+		penalty: Penaltybasedonreceiverbandwidth
 
 	Returns:
 		true if linksuccessful(signal beatsbandwidthpenalty), false if failed due to bandwidth
 	"""
-	if received_power > (NOISE_FLOOR) && (received_power * bandwidth_penalty) < NOISE_FLOOR:
+	if received_power > (NOISE_FLOOR) && (received_power * penalty) < NOISE_FLOOR:
 		return true
 	return false
