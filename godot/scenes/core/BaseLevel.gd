@@ -301,7 +301,6 @@ func _input(event: InputEvent) -> void:
 	# prevent gameplay after popup is open
 	if intro_popup_open:
 		return
-
 	if event is InputEventMouseButton:
 		if event.position.x < sidebar_width:
 			return
@@ -328,7 +327,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	# prevent map interaction when popup is active
 	if intro_popup_open:
 		return
-
 	if event is InputEventKey and event.pressed and not event.echo:
 		var focus_owner := get_viewport().gui_get_focus_owner()
 		if focus_owner is LineEdit or focus_owner is TextEdit:
@@ -376,6 +374,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		_clamp_offset()
 		last_mouse_pos = event.position
 		update_shader()
+
+
+func toggle_unit_details(enabled: bool) -> void:
+	unit_attributes_visible = enabled
+	_apply_unit_attribute_visibility()
 
 
 #show unit attribute helper function
