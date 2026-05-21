@@ -8,9 +8,8 @@
 [sub_resource type="CircleShape2D" id="CircleShape2D_8fr1l"]
 radius = 32.0
 
-[node name="@Area2D@478" type="Area2D" unique_id=2117697803]
+[node name="EMSUnit - Transceiver" type="Area2D" unique_id=2117697803]
 script = ExtResource("1_8mgq0")
-metadata/world_uv = Vector2(0.29551607, 0.35626772)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_8fr1l")
