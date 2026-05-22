@@ -266,11 +266,16 @@ export default function AccountModal() {
       </button>
       {open &&
         createPortal(
-          <button
-            type="button"
+          <div
+            role="dialog"
+            aria-modal="true"
+            tabIndex={-1}
             class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60"
             onClick={(e) => {
               if (e.target === e.currentTarget) setOpen(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setOpen(false);
             }}
           >
             <div class="w-full max-w-sm bg-neutral-900 border border-neutral-700 rounded-xl p-8 relative">
@@ -320,7 +325,7 @@ export default function AccountModal() {
                 </span>
               </div>
             </div>
-          </button>,
+          </div>,
           document.body,
         )}
     </>
