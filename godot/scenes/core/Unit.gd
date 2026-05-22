@@ -151,8 +151,7 @@ func _input(event: InputEvent) -> void:
 		var world_uv = base_level.screen_to_world_uv(mouse_pos)
 		var clamped := Vector2(clamp(world_uv.x, 0.0, 1.0), clamp(world_uv.y, 0.0, 1.0))
 
-		if has_meta("world_uv"):
-			set_meta("world_uv", clamped)
+		set_value(&"world_uv", clamped)
 
 		global_position = base_level.world_uv_to_screen(clamped)
 		_drag_distance = _drag_start_pos.distance_to(global_position)
