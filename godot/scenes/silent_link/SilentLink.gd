@@ -50,7 +50,7 @@ func _ready() -> void:
 	var level_name := get_tree().current_scene.scene_file_path
 	var file_name := level_name.get_file().get_basename()
 	var parts := file_name.split("-")
-	
+
 	_current_level = int(parts[1]) if parts.size() > 1 else 1
 
 	var hud_nodes = get_tree().get_nodes_in_group("hud")
@@ -127,7 +127,7 @@ func _process(_delta: float) -> void:
 	if _timer_label:
 		var elapsed = Time.get_ticks_msec() / 1000.0 - _start_time
 		_timer_label.text = "Time: %.1fs" % elapsed
-	
+
 	if _step == Step.SIMULATING and not _simulation_over:
 		_check_detection()
 		_check_jamming()
