@@ -21,6 +21,7 @@ var _current_level: int = 1
 var _link_established := false
 var _player_detected := false
 var _jammed := false
+var _simulation_over := false
 
 # Gameplay entities
 var _player_units: Array = []
@@ -28,19 +29,29 @@ var _enemy_units: Array = []
 var _transceivers: Array = []
 var _scene_ready := false
 
-var _begin_link_button: Button = null
+
+func add_to_groups_recursive(node):
+	for c in node.get_children():
+		if c.name.begins_with("Friendly"):
+			c.add_to_group("transceivers")
+		elif c.name.begins_with("Enemy"):
+			c.add_to_group("enemy_units")
+		add_to_groups_recursive(c)
 
 
 func _ready() -> void:
 	super._ready()
+	GameEvents.simulation_requested.connect(_begin_simulation)
+	set_process(true)
+
+	add_to_groups_recursive(self)
+
 	# Extract scene level from scene name
 	var level_name := get_tree().current_scene.scene_file_path
 	var file_name := level_name.get_file().get_basename()
 	var parts := file_name.split("-")
-	if parts.size() > 1:
-		_current_level = int(parts[1])
-	else:
-		_current_level = 1
+	
+	_current_level = int(parts[1]) if parts.size() > 1 else 1
 
 	var hud_nodes = get_tree().get_nodes_in_group("hud")
 	if hud_nodes.size() > 0:
@@ -69,7 +80,7 @@ func _start() -> void:
 		+ "• Adjust frequency: high for fast, low for stealth\n\n"
 		+ "Complete all 5 levels for a full spectrum of tactical challenges![/i]"
 	)
-	popup.button_string = "Start Planning"
+	popup.button_string = "Begin"
 
 	var cl := CanvasLayer.new()
 	cl.layer = 100
@@ -82,23 +93,89 @@ func _start() -> void:
 
 func _on_intro_closed() -> void:
 	_intro_popup_open = false
-	_advance()
+	_step = Step.PLANNING
+	_start_time = Time.get_ticks_msec() / 1000.0
+	_show_timer()
+
+
+func register_player_unit(unit: Node) -> void:
+	if not _player_units.has(unit):
+		_player_units.append(unit)
+
+
+func unregister_player_unit(unit: Node) -> void:
+	if _player_units.has(unit):
+		_player_units.erase(unit)
+
+
+func _begin_simulation() -> void:
+	_player_units = []
+	for u in get_tree().get_nodes_in_group("transceivers"):
+		if not u.name.begins_with("Friendly"):
+			_player_units.append(u)
+	if _step != Step.PLANNING and _step != Step.COMPLETE:
+		return
+	_step = Step.SIMULATING
+	_simulation_over = false
+	_link_established = false
+	_player_detected = false
+	_jammed = false
+	_simulate_link()
+
+
+func _process(_delta: float) -> void:
+	if _timer_label:
+		var elapsed = Time.get_ticks_msec() / 1000.0 - _start_time
+		_timer_label.text = "Time: %.1fs" % elapsed
+	
+	if _step == Step.SIMULATING and not _simulation_over:
+		_check_detection()
+		_check_jamming()
+		if _link_established and not (_player_detected or _jammed):
+			_finish(true)
+		elif _player_detected or _jammed:
+			_finish(false)
+
+
+func _finish(success: bool) -> void:
+	if _simulation_over:
+		return
+	_simulation_over = true
+	_completion_time = Time.get_ticks_msec() / 1000.0 - _start_time
+	if success:
+		_step = Step.COMPLETE
+		_show_scoreboard(success)
+	else:
+		_step = Step.PLANNING  # allow player to retry
+
+
+func _simulate_link() -> void:
+	if not _check_link_possible():
+		_show_hint("Link not possible - check your placements and retry!")
+		_finish(false)
+		return
+	_link_established = true
+
+	if _player_detected:
+		_show_hint("Detected by enemy! Try again.")
+		_finish(false)
+	elif _jammed:
+		_show_hint("Signal jammed! Try again.")
+		_finish(false)
+	else:
+		# Only succeed if not jammed OR detected
+		_finish(true)
 
 
 func _advance() -> void:
 	match _step:
 		Step.WELCOME:
-			_step = Step.PLANNING
 			_show_timer()
-			_show_hint(
-				"Drag and place your units to establish a silent link between the transceivers."
-			)
+			_step = Step.PLANNING
 		Step.PLANNING:
-			# Wait for player to finish unit placement (linked to your placement UI)
-			pass
+			_start_time = Time.get_ticks_msec() / 1000.0
 		Step.SIMULATING:
 			# Start simulation, check detection/jamming every frame
-			_start_time = Time.get_ticks_msec() / 1000.0
 			_simulate_link()
 		Step.COMPLETE:
 			_show_scoreboard()
@@ -139,49 +216,34 @@ func _show_hint(text: String) -> void:
 	cl.add_child(popup)
 
 
-func _begin_simulation() -> void:
-	if _step != Step.PLANNING:
-		return
-	_step = Step.SIMULATING
-	_advance()
-
-
-# Call this from your placement UI
-func on_player_units_placed(player_units: Array) -> void:
-	_player_units = player_units
-	_show_hint("When ready, press 'Begin Link' to attempt the connection.")
-	# Show "Begin Link" button in your interface that triggers _begin_simulation()
-
-
-func _process(_delta: float) -> void:
-	if _step == Step.SIMULATING and _timer_label:
-		var elapsed := Time.get_ticks_msec() / 1000.0 - _start_time
-		_timer_label.text = "Time: %.1fs" % elapsed
-		_check_detection()
-		_check_jamming()
-		if _link_established:
-			_finish(true)
-		elif _player_detected or _jammed:
-			_finish(false)
-
-
-func _simulate_link() -> void:
-	if _check_link_possible():
-		# Link is possible, wait for process/detection checks to finish the round
-		pass
-	else:
-		_show_hint("Link not possible - check your placements!")
-		_finish(false)
+func _unit_is_jammed(unit: Node) -> bool:
+	for enemy in _enemy_units:
+		if enemy.has_method("is_jammer") and enemy.is_jammer():
+			var dist = unit.global_position.distance_to(enemy.global_position)
+			var jam_radius = 70
+			if enemy.has_method("jam_radius"):
+				jam_radius = enemy.jam_radius()
+			if dist < jam_radius:
+				return true
+	return false
 
 
 func _check_link_possible() -> bool:
-	# Placeholder: return true if player placed at least 2 units and not overlapping enemies
-	if _player_units.size() < 2:
+	# For level 1: One preplaced, one player. Both must exist.
+	var total_transceivers = _player_units.duplicate()
+	for t in _transceivers:
+		if t not in total_transceivers:
+			total_transceivers.append(t)
+	if total_transceivers.size() < 2:
 		return false
-	for unit in _player_units:
-		for enemy in _enemy_units:
-			if _unit_in_detection_zone(unit, enemy):
+
+	# For each transceiver, check if link is possible (not in detection/jam)
+	for u in total_transceivers:
+		for e in _enemy_units:
+			if _unit_in_detection_zone(u, e):
 				return false
+		if _unit_is_jammed(u):
+			return false
 	return true
 
 
@@ -214,12 +276,6 @@ func _check_jamming() -> void:
 					return
 
 
-func _finish(success: bool) -> void:
-	_completion_time = Time.get_ticks_msec() / 1000.0 - _start_time
-	_step = Step.COMPLETE
-	_show_scoreboard(success)
-
-
 func _show_scoreboard(success: bool = true) -> void:
 	var score = _calculate_score(success)
 	var minutes = int(_completion_time) / 60
@@ -233,15 +289,8 @@ func _show_scoreboard(success: bool = true) -> void:
 			+ "[b]Time:[/b] %d:%02d\n" % [minutes, seconds]
 			+ "[b]Score:[/b] %d\n" % score
 		)
-	else:
-		popup.title_string = "Link Interrupted"
-		popup.body_string = (
-			"[i]Your link was detected or jammed.[/i]\n\n"
-			+ "[b]Time:[/b] %d:%02d\n" % [minutes, seconds]
-			+ "[b]Score:[/b] %d\n" % score
-		)
 
-	if _current_level < MAX_LEVEL:
+	if success and _current_level < MAX_LEVEL:
 		popup.button_string = "Next Level"
 	else:
 		popup.button_string = "Finish"
@@ -266,13 +315,12 @@ func _calculate_score(success: bool = true) -> int:
 	var stealth_bonus = 0
 
 	for unit in _player_units:
-		if unit.has("frequency") and unit.has("target_pos"):
-			var freq = unit.frequency
-			var dist = unit.global_position.distance_to(unit.target_pos)
-			if dist < 100 and freq < 2:
-				frequency_penalty += 200
-			elif dist > 400 and freq > 2:
-				frequency_penalty += 200
+		var freq = unit.frequency
+		# figure out distance freq penalty
+		if freq < 2:
+			frequency_penalty += 200
+		elif freq > 2:
+			frequency_penalty += 200
 
 	if not _player_detected:
 		stealth_bonus += 1000
