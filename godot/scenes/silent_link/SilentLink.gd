@@ -28,6 +28,8 @@ var _enemy_units: Array = []
 var _transceivers: Array = []
 var _scene_ready := false
 
+var _begin_link_button: Button = null
+
 
 func _ready() -> void:
 	super._ready()
