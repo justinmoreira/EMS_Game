@@ -37,7 +37,7 @@ func _ready():
 	if sidebar_node:
 		sidebar_node.resized.connect(_on_window_resized)
 	_on_window_resized()
-	
+
 	GameEvents.units_changed.connect(_on_units_changed_for_tutorial)
 	GameEvents.unit_confirmed.connect(_deselect_current_unit)
 
@@ -310,7 +310,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.position.x < sidebar_width:
 			return
-		
+
 		# Zooming in/out toward the mouse position
 		if event.pressed:
 			var old_zoom = zoom
