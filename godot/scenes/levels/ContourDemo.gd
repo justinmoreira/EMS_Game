@@ -32,6 +32,10 @@ func _ready() -> void:
 		push_error("Ensure ContourOverlay exists and has a ShaderMaterial!")
 		return
 
+	# Pulls in BaseLevel's resize handler / sidebar_width / drop logic.
+	# Without this, sidebar_width stays 0 and drops/coords break.
+	super._ready()
+
 	height_grid = _generate_terrain(grid_w, grid_h)
 
 	var tex := _create_height_texture(height_grid, grid_w, grid_h)

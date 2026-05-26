@@ -9,6 +9,8 @@ var is_being_dragged: bool = false
 var drag_start_pos: Vector2 = Vector2.ZERO
 var drag_distance: float = 0.0
 
+@onready var sidebar_node = get_tree().root.find_child("Sidebar", true, false)
+
 
 func _ready() -> void:
 	# Find whichever component was instantiated
@@ -29,50 +31,72 @@ func _ready() -> void:
 
 	selection_area.add_child(collision)
 	add_child(selection_area)
+	# Click detection via Area2D picking — Godot only fires this on the unit
+	# under the cursor, so click cost is O(1) instead of O(N) per event.
+	selection_area.input_event.connect(_on_selection_input)
+
+
+func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
+	# Only the initial press starts a drag here. Release and motion live in
+	# _input below so they keep working when the cursor leaves the shape mid-drag.
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		is_being_dragged = true
+		drag_start_pos = get_global_mouse_position()
+		drag_distance = 0.0
+		get_tree().root.set_input_as_handled()
 
 
 func _input(event: InputEvent) -> void:
+	# Fast path: not dragging, ignore everything. Prior version did a
+	# distance check on every event for every unit.
+	if not is_being_dragged:
+		return
+
 	var mouse_pos = get_global_mouse_position()
-	var distance = global_position.distance_to(mouse_pos)
 
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if distance < 32:  # Within the 32 radius
-			if event.pressed:
-				# Start drag
-				is_being_dragged = true
-				drag_start_pos = mouse_pos
-				drag_distance = 0.0
-				get_tree().root.set_input_as_handled()
-			else:
-				# On release
-				if drag_distance < 5.0:  # Click threshold
-					# This was a click - select the unit
-					selected.emit(self)
+	if (
+		event is InputEventMouseButton
+		and event.button_index == MOUSE_BUTTON_LEFT
+		and not event.pressed
+	):
+		if drag_distance < 5.0:
+			selected.emit(self)
+		is_being_dragged = false
+		get_tree().root.set_input_as_handled()
+		return
 
-				is_being_dragged = false
-				get_tree().root.set_input_as_handled()
+	if event is InputEventMouseMotion:
+		var can_move := true
 
-	elif event is InputEventMouseMotion and is_being_dragged:
-		if distance < 32:
-			var can_move := true
+		if sidebar_node and sidebar_node.get_global_rect().has_point(mouse_pos):
+			can_move = false
 
-			# Update the world_uv metadata
-			if has_meta("world_uv"):
-				var base_level = get_parent()
-				if base_level and base_level.has_method("screen_to_world_uv"):
-					var world_uv = base_level.screen_to_world_uv(mouse_pos)
+		var screen_rect = get_viewport().get_visible_rect()
+		var sidebar_w: float = sidebar_node.size.x if sidebar_node else 0.0
 
-					if world_uv.x < 0.0 or world_uv.x > 1.0 or world_uv.y < 0.0 or world_uv.y > 1.0:
-						can_move = false
-					else:
-						set_meta("world_uv", world_uv)
+		# Clamp mouse_pos to viewport bounds
+		mouse_pos.x = clamp(
+			mouse_pos.x,
+			screen_rect.position.x + sidebar_w,
+			screen_rect.position.x + screen_rect.size.x
+		)
+		mouse_pos.y = clamp(
+			mouse_pos.y, screen_rect.position.y, screen_rect.position.y + screen_rect.size.y
+		)
 
-			if can_move:
-				# Update position while dragging
-				global_position = mouse_pos
-				drag_distance = drag_start_pos.distance_to(mouse_pos)
+		# Update the world_uv metadata
+		if has_meta("world_uv"):
+			var base_level = get_parent()
+			if base_level and base_level.has_method("screen_to_world_uv"):
+				var world_uv = base_level.screen_to_world_uv(mouse_pos)
+				set_meta("world_uv", world_uv)
 
-			get_tree().root.set_input_as_handled()
+		if can_move:
+			# Update position while dragging
+			global_position = mouse_pos
+			drag_distance = drag_start_pos.distance_to(mouse_pos)
+
+		get_tree().root.set_input_as_handled()
 
 
 func get_all_children(node: Node) -> Array:
@@ -81,3 +105,9 @@ func get_all_children(node: Node) -> Array:
 		children.append(child)
 		children.append_array(get_all_children(child))
 	return children
+
+
+func _process(_delta: float) -> void:
+	if is_being_dragged:
+		if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			is_being_dragged = false

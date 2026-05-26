@@ -181,15 +181,11 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 	if not (data is Dictionary and data.has("scene_path")):
 		return false
 
-	# Still reject sidebar drops
-	if at_position.x < sidebar_width:
+	var live_sidebar_w: float = sidebar_node.size.x if sidebar_node else sidebar_width
+	if at_position.x < live_sidebar_w:
 		return false
 
-	# Convert mouse position into map UV space
-	var world_uv := screen_to_world_uv(at_position)
-
-	# Only allow drops inside the actual map
-	return world_uv.x >= 0.0 and world_uv.x <= 1.0 and world_uv.y >= 0.0 and world_uv.y <= 1.0
+	return true
 
 
 func _drop_data(at_position: Vector2, data: Variant) -> void:
