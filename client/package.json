@@ -9,13 +9,17 @@
     "fix": "biome check --write app/"
   },
   "dependencies": {
+    "astro": "^6.1.4",
     "@astrojs/node": "^10.0.4",
+
+    "preact": "^10.29.0",
     "@astrojs/preact": "^5.0.1",
     "@preact/signals": "^2.9.0",
+
     "@supabase/supabase-js": "^2.101.1",
-    "astro": "^6.1.4",
-    "dexie": "^4.4.2",
-    "preact": "^10.29.0"
+  
+    "dexie": "^4.4.2"
+    
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.7",
