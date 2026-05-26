@@ -32,6 +32,12 @@ var unit_attributes_visible: bool = false
 
 
 func _ready():
+	# Handle window resizing and sidebar layout
+	get_tree().get_root().size_changed.connect(_on_window_resized)
+	if sidebar_node:
+		sidebar_node.resized.connect(_on_window_resized)
+	_on_window_resized()
+	
 	GameEvents.units_changed.connect(_on_units_changed_for_tutorial)
 	GameEvents.unit_confirmed.connect(_deselect_current_unit)
 
@@ -98,6 +104,14 @@ func _show_tutorial_hint(text: String) -> void:
 	var popup := TUTORIAL_HINT_POPUP.instantiate()
 	popup.hint_text = text
 	$CanvasLayer.add_child(popup)
+
+
+func _on_window_resized() -> void:
+	self.size = get_viewport_rect().size
+	sidebar_width = sidebar_node.size.x if sidebar_node else 0.0
+	if background:
+		background.offset_left = sidebar_width
+	update_shader()
 
 
 # --- Coordinate Space Math ---
@@ -296,6 +310,23 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.position.x < sidebar_width:
 			return
+		
+		# Zooming in/out toward the mouse position
+		if event.pressed:
+			var old_zoom = zoom
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				zoom = clamp(zoom * 0.9, 0.1, 1.0)
+			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				zoom = clamp(zoom * 1.1, 0.1, 1.0)
+			else:
+				return  # Not a zoom event
+
+			# Adjust offset so we zoom toward the mouse position
+			var map = get_map_size()
+			var mouse_uv = (event.position - Vector2(sidebar_width, 0)) / map - Vector2(0.5, 0.5)
+			offset += mouse_uv * (old_zoom - zoom)
+			_clamp_offset()
+			update_shader()
 	return
 
 
