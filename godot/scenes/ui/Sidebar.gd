@@ -689,14 +689,14 @@ func _on_confirm_pressed() -> void:
 				_write_node_direct(p, pending_attributes[p])
 			else:
 				c.set(p, pending_attributes[p])
-				
+
 	var visual = selected_node.get_node_or_null("Visual")
 	if visual:
 		visual.set_selected(false)
-		
+
 	pending_attributes.clear()
 	select_entity(EntityType.NONE)
-	
+
 	GameEvents.unit_confirmed.emit()
 	SimulationManager.simulate()
 
