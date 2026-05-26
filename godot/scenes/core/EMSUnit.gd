@@ -41,12 +41,16 @@ func _input(event: InputEvent) -> void:
 		if distance < 32:  # Within the 32 radius
 			if event.pressed:
 				# Start drag
+				SimulationManager.clear_all_links()
+
 				is_being_dragged = true
 				drag_start_pos = mouse_pos
 				drag_distance = 0.0
 				get_tree().root.set_input_as_handled()
 			else:
 				# On release
+				SimulationManager.simulate()
+
 				if drag_distance < 5.0:  # Click threshold
 					# This was a click - select the unit
 					selected.emit(self)
