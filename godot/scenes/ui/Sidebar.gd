@@ -376,6 +376,29 @@ func _refresh_attribute_panel() -> void:
 	for spec in def.attributes:
 		_add_attribute_input(spec, def)
 
+	# Transceivers get a "Send Message" button that visualizes frequency-
+	# dependent transmission delay. Only meaningful for placed units.
+	if selected_node is Unit and def.id == &"transceiver":
+		_add_send_message_button(def.color)
+
+
+func _add_send_message_button(accent: Color) -> void:
+	var btn := Button.new()
+	btn.text = "SEND MESSAGE"
+	btn.add_theme_font_size_override("font_size", 13)
+	btn.add_theme_color_override("font_color", C_BG_DARK)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var style := StyleBoxFlat.new()
+	style.bg_color = accent
+	style.corner_radius_top_left = 3
+	style.corner_radius_top_right = 3
+	style.corner_radius_bottom_left = 3
+	style.corner_radius_bottom_right = 3
+	style.set_content_margin_all(8)
+	btn.add_theme_stylebox_override("normal", style)
+	btn.pressed.connect(func(): GameEvents.message_send_requested.emit(selected_node))
+	_attr_body.add_child(btn)
+
 
 func _definition_for(t: EntityType) -> UnitDefinition:
 	match t:
