@@ -17,7 +17,7 @@ var unit_visual: UnitVisual:
 
 var _selection_area: Area2D
 var _is_being_dragged: bool = false
-var _drag_start_pos: Vector2 = Vector2.ZERO       # mouse position at press
+var _drag_start_pos: Vector2 = Vector2.ZERO  # mouse position at press
 var _drag_start_unit_pos: Vector2 = Vector2.ZERO  # unit position at press (for cancel)
 var _drag_distance: float = 0.0
 # Tracks whether we've fired links_clear_requested this drag. Press alone
@@ -186,9 +186,7 @@ func _input(event: InputEvent) -> void:
 			screen_rect.position.x + screen_rect.size.x
 		)
 		mouse_pos.y = clamp(
-			mouse_pos.y,
-			screen_rect.position.y,
-			screen_rect.position.y + screen_rect.size.y
+			mouse_pos.y, screen_rect.position.y, screen_rect.position.y + screen_rect.size.y
 		)
 
 		set_value(&"world_uv", base_level.screen_to_world_uv(mouse_pos))
