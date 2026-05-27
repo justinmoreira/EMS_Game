@@ -118,14 +118,15 @@ db-start:
     supabase start
 
 [group('dev')]
-[doc('Restart local Supabase (force by default, mode=soft skips restart when healthy)')]
+[doc('Restart local Supabase (force by default, mode=soft skips restart when healthy and migrations are up-to-date)')]
 db-restart mode="force":
     #!/usr/bin/env bash
     set -euo pipefail
 
     if [ "{{mode}}" = "soft" ]; then
         if curl --silent --show-error --fail --max-time 5 http://127.0.0.1:54321/auth/v1/health >/dev/null; then
-            echo "✅ Supabase auth is healthy; skipping restart"
+            echo "✅ Supabase auth is healthy"
+            just _apply_pending_migrations
             exit 0
         fi
         echo "⚠️  Supabase auth is unhealthy; restarting..."
@@ -136,6 +137,7 @@ db-restart mode="force":
     supabase stop
     supabase start
     just _wait_supabase
+    just _apply_pending_migrations
 
 [group('dev')]
 [doc('Stop local Supabase')]
@@ -151,6 +153,98 @@ db-reset:
 [doc('Generate TypeScript types from database schema')]
 db-types:
     supabase gen types typescript --local > {{client_path}}/app/lib/database.types.ts
+
+[group('quality')]
+[doc('Verify migration files reproduce the live local schema (catches: ALTER applied locally but no migration written for it)')]
+migrations-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! supabase status &>/dev/null; then
+        echo "⚠️  Supabase isn't running — skipping migration drift check."
+        echo "   Start it with: just db-start"
+        exit 0
+    fi
+
+    # The CLI spins up a "shadow database" container on port 54320 to compute
+    # the diff, but it frequently leaks the container on interrupt / error.
+    # Kill anything on that port that isn’t our main supabase_db_<project>
+    # container so the next diff has a clean lane.
+    main_db=$(docker ps --filter "name=supabase_db_" -q | head -1)
+    for c in $(docker ps -aq --filter "publish=54320"); do
+        if [ "$c" != "$main_db" ]; then
+            docker rm -f "$c" >/dev/null 2>&1 || true
+        fi
+    done
+
+    diff_out=$(supabase db diff 2>&1 || true)
+    if echo "$diff_out" | grep -q "No schema changes found"; then
+        echo "✅ Migration files match the live schema."
+        exit 0
+    fi
+    if echo "$diff_out" | grep -qE "failed to (start|set up)|port is already allocated|Cannot find project"; then
+        echo "⚠️  Couldn’t run supabase db diff (infra issue, not drift):"
+        echo ""
+        echo "$diff_out" | tail -10
+        echo ""
+        echo "   Try: docker ps  → kill anything stale, then re-run."
+        exit 0
+    fi
+    echo "❌ Schema drift detected — your local DB has changes the migration files don't."
+    echo ""
+    echo "$diff_out" | tail -40
+    echo ""
+    echo "Fix:"
+    echo "  • Generate a migration:  supabase db diff -f <descriptive_name>"
+    echo "  • Or revert local DB:    just db-reset"
+    exit 1
+
+[group('dev')]
+[doc('Run SQL against the local Supabase DB. No args → interactive psql shell. Uses psql inside the supabase Docker container so the host doesn’t need a postgres client.')]
+query *sql:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # `-q` returns just the container ID, so no Go-template --format flag
+    # is needed (which would collide with Just's substitution syntax).
+    container=$(docker ps --filter "name=supabase_db_" -q | head -1)
+    if [ -z "$container" ]; then
+        echo "❌ No running Supabase Postgres container — start it with \`just db-start\`."
+        exit 1
+    fi
+    if [ -z "{{sql}}" ]; then
+        docker exec -it "$container" psql -U postgres
+    else
+        docker exec -i "$container" psql -U postgres -c "{{sql}}"
+    fi
+
+[group('dev')]
+[doc('Apply any migration files that are not yet recorded in supabase_migrations.schema_migrations (idempotent; silent when up-to-date)')]
+[private]
+_apply_pending_migrations:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Reach psql inside the running supabase container — keeps the host free
+    # of a postgres-client dep. `-q` returns the container ID directly, so
+    # no Go-template --format flag is needed.
+    container=$(docker ps --filter "name=supabase_db_" -q | head -1)
+    if [ -z "$container" ]; then
+        echo "⚠️  No running Supabase Postgres container; skipping migration check"
+        exit 0
+    fi
+
+    # Count migration files locally vs versions recorded in the local DB.
+    file_count=$(ls -1 supabase/migrations/*.sql 2>/dev/null | wc -l | tr -d ' ')
+    applied_count=$(docker exec -i "$container" psql -U postgres -At \
+        -c "SELECT count(*) FROM supabase_migrations.schema_migrations" \
+        2>/dev/null || echo 0)
+
+    if [ "$file_count" -le "$applied_count" ]; then
+        # No diff → fast path, no output.
+        exit 0
+    fi
+
+    echo "📋 Pending migrations detected ($file_count files vs $applied_count applied) — applying..."
+    supabase migration up
 
 [group('dev')]
 [doc('Wait for local Supabase auth to become healthy')]

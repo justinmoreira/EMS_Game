@@ -34,6 +34,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      sandbox_states: {
+        Row: {
+          created_at: string
+          gamemode: string
+          name: string
+          slot_id: string
+          state_json: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          gamemode?: string
+          name?: string
+          slot_id: string
+          state_json: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          gamemode?: string
+          name?: string
+          slot_id?: string
+          state_json?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_progress: {
         Row: {
           created_at: string
