@@ -125,6 +125,8 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 	# Only the initial press starts a drag here. Release and motion live in
 	# _input so they keep working when the cursor leaves the shape mid-drag.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		# Preserve main #61's UX: clear stale link visuals on drag-press.
+		SimulationManager.clear_all_links()
 		_is_being_dragged = true
 		_drag_start_pos = get_global_mouse_position()
 		_drag_distance = 0.0
@@ -142,6 +144,9 @@ func _input(event: InputEvent) -> void:
 		and event.button_index == MOUSE_BUTTON_LEFT
 		and not event.pressed
 	):
+		# Preserve main #61's UX: re-sim on drag-release so links reflect
+		# the new geometry.
+		SimulationManager.simulate()
 		if _drag_distance < CLICK_DRAG_THRESHOLD_PX:
 			selected.emit(self)
 		_is_being_dragged = false

@@ -1,0 +1,59 @@
+---
+import Base from "@/layouts/Base.astro";
+import { BASE_URL } from "@/utils";
+---
+
+<Base title="Mode Coming Soon">
+  <main
+    class="flex min-h-[calc(100vh-3rem)] items-center justify-center bg-neutral-950 px-6 text-white"
+  >
+    <section
+      class="w-full max-w-2xl rounded-2xl border border-white/10 bg-neutral-900 p-8 text-center shadow-2xl"
+    >
+      <p class="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-400">
+        Coming Soon
+      </p>
+
+      <h1 id="mode-title" class="mt-4 text-4xl font-black">
+        Game Mode Placeholder
+      </h1>
+
+      <p class="mt-4 text-neutral-300">
+        This mode page is connected, but the actual gameplay scene has not been
+        implemented yet.
+      </p>
+
+      <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+        <a
+          href={`${BASE_URL}/`}
+          class="rounded-lg border border-white/15 px-6 py-3 font-semibold text-neutral-200 transition-colors hover:bg-white/10"
+        >
+          Back to Mode Select
+        </a>
+
+        <a
+          href={`${BASE_URL}/play`}
+          class="rounded-lg bg-emerald-500 px-6 py-3 font-semibold text-black transition-colors hover:bg-emerald-400"
+        >
+          Play Sandbox Instead
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <script is:inline>
+    const modeNames = {
+      tutorial: "Tutorial",
+      "silent-link": "Silent Link Mode",
+      "enemy-hunter": "Enemy Hunter",
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get("mode");
+    const title = document.getElementById("mode-title");
+
+    if (title && mode && modeNames[mode]) {
+      title.textContent = `${modeNames[mode]} Placeholder`;
+    }
+  </script>
+</Base>
