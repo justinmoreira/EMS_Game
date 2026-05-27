@@ -17,11 +17,12 @@ var unit_visual: UnitVisual:
 
 var _selection_area: Area2D
 var _is_being_dragged: bool = false
-var _drag_start_pos: Vector2 = Vector2.ZERO
+var _drag_start_pos: Vector2 = Vector2.ZERO  # mouse position at press
+var _drag_start_unit_pos: Vector2 = Vector2.ZERO  # unit position at press (for cancel)
 var _drag_distance: float = 0.0
-# Tracks whether this drag has already emitted links_clear_requested. We only
-# clear once we've passed the click/drag threshold, so a pure click leaves
-# the existing link visuals untouched.
+# Tracks whether we've fired links_clear_requested this drag. Press alone
+# shouldn't clear — only actual movement past CLICK_DRAG_THRESHOLD_PX. A pure
+# click leaves the existing link visuals untouched.
 var _drag_links_cleared: bool = false
 
 
@@ -125,6 +126,7 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		_is_being_dragged = true
 		_drag_start_pos = get_global_mouse_position()
+		_drag_start_unit_pos = global_position
 		_drag_distance = 0.0
 		_drag_links_cleared = false
 		get_tree().root.set_input_as_handled()
@@ -134,13 +136,31 @@ func _input(event: InputEvent) -> void:
 	if not _is_being_dragged:
 		return
 
+	# Right-click during a drag → cancel: snap back, leave links untouched
+	# (re-sim only if motion already cleared them so visuals get rebuilt).
+	if (
+		event is InputEventMouseButton
+		and event.button_index == MOUSE_BUTTON_RIGHT
+		and event.pressed
+	):
+		global_position = _drag_start_unit_pos
+		var bl = get_parent()
+		if bl and bl.has_method("screen_to_world_uv"):
+			set_value(&"world_uv", bl.screen_to_world_uv(_drag_start_unit_pos))
+		_is_being_dragged = false
+		if _drag_links_cleared:
+			GameEvents.simulation_requested.emit()
+		get_tree().root.set_input_as_handled()
+		return
+
 	if (
 		event is InputEventMouseButton
 		and event.button_index == MOUSE_BUTTON_LEFT
 		and not event.pressed
 	):
-		# Preserve main #61's UX: re-sim on drag-release so links reflect
-		# the new geometry. Signal-based to match round-7's bus pattern.
+		# Click (no movement) → select only; drag (with movement) → recompute
+		# links to reflect the new geometry. Avoids redundant sims on pure
+		# selection clicks and preserves main #61's auto-sim-on-drag UX.
 		if _drag_distance < CLICK_DRAG_THRESHOLD_PX:
 			GameEvents.select(self)
 		else:
@@ -154,9 +174,10 @@ func _input(event: InputEvent) -> void:
 		if not (base_level and base_level.has_method("screen_to_world_uv")):
 			return
 
-		# Clamp in SCREEN space (sidebar right edge → viewport right edge).
-		# Clamping world_uv to [0,1] cut off the rectangular map's left/right
+		# Clamp in SCREEN space (sidebar's right edge → viewport right edge).
+		# Clamping in world-UV [0,1] cuts off the rectangular map's left/right
 		# strips, since UV [0,1] is the SQUARE subregion of a widescreen map.
+		# sidebar_width is published live via GameEvents.
 		var mouse_pos = get_global_mouse_position()
 		var screen_rect = get_viewport().get_visible_rect()
 		mouse_pos.x = clamp(
@@ -168,15 +189,13 @@ func _input(event: InputEvent) -> void:
 			mouse_pos.y, screen_rect.position.y, screen_rect.position.y + screen_rect.size.y
 		)
 
-		if has_meta("world_uv"):
-			set_meta("world_uv", base_level.screen_to_world_uv(mouse_pos))
-
+		set_value(&"world_uv", base_level.screen_to_world_uv(mouse_pos))
 		global_position = mouse_pos
 		_drag_distance = _drag_start_pos.distance_to(global_position)
 
 		# Fire-once: clear stale link visuals as soon as we know this is a real
 		# drag (not a click). Pure clicks never reach the threshold, so their
-		# existing link visuals stay intact.
+		# existing visuals stay intact.
 		if not _drag_links_cleared and _drag_distance >= CLICK_DRAG_THRESHOLD_PX:
 			GameEvents.links_clear_requested.emit()
 			_drag_links_cleared = true

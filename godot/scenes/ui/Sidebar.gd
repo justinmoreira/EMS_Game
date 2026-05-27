@@ -260,18 +260,17 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 
 	var attr_header_row := HBoxContainer.new()
 	attr_header_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	attr_header_row.add_theme_constant_override("separation", 8)
 	_attr_content.add_child(attr_header_row)
 
 	attr_header_row.add_child(_make_label("ATTRIBUTES", C_DIM, 15))
 
-	var button_row := HBoxContainer.new()
-	button_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button_row.add_theme_constant_override("separation", 10)
-	# Reserve vertical space so the row doesn't collapse/expand as the
-	# delete + confirm buttons toggle visibility — prevents the panel below
-	# from jumping up/down on selection change.
-	button_row.custom_minimum_size = Vector2(0, 36)
-	_attr_content.add_child(button_row)
+	# Spacer pushes action buttons to the right of the title row so the
+	# layout is stable whether or not those buttons are visible — no
+	# separate row appears/disappears on selection change.
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	attr_header_row.add_child(spacer)
 
 	var delete_btn := Button.new()
 	delete_btn.text = "DELETE"
@@ -286,17 +285,13 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	del_style.corner_radius_bottom_left = 3
 	del_style.corner_radius_bottom_right = 3
 	del_style.set_content_margin_all(8)
-
 	delete_btn.add_theme_stylebox_override("normal", del_style)
+	delete_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	delete_btn.pressed.connect(_on_delete_pressed)
 	delete_btn.visible = false
 
-	button_row.add_child(delete_btn)
+	attr_header_row.add_child(delete_btn)
 	_delete_btn = delete_btn
-
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button_row.add_child(spacer)
 
 	var confirm_btn := Button.new()
 	confirm_btn.text = "CONFIRM"
@@ -311,12 +306,12 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	cfm_style.corner_radius_bottom_left = 3
 	cfm_style.corner_radius_bottom_right = 3
 	cfm_style.set_content_margin_all(8)
-
 	confirm_btn.add_theme_stylebox_override("normal", cfm_style)
+	confirm_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	confirm_btn.pressed.connect(_on_confirm_pressed)
 	confirm_btn.visible = false
 
-	button_row.add_child(confirm_btn)
+	attr_header_row.add_child(confirm_btn)
 	_confirm_btn = confirm_btn
 
 	_attr_header = _make_label("", C_TEXT, 20)
@@ -339,8 +334,9 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	_attr_placeholder.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_attr_placeholder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_attr_placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	_attr_content.add_child(_attr_placeholder)
+	# Attach the placeholder OUTSIDE _attr_content so toggling its visibility
+	# doesn't reflow the attribute panel layout when a unit gets selected.
+	panel.add_child(_attr_placeholder)
 
 
 func _style_divider(sep: HSeparator) -> void:
@@ -643,12 +639,13 @@ func _on_confirm_pressed() -> void:
 	# Drop any LineEdit focus so its focus_exited fires (flushes the typed
 	# value through _write_attribute) and the keyboard isn't trapped after
 	# the user commits. Selection stays — Confirm is "apply + sim", not
-	# "apply + close".
+	# "apply + close" (that was the older qol-bugs behavior — see commit
+	# history if you want to revert).
 	get_viewport().gui_release_focus()
 
-	# _write_attribute already writes through to selected_node.set_value when
-	# a Unit is selected, so pending is normally empty here; flush stragglers
-	# just in case.
+	# _write_attribute writes through to selected_node.set_value when a Unit
+	# is selected, so pending is normally empty here; flush stragglers just
+	# in case.
 	if selected_node is Unit:
 		for id in pending_attributes:
 			selected_node.set_value(id, pending_attributes[id])

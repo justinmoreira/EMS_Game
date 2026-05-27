@@ -97,8 +97,8 @@ func toggle_shader(enabled: bool) -> void:
 func _reposition_units() -> void:
 	var unit_scale = 1.0 / zoom
 	for child in get_children():
-		if child is Unit and child.has_meta("world_uv"):
-			child.position = world_uv_to_screen(child.get_meta("world_uv"))
+		if child is Unit and child.get_value(&"world_uv") != null:
+			child.position = world_uv_to_screen(child.get_value(&"world_uv"))
 			child.scale = Vector2(unit_scale, unit_scale)
 
 
@@ -130,7 +130,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 		return
 
 	# Set position and scale based on current camera zoom/offset
-	unit.set_meta("world_uv", screen_to_world_uv(at_position))
+	unit.set_value(&"world_uv", screen_to_world_uv(at_position))
 	unit.position = at_position
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
 	# Mark this unit as not saved to the scene file (instantiated at runtime).
@@ -146,9 +146,8 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 
 	add_child(unit)
 
-	# Preserve main #61's UX: re-sim after placement so links reflect new geometry.
-	SimulationManager.simulate()
-
+	# Auto-sim on place (preserves main's #61 UX via round-8's event-bus pattern).
+	GameEvents.simulation_requested.emit()
 	_on_unit_placed(unit)
 	# Newly-placed unit is treated as selected so its panel opens.
 	GameEvents.select(unit)
