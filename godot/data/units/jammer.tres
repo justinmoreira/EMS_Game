@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="UnitDefinition" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scenes/core/UnitDefinition.gd" id="def"]
+[ext_resource type="Script" path="res://scenes/core/AttributeSpec.gd" id="spec"]
+
+[sub_resource type="Resource" id="a_unit_name"]
+script = ExtResource("spec")
+id = &"unit_name"
+display_name = "Name"
+kind = 2
+default_value = ""
+
+[sub_resource type="Resource" id="a_power"]
+script = ExtResource("spec")
+id = &"power"
+display_name = "Power"
+kind = 0
+min_value = 0.0
+max_value = 10.0
+step = 1.0
+unit = "dBm"
+default_value = 5
+
+[sub_resource type="Resource" id="a_frequency"]
+script = ExtResource("spec")
+id = &"frequency"
+display_name = "Frequency"
+kind = 1
+min_value = 30.0
+max_value = 3000.0
+step = 1.0
+unit = "MHz"
+default_value = 1000.0
+
+[sub_resource type="Resource" id="a_height"]
+script = ExtResource("spec")
+id = &"height"
+display_name = "Height"
+kind = 0
+min_value = 0.0
+max_value = 10.0
+step = 1.0
+unit = "m"
+default_value = 5
+
+[sub_resource type="Resource" id="a_bandwidth"]
+script = ExtResource("spec")
+id = &"jammer_bandwidth"
+display_name = "Bandwidth"
+kind = 4
+enum_options = PackedStringArray("Narrow", "Medium", "Wide")
+default_value = 1
+
+[resource]
+script = ExtResource("def")
+id = &"jammer"
+display_name = "Jammer"
+group = &"jammers"
+letter = "J"
+color = Color(1, 0.7019608, 0.2784314, 1)
+sprite_path = "res://assets/sprites/jammer.png"
+animated_sprite_path = "res://assets/sprites/jammerAni.png"
+attributes = [SubResource("a_unit_name"), SubResource("a_power"), SubResource("a_frequency"), SubResource("a_height"), SubResource("a_bandwidth")]

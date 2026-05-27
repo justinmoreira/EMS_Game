@@ -246,6 +246,14 @@ export default function AccountModal() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
   const user = authUser.value;
+  const displayName = user
+    ? (user.user_metadata?.display_name as string) ||
+      user.email?.split("@")[0] ||
+      ""
+    : "";
+  useEffect(() => {
+    if (displayName) localStorage.setItem("account_display_name", displayName);
+  }, [displayName]);
 
   return (
     <>
@@ -254,15 +262,7 @@ export default function AccountModal() {
         onClick={() => setOpen(true)}
         class="text-sm font-medium hover:text-white text-neutral-300 transition-colors min-w-[70px] text-right cursor-pointer"
       >
-        {(() => {
-          const name = user
-            ? (user.user_metadata?.display_name as string) ||
-              user.email?.split("@")[0] ||
-              ""
-            : "";
-          if (name) localStorage.setItem("account_display_name", name);
-          return ready ? name || "Account" : getCachedName();
-        })()}
+        {ready ? displayName || "Account" : getCachedName()}
       </button>
       {open &&
         createPortal(
