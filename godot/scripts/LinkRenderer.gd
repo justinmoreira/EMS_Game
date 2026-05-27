@@ -24,6 +24,7 @@ var links_visible: bool = true
 func _ready() -> void:
 	GameEvents.simulation_complete.connect(_on_simulation_complete)
 	GameEvents.reset_requested.connect(clear_all)
+	GameEvents.links_clear_requested.connect(clear_all)
 
 
 func _exit_tree() -> void:

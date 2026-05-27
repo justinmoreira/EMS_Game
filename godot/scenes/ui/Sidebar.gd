@@ -31,8 +31,8 @@ var selected_node: Node = null
 var pending_attributes: Dictionary = {}
 var pending_entity_type: EntityType = EntityType.NONE
 var _reset_btn: Button = null
-var _simulate_btn: Button = null
 var _delete_btn: Button = null
+var _confirm_btn: Button = null
 
 # ── Node refs ─────────────────────────────────
 # Slots come from Sidebar.tscn — script populates them on _ready.
@@ -50,7 +50,7 @@ var _tutorial_active: bool = false
 
 
 func _ready() -> void:
-	GameEvents.units_changed.connect(_update_simulate_button)
+	GameEvents.units_changed.connect(_update_reset_button)
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
 	GameEvents.selection_changed.connect(_on_selection_changed)
 	resized.connect(func(): GameEvents.sidebar_resized.emit(size.x))
@@ -99,7 +99,7 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 		pending_attributes.clear()
 
 	_refresh_attribute_panel()
-	_update_simulate_button()
+	_update_reset_button()
 
 
 # ════════════════════════════════════════════
@@ -160,36 +160,7 @@ func _populate_header(panel: PanelContainer) -> void:
 	hbox.add_child(reset_btn)
 	_reset_btn = reset_btn
 
-	var btn := Button.new()
-	btn.text = "SIMULATE"
-	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	btn.add_theme_font_size_override("font_size", 13)
-	btn.add_theme_color_override("font_color", C_BG_DARK)
-
-	var btn_style := StyleBoxFlat.new()
-	btn_style.bg_color = C_GREEN
-	btn_style.corner_radius_top_left = 3
-	btn_style.corner_radius_top_right = 3
-	btn_style.corner_radius_bottom_left = 3
-	btn_style.corner_radius_bottom_right = 3
-	btn_style.set_content_margin_all(8)
-	btn.add_theme_stylebox_override("normal", btn_style)
-
-	var btn_disabled_style := StyleBoxFlat.new()
-	btn_disabled_style.bg_color = C_BORDER
-	btn_disabled_style.corner_radius_top_left = 3
-	btn_disabled_style.corner_radius_top_right = 3
-	btn_disabled_style.corner_radius_bottom_left = 3
-	btn_disabled_style.corner_radius_bottom_right = 3
-	btn_disabled_style.set_content_margin_all(8)
-	btn.add_theme_stylebox_override("disabled", btn_disabled_style)
-
-	btn.pressed.connect(_on_simulate_pressed)
-	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	hbox.add_child(btn)
-
-	_simulate_btn = btn
-	_update_simulate_button()
+	_update_reset_button()
 
 
 func _populate_tray(panel: PanelContainer) -> void:
@@ -293,15 +264,17 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 
 	attr_header_row.add_child(_make_label("ATTRIBUTES", C_DIM, 15))
 
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	attr_header_row.add_child(spacer)
+	var button_row := HBoxContainer.new()
+	button_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button_row.add_theme_constant_override("separation", 10)
+	_attr_content.add_child(button_row)
 
 	var delete_btn := Button.new()
 	delete_btn.text = "DELETE UNIT"
 	delete_btn.add_theme_font_size_override("font_size", 12)
 	delete_btn.add_theme_color_override("font_color", C_BG_DARK)
 	delete_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	delete_btn.custom_minimum_size = Vector2(120, 0)
 
 	var del_style := StyleBoxFlat.new()
 	del_style.bg_color = C_RED
@@ -310,13 +283,39 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	del_style.corner_radius_bottom_left = 3
 	del_style.corner_radius_bottom_right = 3
 	del_style.set_content_margin_all(8)
+
 	delete_btn.add_theme_stylebox_override("normal", del_style)
-	delete_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	delete_btn.pressed.connect(_on_delete_pressed)
 	delete_btn.visible = false
 
-	attr_header_row.add_child(delete_btn)
+	button_row.add_child(delete_btn)
 	_delete_btn = delete_btn
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button_row.add_child(spacer)
+
+	var confirm_btn := Button.new()
+	confirm_btn.text = "CONFIRM"
+	confirm_btn.add_theme_font_size_override("font_size", 12)
+	confirm_btn.add_theme_color_override("font_color", C_BG_DARK)
+	confirm_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	confirm_btn.custom_minimum_size = Vector2(120, 0)
+
+	var cfm_style := StyleBoxFlat.new()
+	cfm_style.bg_color = C_GREEN
+	cfm_style.corner_radius_top_left = 3
+	cfm_style.corner_radius_top_right = 3
+	cfm_style.corner_radius_bottom_left = 3
+	cfm_style.corner_radius_bottom_right = 3
+	cfm_style.set_content_margin_all(8)
+
+	confirm_btn.add_theme_stylebox_override("normal", cfm_style)
+	confirm_btn.pressed.connect(_on_confirm_pressed)
+	confirm_btn.visible = false
+
+	button_row.add_child(confirm_btn)
+	_confirm_btn = confirm_btn
 
 	_attr_header = _make_label("", C_TEXT, 20)
 	_attr_content.add_child(_attr_header)
@@ -338,7 +337,8 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	_attr_placeholder.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_attr_placeholder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_attr_placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_child(_attr_placeholder)
+
+	_attr_content.add_child(_attr_placeholder)
 
 
 func _style_divider(sep: HSeparator) -> void:
@@ -353,6 +353,9 @@ func _refresh_attribute_panel() -> void:
 
 	if _delete_btn:
 		_delete_btn.visible = selected_entity != EntityType.NONE and selected_node != null
+
+	if _confirm_btn:
+		_confirm_btn.visible = selected_entity != EntityType.NONE and selected_node != null
 
 	if selected_entity == EntityType.NONE:
 		_attr_header.visible = false
@@ -607,18 +610,31 @@ func _on_delete_pressed() -> void:
 	dialog.canceled.connect(func(): dialog.queue_free())
 
 
-func _update_simulate_button() -> void:
+func _on_confirm_pressed() -> void:
+	if not selected_node:
+		return
+
+	# Round-6 routes attribute writes through _write_attribute, which goes
+	# straight to selected_node.set_value when a Unit is selected. So pending
+	# is normally empty here; flush stragglers just in case.
+	if selected_node is Unit:
+		for id in pending_attributes:
+			selected_node.set_value(id, pending_attributes[id])
+	pending_attributes.clear()
+
+	# clear_selection routes through GameEvents → BaseLevel handles the
+	# visual unhighlight; no direct Visual node poke here.
+	GameEvents.clear_selection()
+	select_entity(EntityType.NONE)
+	GameEvents.simulation_requested.emit()
+
+
+func _update_reset_button() -> void:
 	var has_units = (
 		get_tree().get_nodes_in_group("transceivers").size() > 0
 		or get_tree().get_nodes_in_group("jammers").size() > 0
 		or get_tree().get_nodes_in_group("sensors").size() > 0
 	)
-
-	if _simulate_btn:
-		_simulate_btn.disabled = not has_units
-		_simulate_btn.mouse_default_cursor_shape = (
-			Control.CURSOR_POINTING_HAND if has_units else Control.CURSOR_ARROW
-		)
 
 	if _reset_btn:
 		_reset_btn.disabled = not has_units
@@ -681,6 +697,7 @@ func _apply_style(
 func _make_label(text: String, color: Color, txt_size: int, expand: bool = false) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
+	lbl.custom_minimum_size.x = 120
 	lbl.add_theme_color_override("font_color", color)
 	lbl.add_theme_font_size_override("font_size", txt_size)
 	if expand:
