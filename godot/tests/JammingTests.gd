@@ -26,10 +26,14 @@ func test_calculate_interference():
 	jammers = [jammer_a]
 
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
-	# JammerPowerAtRx = calculate_received_power(5, 5, 5, 1000, 1, 1) = 1.875
+	# JammerPowerAtRx = calculate_received_power(5, 5, 5, 1000, 1, 1) = 1.875 * GAME_RATIO = 5.625
 	# BandwidthPower = 1.0 (Narrow)
-	# Total = 1.875 * 1.0 = 1.875
-	assert_eq(interference, 1.875, "Single jammer same frequency: Got 1.875")
+	# Total = 5.625 * 1.0 = 5.625
+	assert_eq(
+		interference,
+		1.875 * PhysicsEngine.GAME_CALCULATION_RATIO,
+		"Single jammer same frequency: Got 5.625"
+	)
 
 	jammer_a.free()
 
@@ -70,8 +74,13 @@ func test_calculate_interference():
 
 	# Jammer 1: 1.875 * 1.0 = 1.875
 	# Jammer 2: calculate_received_power(3, 5, 5, 1000.5, 1, 1) ≈ 2.25 * 0.5 = 1.125
-	# Total ≈ 2.437
-	assert_approx(interference, 2.437, 0.01, "Multiple jammers: Got ~2.437")
+	# Total ≈ 2.437 * GAME_RATIO ~ 7.311
+	assert_approx(
+		interference,
+		2.437 * PhysicsEngine.GAME_CALCULATION_RATIO,
+		0.01,
+		"Multiple jammers: Got ~7.311"
+	)
 
 	jammer1.free()
 	jammer2.free()
@@ -82,16 +91,28 @@ func test_range_check():
 	print("Running Range Check Tests...\n")
 
 	# Test 1: Signal above noise floor (in range)
-	assert_true(PhysicsEngine.range_check(1.0), "Signal above noise floor: true")
+	assert_true(
+		PhysicsEngine.range_check(1.0 * PhysicsEngine.GAME_CALCULATION_RATIO),
+		"Signal above noise floor: true"
+	)
 
 	# Test 2: Signal below noise floor (out of range)
-	assert_false(PhysicsEngine.range_check(0.3), "Signal below noise floor: false")
+	assert_false(
+		PhysicsEngine.range_check(0.3 / PhysicsEngine.GAME_CALCULATION_RATIO),
+		"Signal below noise floor: false"
+	)
 
 	# Test 3: Signal exactly at noise floor (out of range)
-	assert_false(PhysicsEngine.range_check(0.5), "Signal at noise floor: false")
+	assert_false(
+		PhysicsEngine.range_check(0.5 / PhysicsEngine.GAME_CALCULATION_RATIO),
+		"Signal at noise floor: false"
+	)
 
 	# Test 4: Signal just above noise floor (in range)
-	assert_true(PhysicsEngine.range_check(0.51), "Signal just above noise floor: true")
+	assert_true(
+		PhysicsEngine.range_check(0.51 * PhysicsEngine.GAME_CALCULATION_RATIO),
+		"Signal just above noise floor: true"
+	)
 
 	print("\n")
 

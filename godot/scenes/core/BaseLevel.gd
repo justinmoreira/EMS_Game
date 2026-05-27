@@ -39,6 +39,7 @@ func _ready():
 	_on_window_resized()
 
 	GameEvents.units_changed.connect(_on_units_changed_for_tutorial)
+	GameEvents.unit_confirmed.connect(_deselect_current_unit)
 
 	# Check if tutorial was already completed
 	var tutorial_done := false
@@ -196,6 +197,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 		return
 
 	var unit := scene.instantiate()
+
 	if unit == null:
 		return
 
@@ -203,6 +205,9 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	unit.set_meta("world_uv", screen_to_world_uv(at_position))
 	unit.position = at_position
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
+	# Mark this unit as not saved to the scene file (instantiated at runtime)
+	unit.owner = null
+	add_child(unit)
 
 	# Apply pending attributes BEFORE add_child so the component's _ready sees
 	# the user-typed unit_name and skips its UnitNameManager.get_next_name call.
@@ -218,7 +223,8 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 
 		sidebar_node.pending_attributes.clear()
 
-	add_child(unit)
+	# Sim AFTER pending attrs so it sees the user-typed values, not defaults.
+	SimulationManager.simulate()
 
 	# Connect the selection signal
 	_on_unit_placed(unit)
@@ -285,7 +291,6 @@ func _input(event: InputEvent) -> void:
 	# prevent gameplay after popup is open
 	if intro_popup_open:
 		return
-
 	if event is InputEventMouseButton:
 		if event.position.x < sidebar_width:
 			return
@@ -306,13 +311,13 @@ func _input(event: InputEvent) -> void:
 			offset += mouse_uv * (old_zoom - zoom)
 			_clamp_offset()
 			update_shader()
+	return
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	# prevent map interaction when popup is active
 	if intro_popup_open:
 		return
-
 	if event is InputEventKey and event.pressed and not event.echo:
 		var focus_owner := get_viewport().gui_get_focus_owner()
 		if focus_owner is LineEdit or focus_owner is TextEdit:
@@ -350,6 +355,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 			dragging = true
 			last_mouse_pos = event.position
+
 		else:
 			dragging = false
 
@@ -360,6 +366,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		_clamp_offset()
 		last_mouse_pos = event.position
 		update_shader()
+
+
+func toggle_unit_details(enabled: bool) -> void:
+	unit_attributes_visible = enabled
+	_apply_unit_attribute_visibility()
 
 
 #show unit attribute helper function
