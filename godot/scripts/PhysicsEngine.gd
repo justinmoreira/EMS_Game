@@ -14,6 +14,9 @@ const BANDWIDTH_NAMES := ["Narrow", "Medium", "Wide"]
 const BANDWIDTH_POWER := [1.0, 0.5, 0.3]
 const BANDWIDTH_MHZ := [1.0, 10.0, 50.0]
 
+# Increase or decrease to adjust gameplay success
+const GAME_CALCULATION_RATIO = 3.0
+
 
 static func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
 	return pos1.distance_to(pos2) / PIXELS_PER_UNIT
@@ -87,7 +90,8 @@ static func calculate_received_power(
 		terrain_loss = 1.0
 
 	var received_power = (
-		(tx_power * height_factor * frequency_factor) / (distance_loss * terrain_loss)
+		(GAME_CALCULATION_RATIO * tx_power * height_factor * frequency_factor)
+		/ (distance_loss * terrain_loss)
 	)
 	return received_power
 
