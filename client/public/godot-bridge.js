@@ -55,3 +55,26 @@ window.initTutorialListener = function () {
     } catch (_e) {}
   });
 })();
+
+// Godot's SAVES button calls window.openSavesPicker(). Route it through an
+// auth check: signed in → open the picker; signed out → open the sign-in
+// modal (no point letting the user fiddle with saves they can't keep).
+(function () {
+  function isAuthed() {
+    var cookies = document.cookie.split('; ');
+    for (var i = 0; i < cookies.length; i++) {
+      if (cookies[i].indexOf('sb-access-token=') === 0) {
+        return cookies[i].length > 'sb-access-token='.length;
+      }
+    }
+    return false;
+  }
+
+  window.openSavesPicker = function () {
+    if (isAuthed()) {
+      window.dispatchEvent(new CustomEvent('open-saves-picker'));
+    } else {
+      window.dispatchEvent(new CustomEvent('open-auth-modal'));
+    }
+  };
+})();

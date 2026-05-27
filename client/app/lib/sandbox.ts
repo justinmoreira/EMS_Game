@@ -236,17 +236,24 @@ async function syncAll(): Promise<void> {
     for (const r of data) {
       const local = await db.sandboxStates.get(r.slot_id);
       if (!local || r.updated_at > local.updated_at) {
+        // state_json is typed as Json (jsonb) but the round-trip through
+        // PostgREST preserves whatever JS-typed value we put in — strings
+        // come back as strings. Be defensive about null/object cases anyway.
+        const stateStr =
+          typeof r.state_json === "string"
+            ? r.state_json
+            : JSON.stringify(r.state_json);
         await db.sandboxStates.put({
           id: r.slot_id,
           name: r.name,
           gamemode: r.gamemode ?? DEFAULT_GAMEMODE,
-          state_json: r.state_json,
+          state_json: stateStr,
           updated_at: r.updated_at,
           synced: true,
         });
         if (r.slot_id === CURRENT_ID) {
-          currentSandbox.value = r.state_json;
-          writeLocal(r.state_json);
+          currentSandbox.value = stateStr;
+          writeLocal(stateStr);
         }
       }
     }
@@ -277,6 +284,13 @@ if (isBrowser) {
     void promoteAnonOnSignIn().then(() => syncAll());
   });
   window.addEventListener("online", () => syncAll());
+  // On sign-out: wipe everything in Dexie so the next visitor (or different
+  // user on this browser) doesn't see the previous user's saves. localStorage
+  // is already cleared by godot-bridge.js's auth-signed-out listener.
+  window.addEventListener("auth-signed-out", () => {
+    void db.sandboxStates.clear();
+    currentSandbox.value = "";
+  });
 
   // Observe godot-bridge.js's saves and fan out to Dexie + Supabase. The
   // localStorage write already happened in the bridge — we just need to add

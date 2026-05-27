@@ -23,13 +23,9 @@ const PICKER_MODE = DEFAULT_GAMEMODE;
 // (Load / Override / Delete) acts on the selected slot. Saving a new slot
 // uses the inline name input + button at the top.
 
+// godot-bridge.js owns window.openSavesPicker (it routes to either this
+// event when signed in, or "open-auth-modal" when not). We just listen.
 const OPEN_EVENT = "open-saves-picker";
-
-declare global {
-  interface Window {
-    openSavesPicker?: () => void;
-  }
-}
 
 export default function SavesPicker() {
   const [open, setOpen] = useState(false);
@@ -41,18 +37,12 @@ export default function SavesPicker() {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    window.openSavesPicker = () => {
-      window.dispatchEvent(new CustomEvent(OPEN_EVENT));
-    };
     const handler = () => {
       refresh();
       setOpen(true);
     };
     window.addEventListener(OPEN_EVENT, handler);
-    return () => {
-      window.removeEventListener(OPEN_EVENT, handler);
-      delete window.openSavesPicker;
-    };
+    return () => window.removeEventListener(OPEN_EVENT, handler);
   }, []);
 
   // ESC closes — keyboard accessibility for the modal.

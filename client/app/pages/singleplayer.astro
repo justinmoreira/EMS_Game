@@ -1,4 +1,5 @@
 ---
+import GemsTitle from "@/components/GemsTitle.astro";
 import Base from "@/layouts/Base.astro";
 import { BASE_URL } from "@/utils";
 
@@ -43,11 +44,21 @@ const modes = [
 ---
 
 <Base title="Singleplayer | EMS Sim">
-  <div id="vanta-bg" class="fixed inset-0 -z-10"></div>
+  <div id="vanta-bg" transition:persist="vanta-bg" class="fixed inset-0 -z-10"></div>
 
-  <main class="min-h-[calc(100vh-3rem)] px-6 py-10 text-white">
+  <GemsTitle>
+    <a
+      id="play-now"
+      href={`${BASE_URL}/placeholder?mode=tutorial`}
+      class="pointer-events-auto inline-flex min-w-56 items-center justify-center rounded-xl bg-emerald-400 px-12 py-4 text-xl font-bold text-black shadow-lg shadow-emerald-950/50 transition-colors hover:bg-emerald-300"
+    >
+      Play Now
+    </a>
+  </GemsTitle>
+
+  <main class="px-6 pt-[calc(25vh-7rem)] text-white">
     <section
-      class="mx-auto flex min-h-[calc(100vh-8rem)] max-w-5xl flex-col items-center justify-center"
+      class="mx-auto flex max-w-5xl flex-col items-center"
     >
       <div
         class="mb-8 w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-black/45 shadow-2xl backdrop-blur-md"
@@ -125,25 +136,6 @@ const modes = [
         </div>
       </div>
 
-      <div class="text-center">
-        <h1
-          class="text-7xl font-black tracking-tighter drop-shadow-lg md:text-8xl"
-        >
-          GEMS
-        </h1>
-
-        <p class="mt-4 text-xl tracking-wide text-neutral-400">
-          Gamifying Electro-Magnetic Spectrum
-        </p>
-
-        <a
-          id="play-now"
-          href={`${BASE_URL}/placeholder?mode=tutorial`}
-          class="mt-10 inline-flex min-w-56 items-center justify-center rounded-xl bg-emerald-400 px-12 py-4 text-xl font-bold text-black shadow-lg shadow-emerald-950/50 transition-colors hover:bg-emerald-300"
-        >
-          Play Now
-        </a>
-      </div>
     </section>
   </main>
 
@@ -157,25 +149,38 @@ const modes = [
     src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"
     crossorigin="anonymous"></script>
 
-  <script is:inline>
-    VANTA.NET({
-      el: "#vanta-bg",
-      mouseControls: true,
-      touchControls: true,
-      gyroControls: false,
-      minHeight: 200.0,
-      minWidth: 200.0,
-      scale: 1.0,
-      scaleMobile: 1.0,
-      color: 0x58ff3f,
-      backgroundColor: 0x0a0a0a,
-      points: 8.0,
-      maxDistance: 20.0,
-      spacing: 18.0,
-    });
+  <script is:inline data-astro-rerun>
+    // See identical block in index.astro for rationale — re-init only
+    // when #vanta-bg has no canvas (i.e. fresh render, not a persisted
+    // carry-over from the previous page).
+    (() => {
+      const el = document.getElementById("vanta-bg");
+      if (!el || el.querySelector("canvas")) return;
+      VANTA.NET({
+        el,
+        mouseControls: true,
+        touchControls: true,
+        gyroControls: false,
+        minHeight: 200.0,
+        minWidth: 200.0,
+        scale: 1.0,
+        scaleMobile: 1.0,
+        color: 0x58ff3f,
+        backgroundColor: 0x0a0a0a,
+        points: 8.0,
+        maxDistance: 20.0,
+        spacing: 18.0,
+      });
+    })();
   </script>
 
-  <script is:inline>
+  <script is:inline data-astro-rerun>
+    // IIFE-wrapped so top-level `const` declarations don't collide on
+    // re-runs (data-astro-rerun re-executes this in global scope on every
+    // ClientRouter navigation; a bare `const icons = {...}` would throw
+    // "already declared" on the second run and the icons would never
+    // populate).
+    (() => {
     const icons = {
       book: `
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
@@ -268,5 +273,6 @@ const modes = [
     modeTabs.forEach((tab) => {
       tab.addEventListener("click", () => selectMode(tab));
     });
+    })();
   </script>
 </Base>

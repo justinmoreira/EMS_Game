@@ -237,6 +237,13 @@ export default function AccountModal() {
     const el = document.getElementById("account-placeholder");
     if (el) el.style.display = "none";
   }, []);
+  // Other components (e.g. the in-game saves picker when the user isn't
+  // signed in) can prompt sign-in by dispatching `open-auth-modal`.
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("open-auth-modal", onOpen);
+    return () => window.removeEventListener("open-auth-modal", onOpen);
+  }, []);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
