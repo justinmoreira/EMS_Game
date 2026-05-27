@@ -1,16 +1,20 @@
 extends Node2D
 
-# Animates a single yellow dot traveling from sender to receiver over `delay`
-# seconds. One pulse spawns per `message_dispatched` signal; the tween's
-# completion callback frees the node, so cleanup is automatic.
+# Animates a yellow dot traveling from sender to receiver over `delay` seconds.
+# One pulse spawns per `message_dispatched` signal; the tween's completion
+# callback frees the node, so cleanup is automatic. High z_index keeps the
+# pulse above BaseLevel's BackgroundTexture (this is an autoload Node2D, so
+# without explicit z it can render behind level geometry).
 
-const PULSE_RADIUS := 6.0
+const PULSE_RADIUS := 10.0
 const PULSE_COLOR := Color.YELLOW
-const PULSE_SEGMENTS := 16
+const PULSE_Z_INDEX := 100
+const PULSE_SEGMENTS := 20
 
 
 func _ready() -> void:
 	GameEvents.message_dispatched.connect(_on_dispatched)
+	z_index = PULSE_Z_INDEX
 
 
 func _on_dispatched(from_unit: Node, to_unit: Node, delay: float) -> void:
@@ -30,4 +34,5 @@ func _make_pulse() -> Polygon2D:
 		pts.append(Vector2(cos(angle), sin(angle)) * PULSE_RADIUS)
 	p.polygon = pts
 	p.color = PULSE_COLOR
+	p.z_index = PULSE_Z_INDEX
 	return p

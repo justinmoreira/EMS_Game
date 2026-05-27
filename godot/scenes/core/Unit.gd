@@ -19,6 +19,10 @@ var _selection_area: Area2D
 var _is_being_dragged: bool = false
 var _drag_start_pos: Vector2 = Vector2.ZERO
 var _drag_distance: float = 0.0
+# Tracks whether this drag has already emitted links_clear_requested. We only
+# clear once we've passed the click/drag threshold, so a pure click leaves
+# the existing link visuals untouched.
+var _drag_links_cleared: bool = false
 
 
 func _ready() -> void:
@@ -119,11 +123,10 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 	# Only the initial press starts a drag here. Release and motion live in
 	# _input so they keep working when the cursor leaves the shape mid-drag.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		# Preserve main #61's UX: clear stale link visuals on drag-press.
-		GameEvents.links_clear_requested.emit()
 		_is_being_dragged = true
 		_drag_start_pos = get_global_mouse_position()
 		_drag_distance = 0.0
+		_drag_links_cleared = false
 		get_tree().root.set_input_as_handled()
 
 
@@ -147,21 +150,37 @@ func _input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventMouseMotion:
-		# Clamp by converting through the level's UV space — which already
-		# accounts for sidebar/playable-area exclusion. No direct sidebar reach.
 		var base_level = get_parent()
 		if not (base_level and base_level.has_method("screen_to_world_uv")):
 			return
 
+		# Clamp in SCREEN space (sidebar right edge → viewport right edge).
+		# Clamping world_uv to [0,1] cut off the rectangular map's left/right
+		# strips, since UV [0,1] is the SQUARE subregion of a widescreen map.
 		var mouse_pos = get_global_mouse_position()
-		var world_uv = base_level.screen_to_world_uv(mouse_pos)
-		var clamped := Vector2(clamp(world_uv.x, 0.0, 1.0), clamp(world_uv.y, 0.0, 1.0))
+		var screen_rect = get_viewport().get_visible_rect()
+		mouse_pos.x = clamp(
+			mouse_pos.x,
+			screen_rect.position.x + base_level.sidebar_width,
+			screen_rect.position.x + screen_rect.size.x
+		)
+		mouse_pos.y = clamp(
+			mouse_pos.y, screen_rect.position.y, screen_rect.position.y + screen_rect.size.y
+		)
 
 		if has_meta("world_uv"):
-			set_meta("world_uv", clamped)
+			set_meta("world_uv", base_level.screen_to_world_uv(mouse_pos))
 
-		global_position = base_level.world_uv_to_screen(clamped)
+		global_position = mouse_pos
 		_drag_distance = _drag_start_pos.distance_to(global_position)
+
+		# Fire-once: clear stale link visuals as soon as we know this is a real
+		# drag (not a click). Pure clicks never reach the threshold, so their
+		# existing link visuals stay intact.
+		if not _drag_links_cleared and _drag_distance >= CLICK_DRAG_THRESHOLD_PX:
+			GameEvents.links_clear_requested.emit()
+			_drag_links_cleared = true
+
 		get_tree().root.set_input_as_handled()
 
 

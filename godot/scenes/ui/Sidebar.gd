@@ -267,14 +267,17 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	var button_row := HBoxContainer.new()
 	button_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button_row.add_theme_constant_override("separation", 10)
+	# Reserve vertical space so the row doesn't collapse/expand as the
+	# delete + confirm buttons toggle visibility — prevents the panel below
+	# from jumping up/down on selection change.
+	button_row.custom_minimum_size = Vector2(0, 36)
 	_attr_content.add_child(button_row)
 
 	var delete_btn := Button.new()
-	delete_btn.text = "DELETE UNIT"
+	delete_btn.text = "DELETE"
 	delete_btn.add_theme_font_size_override("font_size", 12)
 	delete_btn.add_theme_color_override("font_color", C_BG_DARK)
 	delete_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	delete_btn.custom_minimum_size = Vector2(120, 0)
 
 	var del_style := StyleBoxFlat.new()
 	del_style.bg_color = C_RED
@@ -300,7 +303,6 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	confirm_btn.add_theme_font_size_override("font_size", 12)
 	confirm_btn.add_theme_color_override("font_color", C_BG_DARK)
 	confirm_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	confirm_btn.custom_minimum_size = Vector2(120, 0)
 
 	var cfm_style := StyleBoxFlat.new()
 	cfm_style.bg_color = C_GREEN
@@ -505,8 +507,9 @@ func _add_slider(
 	spin.step = 1.0 if integers else 0.1
 	spin.rounded = integers
 	spin.suffix = unit
-	spin.size_flags_horizontal = Control.SIZE_SHRINK_END
-	spin.custom_minimum_size = Vector2(140, 0)
+	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Min keeps the +/− arrows usable; otherwise scales with row width.
+	spin.custom_minimum_size = Vector2(70, 0)
 	spin.add_theme_font_size_override("font_size", 13)
 	spin.add_theme_color_override("font_color", accent)
 	top.add_child(spin)
@@ -556,8 +559,8 @@ func _add_dropdown(
 	hbox.add_child(_make_label(label, C_DIM, 13, true))
 
 	var dd := OptionButton.new()
-	dd.size_flags_horizontal = Control.SIZE_SHRINK_END
-	dd.custom_minimum_size = Vector2(110, 0)
+	dd.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dd.custom_minimum_size = Vector2(70, 0)
 	dd.add_theme_font_size_override("font_size", 13)
 	dd.add_theme_color_override("font_color", accent)
 	for opt in options:
@@ -637,18 +640,20 @@ func _on_confirm_pressed() -> void:
 	if not selected_node:
 		return
 
-	# Round-6 routes attribute writes through _write_attribute, which goes
-	# straight to selected_node.set_value when a Unit is selected. So pending
-	# is normally empty here; flush stragglers just in case.
+	# Drop any LineEdit focus so its focus_exited fires (flushes the typed
+	# value through _write_attribute) and the keyboard isn't trapped after
+	# the user commits. Selection stays — Confirm is "apply + sim", not
+	# "apply + close".
+	get_viewport().gui_release_focus()
+
+	# _write_attribute already writes through to selected_node.set_value when
+	# a Unit is selected, so pending is normally empty here; flush stragglers
+	# just in case.
 	if selected_node is Unit:
 		for id in pending_attributes:
 			selected_node.set_value(id, pending_attributes[id])
 	pending_attributes.clear()
 
-	# clear_selection routes through GameEvents → BaseLevel handles the
-	# visual unhighlight; no direct Visual node poke here.
-	GameEvents.clear_selection()
-	select_entity(EntityType.NONE)
 	GameEvents.simulation_requested.emit()
 
 
@@ -681,7 +686,7 @@ func _add_text_input(label: String, current: String, accent: Color, on_change: C
 	var input := LineEdit.new()
 	input.text = current
 	input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	input.custom_minimum_size = Vector2(140, 0)
+	input.custom_minimum_size = Vector2(60, 0)
 	input.add_theme_font_size_override("font_size", 13)
 	input.add_theme_color_override("font_color", accent)
 	input.text_submitted.connect(func(v): on_change.call(v))
@@ -716,11 +721,12 @@ func _apply_style(
 	control.add_theme_stylebox_override("panel", s)
 
 
-## Shorthand label factory
+## Shorthand label factory. No fixed minimum width — text intrinsic-sizes itself
+## so rows stay narrower than the sidebar's content area. Set `expand=true` for
+## row labels that should grab leftover horizontal space.
 func _make_label(text: String, color: Color, txt_size: int, expand: bool = false) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.custom_minimum_size.x = 120
 	lbl.add_theme_color_override("font_color", color)
 	lbl.add_theme_font_size_override("font_size", txt_size)
 	if expand:
