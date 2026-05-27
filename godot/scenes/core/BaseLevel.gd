@@ -125,6 +125,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 		return
 
 	var unit := scene.instantiate()
+
 	if unit == null:
 		return
 
@@ -132,6 +133,8 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	unit.set_meta("world_uv", screen_to_world_uv(at_position))
 	unit.position = at_position
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
+	# Mark this unit as not saved to the scene file (instantiated at runtime).
+	unit.owner = null
 
 	# Apply pending attributes BEFORE add_child so the unit's _ready sees the
 	# user-typed unit_name and skips its UnitNameManager.get_next_name call.
@@ -142,6 +145,10 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 		unit.set(attr_name, override[attr_name])
 
 	add_child(unit)
+
+	# Preserve main #61's UX: re-sim after placement so links reflect new geometry.
+	SimulationManager.simulate()
+
 	_on_unit_placed(unit)
 	# Newly-placed unit is treated as selected so its panel opens.
 	GameEvents.select(unit)
@@ -215,6 +222,7 @@ func _input(event: InputEvent) -> void:
 			offset += mouse_uv * (old_zoom - zoom)
 			_clamp_offset()
 			update_shader()
+	return
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -250,6 +258,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 			dragging = true
 			last_mouse_pos = event.position
+
 		else:
 			dragging = false
 
@@ -260,6 +269,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		_clamp_offset()
 		last_mouse_pos = event.position
 		update_shader()
+
+
+func toggle_unit_details(enabled: bool) -> void:
+	unit_attributes_visible = enabled
+	_apply_unit_attribute_visibility()
 
 
 #show unit attribute helper function

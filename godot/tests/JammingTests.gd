@@ -23,7 +23,15 @@ func test_calculate_interference():
 	)
 	jammers = [jammer_a]
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
-	assert_eq(interference, 1.875, "Single jammer same frequency: Got 1.875")
+	# JammerPowerAtRx = calculate_received_power(5, 5, 5, 1000, 1, 1) = 1.875 * GAME_RATIO = 5.625
+	# BandwidthPower = 1.0 (Narrow)
+	# Total = 5.625 * 1.0 = 5.625
+	assert_eq(
+		interference,
+		1.875 * PhysicsEngine.GAME_CALCULATION_RATIO,
+		"Single jammer same frequency: Got 5.625"
+	)
+
 	jammer_a.free()
 
 	# Test 3: Jammer outside frequency range (should NOT interfere)
@@ -50,7 +58,17 @@ func test_calculate_interference():
 	)
 	jammers = [jammer1, jammer2]
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
-	assert_approx(interference, 2.437, 0.01, "Multiple jammers: Got ~2.437")
+
+	# Jammer 1: 1.875 * 1.0 = 1.875
+	# Jammer 2: calculate_received_power(3, 5, 5, 1000.5, 1, 1) ≈ 2.25 * 0.5 = 1.125
+	# Total ≈ 2.437 * GAME_RATIO ~ 7.311
+	assert_approx(
+		interference,
+		2.437 * PhysicsEngine.GAME_CALCULATION_RATIO,
+		0.01,
+		"Multiple jammers: Got ~7.311"
+	)
+
 	jammer1.free()
 	jammer2.free()
 	print("\n")
