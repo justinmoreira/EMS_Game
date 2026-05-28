@@ -2,19 +2,13 @@ extends "res://scenes/levels/ContourDemo.gd"
 
 const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
 
-# Fixed tutorial values so the tutorial behaves the same every time.
 const TUTORIAL_TERRAIN_SEED := 12345
 const TUTORIAL_FREQUENCY := 1000.0
 const TUTORIAL_SENSOR_SENSITIVITY := 1.0
 
-# Navigation targets.
-# Sandbox uses the current main playable scene.
-# Home is for the web build. In the Godot editor, it will print a message instead.
 const SANDBOX_SCENE_PATH := "res://scenes/levels/ContourDemo.tscn"
 const HOME_URL := "/"
 
-# Fixed tutorial placement positions.
-# These are local positions inside BackgroundTexture/map_container.
 const FIRST_TRANSCEIVER_POS := Vector2(500, 260)
 const SECOND_TRANSCEIVER_POS := Vector2(750, 260)
 const SENSOR_POS := Vector2(500, 290)
@@ -137,7 +131,8 @@ func _enter_step(step: TutorialStep) -> void:
 			_show_popup(
 				(
 					"Welcome to Tutorial Mode.\n\nThis mode will teach you the basics of Gamify EMS."
-					+ "You will learn how to place units, edit their attributes, create communication links, detect signals,"
+					+ "You will learn how to place units, edit their attributes, create communication"
+					+ "links, detect signals,"
 					+ "and understand how frequency, power, height, and bandwidth affect the simulation."
 				),
 				TutorialStep.INTRO_MAP
@@ -149,8 +144,10 @@ func _enter_step(step: TutorialStep) -> void:
 			_lock_attributes([])
 			_show_popup(
 				(
-					"This is the simulation map.\n\nUnits can be placed on the map to represent communication equipment,"
-					+ "sensors, and jammers. The position of each unit matters because distance affects signal strength."
+					"This is the simulation map.\n\n"
+					+ "Units can be placed on the map to represent communication equipment,"
+					+ "sensors, and jammers. The position of each unit matters"
+					+ "because distance affects signal strength."
 				),
 				TutorialStep.PLACE_FIRST_TRANSCEIVER
 			)
@@ -168,7 +165,8 @@ func _enter_step(step: TutorialStep) -> void:
 			_show_popup(
 				(
 					"Good. You placed your first Transceiver.\n\nThis unit has attributes such as frequency,"
-					+ "power, bandwidth, and antenna height. These values affect how well the unit can communicate with other units."
+					+ "power, bandwidth, and antenna height. "
+					+ "These values affect how well the unit can communicate with other units."
 				),
 				TutorialStep.PLACE_SECOND_TRANSCEIVER
 			)
@@ -186,10 +184,12 @@ func _enter_step(step: TutorialStep) -> void:
 			_run_simulation_if_possible()
 			_show_popup(
 				(
-					"The two Transceivers are now trying to communicate.\n\nA green line means the connection is successful."
+					"The two Transceivers are now trying to communicate.\n\n"
+					+ "A green line means the connection is successful."
 					+ "\nAn orange line means the units are out of range or the signal is too weak."
 					+ "\nA red or distorted line means the connection may be jammed."
-					+ "\nA purple line means there is a bandwidth penalty.\nA blue line means the Transceivers are using different frequency ranges."
+					+ "\nA purple line means there is a bandwidth penalty."
+					+ "\nA blue line means the Transceivers are using different frequency ranges."
 				),
 				TutorialStep.EXPLAIN_BANDWIDTH_PENALTY
 			)
@@ -202,9 +202,12 @@ func _enter_step(step: TutorialStep) -> void:
 			_show_popup(
 				(
 					"The purple line means there is a bandwidth penalty."
-					+ "\n\nIn EMS, bandwidth is the range of frequencies a signal uses around its main frequency."
-					+ "A wider bandwidth can carry more information, but it can also use more spectrum space, create more noise,"
-					+ "and make the signal less clean.\n\nIn this tutorial, the purple line means the Transceivers are close enough to communicate,"
+					+ "\n\nIn EMS, bandwidth is the range of frequencies a signal"
+					+ "uses around its main frequency."
+					+ "A wider bandwidth can carry more information, but it"
+					+ "can also use more spectrum space, create more noise,"
+					+ "and make the signal less clean.\n\nIn this tutorial,"
+					+ "the purple line means the Transceivers are close enough to communicate,"
 					+ "but their bandwidth setting is hurting the link quality."
 				),
 				TutorialStep.CHANGE_TRANSCEIVER_BANDWIDTHS_NARROW
@@ -228,7 +231,8 @@ func _enter_step(step: TutorialStep) -> void:
 			_show_popup(
 				(
 					"Good. The green line means the connection was successful.\n\nThis means the two"
-					+ "Transceivers are close enough, their settings are compatible, and the signal is strong enough to communicate."
+					+ "Transceivers are close enough, their settings are compatible,"
+					+ "and the signal is strong enough to communicate."
 				),
 				TutorialStep.SELECT_TRANSCEIVER
 			)
@@ -240,7 +244,8 @@ func _enter_step(step: TutorialStep) -> void:
 			_show_popup(
 				(
 					"Click on one of the Transceivers to view its attributes."
-					+ "\n\nThe attribute panel lets you edit important values such as frequency, power, bandwidth, and antenna height."
+					+ "\n\nThe attribute panel lets you edit important values such as "
+					+ "frequency, power, bandwidth, and antenna height."
 				),
 				TutorialStep.EXPLAIN_FREQUENCY
 			)
@@ -262,8 +267,10 @@ func _enter_step(step: TutorialStep) -> void:
 
 			_show_popup(
 				(
-					"Frequency controls what channel the unit is using.\n\nFor two Transceivers to communicate,"
-					+ "their frequencies must be compatible. If one unit is using a very different frequency, the link may fail."
+					"Frequency controls what channel the unit is using."
+					+ "\n\nFor two Transceivers to communicate,"
+					+ "their frequencies must be compatible. If one unit is "
+					+ "using a very different frequency, the link may fail."
 				),
 				TutorialStep.CHANGE_FREQUENCY_AWAY
 			)
@@ -273,7 +280,10 @@ func _enter_step(step: TutorialStep) -> void:
 			_lock_sidebar_to([])
 			_lock_attributes(["frequency"])
 			_show_popup(
-				"Change the frequency of one Transceiver so it no longer matches the other one.\n\nWatch how the connection line changes."
+				(
+					"Change the frequency of one Transceiver so it no longer matches "
+					+ "the other one.\n\nWatch how the connection line changes."
+				)
 			)
 
 		TutorialStep.CHANGE_FREQUENCY_BACK:
@@ -283,7 +293,8 @@ func _enter_step(step: TutorialStep) -> void:
 			_show_popup(
 				(
 					"Now change the frequency back.\n\nFor consistency,"
-					+ "the tutorial will automatically lock both Transceivers back to 1000 Hz after you edit it."
+					+ "the tutorial will automatically lock both "
+					+ "Transceivers back to 1000 Hz after you edit it."
 				)
 			)
 
@@ -306,7 +317,10 @@ func _enter_step(step: TutorialStep) -> void:
 			_lock_sidebar_to([])
 			_lock_attributes(["power"])
 			_show_popup(
-				"Lower the Transceiver power and watch what happens to the link.\n\nIf the signal becomes too weak, the connection may fail."
+				(
+					"Lower the Transceiver power and watch what happens to the link."
+					+ "\n\nIf the signal becomes too weak, the connection may fail."
+				)
 			)
 
 		TutorialStep.RAISE_POWER:
@@ -314,7 +328,10 @@ func _enter_step(step: TutorialStep) -> void:
 			_lock_sidebar_to([])
 			_lock_attributes(["power"])
 			_show_popup(
-				"Good. Now raise the power again to help restore the link.\n\nThis shows the tradeoff between signal strength and visibility."
+				(
+					"Good. Now raise the power again to help restore the link."
+					+ "\n\nThis shows the tradeoff between signal strength and visibility."
+				)
 			)
 
 		TutorialStep.EXPLAIN_HEIGHT:
@@ -325,7 +342,8 @@ func _enter_step(step: TutorialStep) -> void:
 			_show_popup(
 				(
 					"Antenna height can also affect communication."
-					+ "\n\nA taller antenna can improve signal performance because it gives the unit a better transmission path."
+					+ "\n\nA taller antenna can improve signal performance "
+					+ "because it gives the unit a better transmission path."
 				),
 				TutorialStep.INCREASE_HEIGHT
 			)
@@ -347,8 +365,10 @@ func _enter_step(step: TutorialStep) -> void:
 			_lock_attributes([])
 			_show_popup(
 				(
-					"Sensors are used to detect signals.\n\nA Sensor does not create a communication link like a Transceiver."
-					+ "Instead, it listens for nearby transmissions.\n\nPlace a Sensor near one of the Transceivers."
+					"Sensors are used to detect signals."
+					+ "\n\nA Sensor does not create a communication link like a Transceiver."
+					+ "Instead, it listens for nearby transmissions."
+					+ "\n\nPlace a Sensor near one of the Transceivers."
 				),
 				TutorialStep.PLACE_SENSOR
 			)
@@ -366,9 +386,11 @@ func _enter_step(step: TutorialStep) -> void:
 			_show_popup(
 				(
 					"Now let's look at Sensor sensitivity."
-					+ "\n\nSensitivity controls how easily a Sensor can detect a signal. Higher sensitivity can detect weaker signals,"
+					+ "\n\nSensitivity controls how easily a Sensor can detect a signal. "
+					+ "Higher sensitivity can detect weaker signals,"
 					+ "while lower sensitivity makes the Sensor less responsive."
-					+ "\n\nSet the Sensor sensitivity to 1. For consistency, the tutorial will lock it to 1 after you edit it."
+					+ "\n\nSet the Sensor sensitivity to 1. For consistency, "
+					+ "the tutorial will lock it to 1 after you edit it."
 				),
 				TutorialStep.LOWER_SENSOR_SENSITIVITY
 			)
@@ -378,7 +400,10 @@ func _enter_step(step: TutorialStep) -> void:
 			_lock_sidebar_to([])
 			_lock_attributes(["sensitivity", "detection_sensitivity"])
 			_show_popup(
-				"Set the Sensor sensitivity to 1.\n\nThe tutorial will lock the sensitivity to 1 and then continue."
+				(
+					"Set the Sensor sensitivity to 1."
+					+ "\n\nThe tutorial will lock the sensitivity to 1 and then continue."
+				)
 			)
 
 		TutorialStep.EXPLAIN_SENSOR_TUNING:
@@ -402,7 +427,10 @@ func _enter_step(step: TutorialStep) -> void:
 			_lock_sidebar_to([])
 			_lock_attributes(["tuning_frequency"])
 			_show_popup(
-				"Change the Sensor tuning frequency so it no longer matches the Transceiver.\n\nWatch how the detection status changes."
+				(
+					"Change the Sensor tuning frequency so it no longer matches the Transceiver."
+					+ "\n\nWatch how the detection status changes."
+				)
 			)
 
 		TutorialStep.EXPLAIN_BANDWIDTH:
@@ -412,7 +440,8 @@ func _enter_step(step: TutorialStep) -> void:
 			_show_popup(
 				(
 					"Bandwidth controls how flexible the Sensor is when listening for signals."
-					+ "\n\nA narrow bandwidth is more precise but may miss signals that are slightly different. A wider bandwidth can detect more frequencies."
+					+ "\n\nA narrow bandwidth is more precise but may miss signals that "
+					+ "are slightly different. A wider bandwidth can detect more frequencies."
 				),
 				TutorialStep.INCREASE_BANDWIDTH
 			)
@@ -424,7 +453,8 @@ func _enter_step(step: TutorialStep) -> void:
 			_show_popup(
 				(
 					"Try increasing the Sensor bandwidth."
-					+ "\n\nA wider bandwidth may allow the Sensor to detect signals even when the tuning frequency is not exactly the same."
+					+ "\n\nA wider bandwidth may allow the Sensor to detect "
+					+ "signals even when the tuning frequency is not exactly the same."
 				)
 			)
 
@@ -435,7 +465,8 @@ func _enter_step(step: TutorialStep) -> void:
 			_show_popup(
 				(
 					"Jammers are used to interfere with communication."
-					+ "\n\nA Jammer can weaken or break a communication link if it overlaps with the frequency being used by the Transceivers."
+					+ "\n\nA Jammer can weaken or break a communication link "
+					+ "if it overlaps with the frequency being used by the Transceivers."
 				),
 				TutorialStep.PLACE_JAMMER
 			)
@@ -461,7 +492,8 @@ func _enter_step(step: TutorialStep) -> void:
 			_run_simulation_if_possible()
 			_show_popup(
 				(
-					"A Jammer is most effective when its frequency overlaps with the target communication frequency."
+					"A Jammer is most effective when its frequency overlaps "
+					+ "with the target communication frequency."
 					+ "\n\nChange the Jammer frequency away from 1000 Hz and observe that the link recovers."
 				)
 			)
@@ -538,7 +570,10 @@ func _on_tutorial_attribute_changed(unit: Node, attribute_name: String, new_valu
 				_keep_sensor_sensitivity_locked()
 				_run_simulation_if_possible()
 				_show_popup(
-					"Good. The Sensor sensitivity is now locked to 1.\n\nThis keeps the tutorial result consistent every time.",
+					(
+						"Good. The Sensor sensitivity is now locked to 1."
+						+ "\n\nThis keeps the tutorial result consistent every time."
+					),
 					TutorialStep.EXPLAIN_SENSOR_TUNING
 				)
 
@@ -562,7 +597,8 @@ func _on_tutorial_attribute_changed(unit: Node, attribute_name: String, new_valu
 					(
 						"Notice that the line changed to blue."
 						+ "\n\nThe blue line means the Transceivers are using different frequencies."
-						+ "In EMS, two radios usually need to operate on the same or compatible frequency range to communicate."
+						+ "In EMS, two radios usually need to operate on the "
+						+ "same or compatible frequency range to communicate."
 						+ "If the frequency is too different, the signal will not be received correctly."
 					),
 					TutorialStep.CHANGE_FREQUENCY_BACK
@@ -574,7 +610,10 @@ func _on_tutorial_attribute_changed(unit: Node, attribute_name: String, new_valu
 				_keep_transceiver_frequencies_locked()
 				_run_simulation_if_possible()
 				_show_popup(
-					"Good. The tutorial locked both Transceivers back to 1000 Hz so the connection is consistent again.",
+					(
+						"Good. The tutorial locked both Transceivers back to "
+						+ "1000 Hz so the connection is consistent again."
+					),
 					TutorialStep.EXPLAIN_POWER
 				)
 
@@ -602,7 +641,10 @@ func _on_tutorial_attribute_changed(unit: Node, attribute_name: String, new_valu
 			if attr.contains("freq") and abs(value - _original_sensor_tuning) >= 50.0:
 				_run_simulation_if_possible()
 				_show_popup(
-					"The Sensor can no longer detect the signal.\n\nThis shows how frequency and bandwidth affect detection.",
+					(
+						"The Sensor can no longer detect the signal."
+						+ "\n\nThis shows how frequency and bandwidth affect detection."
+					),
 					TutorialStep.EXPLAIN_BANDWIDTH
 				)
 
@@ -707,8 +749,9 @@ func _show_completion_popup() -> void:
 
 	var message := Label.new()
 	message.text = (
-		"You completed Tutorial Mode. You learned how to place units,"
-		+ "adjust attributes, create a link, use a Sensor, and understand how a Jammer affects communication."
+		"You completed Tutorial Mode. You learned how to place units, "
+		+ "adjust attributes, create a link, use a Sensor, and understand"
+		+ "how a Jammer affects communication."
 		+ "\n\nWhat would you like to do next?"
 	)
 	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
