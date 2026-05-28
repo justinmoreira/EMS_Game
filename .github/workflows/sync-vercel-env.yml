@@ -1,0 +1,52 @@
+name: Sync Vercel Env
+
+# Push Supabase credentials from GitHub secrets into Vercel project env vars
+# so the /api/keep-alive cron always uses the latest values. Does NOT trigger
+# a Vercel rebuild/redeploy — serverless functions pick up env changes on
+# their next cold start.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Sync env vars to Vercel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel
+
+      - name: Pull Vercel project settings
+        run: cd client && vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Sync env vars
+        working-directory: client
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          STAGING_URL: ${{ secrets.PUBLIC_SUPABASE_URL_STAGING }}
+          STAGING_KEY: ${{ secrets.SUPABASE_SERVICE_KEY_STAGING }}
+          PROD_URL: ${{ secrets.PUBLIC_SUPABASE_URL_PROD }}
+          PROD_KEY: ${{ secrets.SUPABASE_SERVICE_KEY_PROD }}
+        run: |
+          set -e
+          sync() {
+            local name=$1
+            local value=$2
+            echo "Syncing $name..."
+            vercel env rm "$name" production --yes --token "$VERCEL_TOKEN" 2>/dev/null || true
+            printf '%s' "$value" | vercel env add "$name" production --token "$VERCEL_TOKEN"
+          }
+          sync SUPABASE_URL_STAGING "$STAGING_URL"
+          sync SUPABASE_SERVICE_KEY_STAGING "$STAGING_KEY"
+          sync SUPABASE_URL_PROD "$PROD_URL"
+          sync SUPABASE_SERVICE_KEY_PROD "$PROD_KEY"
