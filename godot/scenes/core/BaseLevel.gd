@@ -123,14 +123,23 @@ func _on_window_resized() -> void:
 # --- Coordinate Space Math ---
 
 
+# Single source of truth: the rectangle the background shader actually renders
+# over. Overlays (units, labels) derive their screen positions from the SAME
+# rect, so they can never move at a different scale than the terrain.
+# `background` is a Control; .position/.size already account for the sidebar
+# offset_left set in _on_window_resized.
+func _map_origin() -> Vector2:
+	return background.position if background else Vector2(sidebar_width, 0)
+
+
 func get_map_size() -> Vector2:
-	return Vector2(size.x - sidebar_width, size.y)
+	return background.size if background else Vector2(size.x - sidebar_width, size.y)
 
 
 func screen_to_world_uv(screen_pos: Vector2) -> Vector2:
 	var map = get_map_size()
 	var aspect = map.x / map.y
-	var uv = (screen_pos - Vector2(sidebar_width, 0)) / map - Vector2(0.5, 0.5)
+	var uv = (screen_pos - _map_origin()) / map - Vector2(0.5, 0.5)
 	if aspect > 1.0:
 		uv.x *= aspect
 	else:
@@ -146,7 +155,7 @@ func world_uv_to_screen(world_uv: Vector2) -> Vector2:
 		uv.x /= aspect
 	else:
 		uv.y *= aspect
-	return (uv + Vector2(0.5, 0.5)) * map + Vector2(sidebar_width, 0)
+	return (uv + Vector2(0.5, 0.5)) * map + _map_origin()
 
 
 # --- Visual Updates ---
