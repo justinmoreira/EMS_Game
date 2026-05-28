@@ -630,11 +630,7 @@ func _add_dropdown(
 
 
 func _add_toggle(
-	label: String,
-	current: bool,
-	accent: Color,
-	on_change: Callable,
-	attribute_key: String = ""
+	label: String, current: bool, accent: Color, on_change: Callable, attribute_key: String = ""
 ) -> void:
 	var vbox := _make_row_container(attribute_key)
 	var hbox := HBoxContainer.new()
@@ -936,7 +932,9 @@ func _on_tutorial_filter(allowed_types: Array) -> void:
 
 		for child in card.get_children():
 			if child is Control:
-				child.mouse_filter = Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
+				child.mouse_filter = (
+					Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
+				)
 
 
 func _on_tutorial_filter_attributes(allowed_attributes: Array) -> void:
