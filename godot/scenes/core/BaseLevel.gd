@@ -17,8 +17,13 @@ var zoom := 1.0
 var offset := Vector2.ZERO
 var dragging := false
 var last_mouse_pos := Vector2.ZERO
-var sidebar_width: float = 0.0
 var intro_popup_open := false
+
+# Computed: always reads live so a stale 0.0
+# can't allow drops/coords under the sidebar.
+var sidebar_width: float:
+	get:
+		return sidebar_node.size.x if sidebar_node else 0.0
 
 # Selection State
 var currently_selected_unit: Node = null
@@ -110,7 +115,6 @@ func _show_tutorial_hint(text: String) -> void:
 
 func _on_window_resized() -> void:
 	self.size = get_viewport_rect().size
-	sidebar_width = sidebar_node.size.x if sidebar_node else 0.0
 	if background:
 		background.offset_left = sidebar_width
 	update_shader()
@@ -119,14 +123,23 @@ func _on_window_resized() -> void:
 # --- Coordinate Space Math ---
 
 
+# Single source of truth: the rectangle the background shader actually renders
+# over. Overlays (units, labels) derive their screen positions from the SAME
+# rect, so they can never move at a different scale than the terrain.
+# `background` is a Control; .position/.size already account for the sidebar
+# offset_left set in _on_window_resized.
+func _map_origin() -> Vector2:
+	return background.position if background else Vector2(sidebar_width, 0)
+
+
 func get_map_size() -> Vector2:
-	return Vector2(size.x - sidebar_width, size.y)
+	return background.size if background else Vector2(size.x - sidebar_width, size.y)
 
 
 func screen_to_world_uv(screen_pos: Vector2) -> Vector2:
 	var map = get_map_size()
 	var aspect = map.x / map.y
-	var uv = (screen_pos - Vector2(sidebar_width, 0)) / map - Vector2(0.5, 0.5)
+	var uv = (screen_pos - _map_origin()) / map - Vector2(0.5, 0.5)
 	if aspect > 1.0:
 		uv.x *= aspect
 	else:
@@ -142,7 +155,7 @@ func world_uv_to_screen(world_uv: Vector2) -> Vector2:
 		uv.x /= aspect
 	else:
 		uv.y *= aspect
-	return (uv + Vector2(0.5, 0.5)) * map + Vector2(sidebar_width, 0)
+	return (uv + Vector2(0.5, 0.5)) * map + _map_origin()
 
 
 # --- Visual Updates ---
@@ -183,11 +196,8 @@ func _clamp_offset() -> void:
 func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 	if not (data is Dictionary and data.has("scene_path")):
 		return false
-
-	var live_sidebar_w: float = sidebar_node.size.x if sidebar_node else sidebar_width
-	if at_position.x < live_sidebar_w:
+	if at_position.x < sidebar_width:
 		return false
-
 	return true
 
 
@@ -333,20 +343,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 		if event.pressed:
-			# Check if click is on empty map (not on sidebar)
+			# Click on empty map (not on a unit) → deselect.
 			if event.position.x > sidebar_width:
-				# Check if any unit was clicked by seeing if any unit emits "selected"
-				# If no unit handles the input, we deselect
 				var mouse_pos = get_global_mouse_position()
-				var clicked_unit = false
-
-				# Check all units to see if one is under the cursor
+				var clicked_unit := false
 				for child in get_children():
-					if child is EMSUnit:
-						var distance = child.global_position.distance_to(mouse_pos)
-						if distance < 32:  # Matches the selection radius in EMSUnit.gd
-							clicked_unit = true
-							break
+					if (
+						child is EMSUnit
+						and child.global_position.distance_to(mouse_pos) < EMSUnit.SELECTION_RADIUS
+					):
+						clicked_unit = true
+						break
 
 				# Clicking on a unit hands off to the unit's own drag handler —
 				# don't engage map pan or the two thrash each other.

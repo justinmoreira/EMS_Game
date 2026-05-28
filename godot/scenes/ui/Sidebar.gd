@@ -20,9 +20,6 @@ const C_TEXT := Color("e8eaf0")
 const C_DIM := Color("6b7594")
 const C_PURPLE := Color("e099ff")
 
-# Constants
-var invalid_props = ["script", "name", "owner", "unique_name_in_owner"]
-
 # ── State ─────────────────────────────────────
 var selected_entity: EntityType = EntityType.NONE
 var selected_entity_name: String = ""
@@ -775,10 +772,12 @@ func _prop_bool(p: String, fallback: bool) -> bool:
 
 
 func _write(p: String, value) -> void:
-	# Don't write properties that aren't actual component attributes
-	if p in invalid_props:
+	var c := _component()
+	if not c:
+		# No component selected — queue for when a unit is placed.
+		pending_attributes[p] = value
 		return
-	pending_attributes[p] = value
+	c.set(p, value)
 
 
 func _write_node_direct(p: String, value) -> void:
