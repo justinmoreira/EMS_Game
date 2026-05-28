@@ -39,10 +39,10 @@ func _process(_delta: float) -> void:
 
 
 #func _input(event):
-	#if event is InputEventKey and event.pressed and event.keycode == KEY_T:
-		#links_visible = !links_visible
-		#for k in active_links:
-			#_apply_visibility_for_key(k)
+#if event is InputEventKey and event.pressed and event.keycode == KEY_T:
+#links_visible = !links_visible
+#for k in active_links:
+#_apply_visibility_for_key(k)
 
 
 func _on_simulation_complete(link_results: Array, _detect_results: Array) -> void:
@@ -187,12 +187,12 @@ func _free_link_nodes(data: Dictionary) -> void:
 
 
 #func _apply_visibility_for_key(key: String) -> void:
-	#var data = active_links[key]
-	#if is_instance_valid(data.line):
-		#data.line.visible = links_visible
-	#if is_instance_valid(data.arrow):
-		#data.arrow.visible = links_visible
-		
+#var data = active_links[key]
+#if is_instance_valid(data.line):
+#data.line.visible = links_visible
+#if is_instance_valid(data.arrow):
+#data.arrow.visible = links_visible
+
 
 func set_focused_unit(unit: Unit) -> void:
 	_focused_unit = unit

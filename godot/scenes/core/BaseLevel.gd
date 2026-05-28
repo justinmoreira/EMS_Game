@@ -171,7 +171,7 @@ func _on_selection_changed(unit: Node) -> void:
 	_last_highlighted = unit if unit is Unit else null
 	if _last_highlighted:
 		_set_unit_selected_visual(_last_highlighted, true)
-			
+
 	var focused: Unit = unit if unit is Unit else null
 	LinkRenderer.set_focused_unit(focused)
 	SimulationManager.simulate()

@@ -87,10 +87,10 @@ func _on_link_lines_toggled(is_pressed: bool):
 		LinkRenderer.links_visible = is_pressed
 		LinkRenderer._refresh_all_visibility()
 	SimulationManager.simulate()
-	
+
 	# Gray out focus toggle when link lines are off entirely
 	if not is_pressed and settings["focus_link_lines"]:
-		%FocusLinkLinesToggle.button_pressed = false	
+		%FocusLinkLinesToggle.button_pressed = false
 	%FocusLinkLinesToggle.disabled = not is_pressed
 
 
@@ -120,7 +120,7 @@ func _on_suggestions_toggled(is_pressed: bool):
 func _on_focus_link_lines_toggled(is_pressed: bool):
 	settings["focus_link_lines"] = is_pressed
 	_save_settings()
-	
+
 	if LinkRenderer:
 		LinkRenderer.focus_mode = is_pressed
 		LinkRenderer._refresh_all_visibility()
@@ -151,7 +151,7 @@ func _load_settings() -> void:
 	%SuggestionsToggle.button_pressed = settings["suggestions"]
 	%Toggle.button_pressed = settings["heightmap_shader"]
 	%GridToggle.button_pressed = settings["grid"]
-	
+
 	if LinkRenderer:
 		LinkRenderer.links_visible = settings["link_lines"]
 		LinkRenderer.focus_mode = settings["focus_link_lines"]
