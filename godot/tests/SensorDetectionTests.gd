@@ -59,6 +59,7 @@ func test_sensor_detection():
 	var detected2 = manager.calculate_detection(sensor, transceiver2)
 	assert_false(detected2, "Detection fail case.")
 
+	transceiver1.power = 1
 	sensor.sensitivity = 8
 	var detected3 = manager.calculate_detection(sensor, transceiver1)
 	assert_false(detected3, "Detection fail case.")
