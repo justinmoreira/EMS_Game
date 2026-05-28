@@ -159,25 +159,18 @@ func _input(event: InputEvent) -> void:
 		if _sidebar_node and _sidebar_node.get_global_rect().has_point(mouse_pos):
 			can_move = false
 
-		var screen_rect = get_viewport().get_visible_rect()
-		var sidebar_w: float = _sidebar_node.size.x if _sidebar_node else 0.0
-
-		mouse_pos.x = clamp(
-			mouse_pos.x,
-			screen_rect.position.x + sidebar_w,
-			screen_rect.position.x + screen_rect.size.x
-		)
-		mouse_pos.y = clamp(
-			mouse_pos.y, screen_rect.position.y, screen_rect.position.y + screen_rect.size.y
-		)
-
-		if has_meta("world_uv"):
-			var base_level = get_parent()
-			if base_level and base_level.has_method("screen_to_world_uv"):
-				var world_uv = base_level.screen_to_world_uv(mouse_pos)
+		var base_level = get_parent()
+		if base_level and base_level.has_method("screen_to_world_uv"):
+			# Clamp to the map (world_uv ∈ [0,1]) so the unit can't be dragged
+			# into the void border outside the heightmap; it sticks to the edge.
+			var world_uv: Vector2 = base_level.screen_to_world_uv(mouse_pos)
+			world_uv = world_uv.clamp(Vector2.ZERO, Vector2.ONE)
+			if has_meta("world_uv"):
 				set_meta("world_uv", world_uv)
-
-		if can_move:
+			if can_move:
+				global_position = base_level.world_uv_to_screen(world_uv)
+				_drag_distance = _drag_start_pos.distance_to(mouse_pos)
+		elif can_move:
 			global_position = mouse_pos
 			_drag_distance = _drag_start_pos.distance_to(mouse_pos)
 
