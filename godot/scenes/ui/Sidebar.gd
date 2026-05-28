@@ -11,6 +11,12 @@ const TRANSCEIVER_DEF: UnitDefinition = preload("res://data/units/transceiver.tr
 const JAMMER_DEF: UnitDefinition = preload("res://data/units/jammer.tres")
 const SENSOR_DEF: UnitDefinition = preload("res://data/units/sensor.tres")
 
+# Fixed design width reported to the map layout. The panel's content can grow a
+# few px when the attribute rows populate; reporting a constant keeps the map
+# from reflowing/recentering every time the panel changes. The sidebar is
+# opaque on a CanvasLayer above the map, so any minor overhang is hidden.
+const SIDEBAR_WIDTH := 300.0
+
 # ── Colors ────────────────────────────────────
 const C_BG_DARK := Color("0d0f14")
 const C_BG_MID := Color("13161e")
@@ -47,8 +53,31 @@ var _tutorial_active: bool = false
 func _ready() -> void:
 	GameEvents.units_changed.connect(_update_reset_button)
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
+	GameEvents.selection_changed.connect(_on_selection_changed)
 	_build_sidebar()
 	_refresh_attribute_panel()
+	# Publish the fixed design width to listeners (BaseLevel). Constant, not the
+	# live size.x, so attribute-panel growth doesn't recenter the map.
+	GameEvents.sidebar_resized.emit.call_deferred(SIDEBAR_WIDTH)
+
+
+func _on_selection_changed(unit: Node) -> void:
+	if unit is Unit and unit.definition:
+		var t := _entity_type_for_def_id(unit.definition.id)
+		select_entity(t, unit.definition.display_name, unit)
+	else:
+		select_entity(EntityType.NONE)
+
+
+func _entity_type_for_def_id(id: StringName) -> EntityType:
+	match id:
+		&"transceiver":
+			return EntityType.TRANSCEIVER
+		&"jammer":
+			return EntityType.JAMMER
+		&"sensor":
+			return EntityType.SENSOR
+	return EntityType.NONE
 
 
 func select_entity(type: EntityType, display_name: String = "", node: Node = null) -> void:
@@ -81,7 +110,7 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 
 func _build_sidebar() -> void:
 	_apply_style(self, C_BG_DARK, C_BORDER, 0, 0, 0, 1)
-	custom_minimum_size = Vector2(300, 0)
+	custom_minimum_size = Vector2(SIDEBAR_WIDTH, 0)
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
@@ -226,6 +255,8 @@ func _build_entity_card(
 		C_BG_LIGHT.lightened(0.08),
 		sprite_path
 	)
+	# Drag payload picks up the user's pending attribute tweaks.
+	card.pending_provider = func(): return pending_attributes.duplicate()
 	card.pressed.connect(
 		func():
 			_clear_selection()
@@ -575,16 +606,7 @@ func _on_reset_pressed() -> void:
 
 	dialog.confirmed.connect(
 		func():
-			# Reset unit name counters
-			UnitNameManager.reset()
-			for unit in get_tree().get_nodes_in_group("transceivers"):
-				unit.queue_free()
-			for unit in get_tree().get_nodes_in_group("sensors"):
-				unit.queue_free()
-			for unit in get_tree().get_nodes_in_group("jammers"):
-				unit.queue_free()
-			select_entity(EntityType.NONE)
-			SimulationManager.clear_all_links()
+			GameEvents.reset_requested.emit()
 			dialog.queue_free()
 	)
 	dialog.canceled.connect(func(): dialog.queue_free())
@@ -602,11 +624,10 @@ func _on_delete_pressed() -> void:
 	get_tree().root.add_child(dialog)
 	dialog.popup_centered()
 
+	var to_delete = selected_node
 	dialog.confirmed.connect(
 		func():
-			selected_node.queue_free()
-			select_entity(EntityType.NONE)
-			SimulationManager.clear_all_links()
+			GameEvents.delete_requested.emit(to_delete)
 			dialog.queue_free()
 	)
 	dialog.canceled.connect(func(): dialog.queue_free())
@@ -624,11 +645,11 @@ func _on_confirm_pressed() -> void:
 			selected_node.set_value(id, pending_attributes[id])
 	pending_attributes.clear()
 
-	# BaseLevel._deselect_current_unit (wired to unit_confirmed) handles the
+	# clear_selection routes through GameEvents → BaseLevel handles the
 	# visual unhighlight; no direct Visual node poke here.
+	GameEvents.clear_selection()
 	select_entity(EntityType.NONE)
-	GameEvents.unit_confirmed.emit()
-	SimulationManager.simulate()
+	GameEvents.simulation_requested.emit()
 
 
 func _update_reset_button() -> void:
@@ -646,7 +667,7 @@ func _update_reset_button() -> void:
 
 
 func _on_simulate_pressed() -> void:
-	SimulationManager.simulate()
+	GameEvents.simulation_requested.emit()
 
 
 func _add_text_input(label: String, current: String, accent: Color, on_change: Callable) -> void:
@@ -715,13 +736,15 @@ func _make_label(text: String, color: Color, txt_size: int, expand: bool = false
 	return lbl
 
 
-func _on_tutorial_filter(allowed_types: Array) -> void:
-	_tutorial_active = not allowed_types.is_empty()
+func _on_tutorial_filter(allowed_ids: Array) -> void:
+	# allowed_ids contains StringName definition.id values (e.g. &"transceiver").
+	_tutorial_active = not allowed_ids.is_empty()
 	_attr_content.modulate.a = 0.3 if _tutorial_active else 1.0
 	_set_interactivity(_attr_content, not _tutorial_active)
 	for type in _entity_cards:
 		var card = _entity_cards[type]
-		var enabled = not _tutorial_active or type in allowed_types
+		var def := _definition_for(type)
+		var enabled = not _tutorial_active or (def and def.id in allowed_ids)
 		card.modulate.a = 1.0 if enabled else 0.3
 		card.set_process_input(enabled)
 		card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE

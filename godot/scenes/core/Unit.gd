@@ -1,7 +1,5 @@
 class_name Unit extends Node2D
 
-signal selected(unit: Node)
-
 # A press+release that moves the cursor less than this counts as a click,
 # not a drag. Above it, the unit is considered dragged.
 const CLICK_DRAG_THRESHOLD_PX := 5.0
@@ -16,15 +14,11 @@ var _unit_visual: UnitVisual
 var unit_visual: UnitVisual:
 	get:
 		return _unit_visual
+
 var _selection_area: Area2D
 var _is_being_dragged: bool = false
 var _drag_start_pos: Vector2 = Vector2.ZERO
 var _drag_distance: float = 0.0
-
-# Reuse the parent BaseLevel's already-resolved sidebar reference
-@onready var _sidebar_node = (
-	get_parent().sidebar_node if get_parent() and "sidebar_node" in get_parent() else null
-)
 
 
 func _ready() -> void:
@@ -126,7 +120,7 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 	# _input so they keep working when the cursor leaves the shape mid-drag.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		# Preserve main #61's UX: clear stale link visuals on drag-press.
-		SimulationManager.clear_all_links()
+		GameEvents.links_clear_requested.emit()
 		_is_being_dragged = true
 		_drag_start_pos = get_global_mouse_position()
 		_drag_distance = 0.0
@@ -137,43 +131,37 @@ func _input(event: InputEvent) -> void:
 	if not _is_being_dragged:
 		return
 
-	var mouse_pos = get_global_mouse_position()
-
 	if (
 		event is InputEventMouseButton
 		and event.button_index == MOUSE_BUTTON_LEFT
 		and not event.pressed
 	):
 		# Preserve main #61's UX: re-sim on drag-release so links reflect
-		# the new geometry.
-		SimulationManager.simulate()
+		# the new geometry. Signal-based to match round-7's bus pattern.
 		if _drag_distance < CLICK_DRAG_THRESHOLD_PX:
-			selected.emit(self)
+			GameEvents.select(self)
+		else:
+			GameEvents.simulation_requested.emit()
 		_is_being_dragged = false
 		get_tree().root.set_input_as_handled()
 		return
 
 	if event is InputEventMouseMotion:
-		var can_move := true
-
-		if _sidebar_node and _sidebar_node.get_global_rect().has_point(mouse_pos):
-			can_move = false
-
+		# Clamp by converting through the level's UV space — which already
+		# accounts for sidebar/playable-area exclusion. No direct sidebar reach.
 		var base_level = get_parent()
-		if base_level and base_level.has_method("screen_to_world_uv"):
-			# Clamp to the map (world_uv ∈ [0,1]) so the unit can't be dragged
-			# into the void border outside the heightmap; it sticks to the edge.
-			var world_uv: Vector2 = base_level.screen_to_world_uv(mouse_pos)
-			world_uv = world_uv.clamp(Vector2.ZERO, Vector2.ONE)
-			if has_meta("world_uv"):
-				set_meta("world_uv", world_uv)
-			if can_move:
-				global_position = base_level.world_uv_to_screen(world_uv)
-				_drag_distance = _drag_start_pos.distance_to(mouse_pos)
-		elif can_move:
-			global_position = mouse_pos
-			_drag_distance = _drag_start_pos.distance_to(mouse_pos)
+		if not (base_level and base_level.has_method("screen_to_world_uv")):
+			return
 
+		var mouse_pos = get_global_mouse_position()
+		var world_uv = base_level.screen_to_world_uv(mouse_pos)
+		var clamped := Vector2(clamp(world_uv.x, 0.0, 1.0), clamp(world_uv.y, 0.0, 1.0))
+
+		if has_meta("world_uv"):
+			set_meta("world_uv", clamped)
+
+		global_position = base_level.world_uv_to_screen(clamped)
+		_drag_distance = _drag_start_pos.distance_to(global_position)
 		get_tree().root.set_input_as_handled()
 
 
