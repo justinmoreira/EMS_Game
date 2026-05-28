@@ -772,9 +772,6 @@ func _prop_bool(p: String, fallback: bool) -> bool:
 
 
 func _write(p: String, value) -> void:
-	# Don't write properties that aren't actual component attributes
-	if p in invalid_props:
-		return
 	var c := _component()
 	if not c:
 		# No component selected — queue for when a unit is placed.
