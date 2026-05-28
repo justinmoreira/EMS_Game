@@ -11,6 +11,12 @@ const TRANSCEIVER_DEF: UnitDefinition = preload("res://data/units/transceiver.tr
 const JAMMER_DEF: UnitDefinition = preload("res://data/units/jammer.tres")
 const SENSOR_DEF: UnitDefinition = preload("res://data/units/sensor.tres")
 
+# Fixed design width reported to the map layout. The panel's content can grow a
+# few px when the attribute rows populate; reporting a constant keeps the map
+# from reflowing/recentering every time the panel changes. The sidebar is
+# opaque on a CanvasLayer above the map, so any minor overhang is hidden.
+const SIDEBAR_WIDTH := 300.0
+
 # ── Colors ────────────────────────────────────
 const C_BG_DARK := Color("0d0f14")
 const C_BG_MID := Color("13161e")
@@ -48,11 +54,11 @@ func _ready() -> void:
 	GameEvents.units_changed.connect(_update_reset_button)
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
 	GameEvents.selection_changed.connect(_on_selection_changed)
-	resized.connect(func(): GameEvents.sidebar_resized.emit(size.x))
 	_build_sidebar()
 	_refresh_attribute_panel()
-	# Publish initial size so listeners (BaseLevel) get a value before any resize.
-	GameEvents.sidebar_resized.emit.call_deferred(size.x)
+	# Publish the fixed design width to listeners (BaseLevel). Constant, not the
+	# live size.x, so attribute-panel growth doesn't recenter the map.
+	GameEvents.sidebar_resized.emit.call_deferred(SIDEBAR_WIDTH)
 
 
 func _on_selection_changed(unit: Node) -> void:
@@ -104,7 +110,7 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 
 func _build_sidebar() -> void:
 	_apply_style(self, C_BG_DARK, C_BORDER, 0, 0, 0, 1)
-	custom_minimum_size = Vector2(300, 0)
+	custom_minimum_size = Vector2(SIDEBAR_WIDTH, 0)
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
