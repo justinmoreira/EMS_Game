@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b14bdohswfp6m"
-path="res://.godot/imported/gearicon.png-c47df20ec03d9ff1e4ca3416b5a2efc6.ctex"
+uid="uid://c7d0o05hl4s8p"
+path="res://.godot/imported/gear_icon.png-cff55f51f4fdc46ea6278a575f0ef9e2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/gearicon.png"
-dest_files=["res://.godot/imported/gearicon.png-c47df20ec03d9ff1e4ca3416b5a2efc6.ctex"]
+source_file="res://assets/gear_icon.png"
+dest_files=["res://.godot/imported/gear_icon.png-cff55f51f4fdc46ea6278a575f0ef9e2.ctex"]
 
 [params]
 
