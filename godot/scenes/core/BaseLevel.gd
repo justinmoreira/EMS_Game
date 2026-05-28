@@ -198,6 +198,11 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 		return false
 	if at_position.x < sidebar_width:
 		return false
+	# The map is world_uv ∈ [0,1]; outside that is the shader's void border.
+	# Reject drops there so units can't be placed off the map.
+	var world_uv := screen_to_world_uv(at_position)
+	if world_uv.x < 0.0 or world_uv.x > 1.0 or world_uv.y < 0.0 or world_uv.y > 1.0:
+		return false
 	return true
 
 
