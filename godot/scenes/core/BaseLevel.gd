@@ -46,7 +46,9 @@ func _ready():
 	if OS.has_feature("web"):
 		var result = JavaScriptBridge.eval("localStorage.getItem('user_progress') || '{}'")
 		if result is String and result != "":
-			tutorial_done = result.find('"tutorial_complete":true') != -1
+			var data = JSON.parse_string(result)
+			if data is Dictionary:
+				tutorial_done = bool(data.get("tutorial_complete", false))
 		# Listen for reset tutorial from web UI
 		JavaScriptBridge.eval("if(window.initTutorialListener) window.initTutorialListener()")
 
@@ -207,8 +209,6 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	unit.owner = null
 	add_child(unit)
 
-	SimulationManager.simulate()
-
 	# Apply any pending attribute changes from the sidebar
 	if (
 		sidebar_node
@@ -226,6 +226,9 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 				component.set(attr_name, sidebar_node.pending_attributes[attr_name])
 
 		sidebar_node.pending_attributes.clear()
+
+	# Sim AFTER pending attrs so it sees the user-typed values, not defaults.
+	SimulationManager.simulate()
 
 	# Connect the selection signal
 	_on_unit_placed(unit)
