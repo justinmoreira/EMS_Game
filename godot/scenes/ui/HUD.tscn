@@ -17,34 +17,30 @@ offset_right = -10.0
 offset_bottom = 50.0
 grow_horizontal = 0
 text = "⚙"
-expand_mode = 1
 
-[node name="SettingsPopup" type="PopupPanel" parent="." unique_id=3054837926]
+[node name="SettingsPopup" type="PopupPanel" parent="." unique_id=-1240129370]
 unique_name_in_owner = true
 size = Vector2i(280, 350)
 popup_window = false
 
-[node name="SettingsContainer" type="VBoxContainer" parent="SettingsPopup" unique_id=2847293847]
+[node name="SettingsContainer" type="VBoxContainer" parent="SettingsPopup" unique_id=-1447673449]
 anchors_preset = 15
-anchor_left = 0.0
-anchor_top = 0.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 10.0
-offset_top = 10.0
-offset_right = -10.0
-offset_bottom = -10.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 276.0
+offset_bottom = 346.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Title" type="Label" parent="SettingsPopup/SettingsContainer" unique_id=3891204730]
+[node name="Title" type="Label" parent="SettingsPopup/SettingsContainer" unique_id=-403762566]
 layout_mode = 2
 text = "Display Settings"
-add_theme_font_size_override/font_size = 18
 
-[node name="Separator1" type="HSeparator" parent="SettingsPopup/SettingsContainer"]
-layout_mode = 2
+[node name="Separator1" type="HSeparator" parent="SettingsPopup/SettingsContainer" unique_id=1308664686]
 custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
 
 [node name="LinkLinesToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1245678901]
 unique_name_in_owner = true
@@ -52,10 +48,15 @@ layout_mode = 2
 button_pressed = true
 text = "Link Lines"
 
+[node name="FocusLinkLinesToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1245678905]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Focused Link Lines"
+
 [node name="UnitRangesToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1245678902]
 unique_name_in_owner = true
 layout_mode = 2
-button_pressed = false
 text = "Unit Ranges"
 
 [node name="UnitDetailsToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1245678903]
@@ -70,23 +71,16 @@ layout_mode = 2
 button_pressed = true
 text = "Suggestions"
 
-[node name="BidirectionalLinkLinesToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1245678905]
-unique_name_in_owner = true
-layout_mode = 2
-button_pressed = false
-text = "Bidirectional Link Lines"
-
-[node name="Separator2" type="HSeparator" parent="SettingsPopup/SettingsContainer"]
-layout_mode = 2
+[node name="Separator2" type="HSeparator" parent="SettingsPopup/SettingsContainer" unique_id=1625729021]
 custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
 
 [node name="LegacyToggles" type="VBoxContainer" parent="SettingsPopup/SettingsContainer" unique_id=1245678906]
 layout_mode = 2
 
-[node name="ShaderLabel" type="Label" parent="SettingsPopup/SettingsContainer/LegacyToggles"]
+[node name="ShaderLabel" type="Label" parent="SettingsPopup/SettingsContainer/LegacyToggles" unique_id=1454297908]
 layout_mode = 2
 text = "Rendering"
-add_theme_font_size_override/font_size = 12
 
 [node name="Toggle" type="CheckButton" parent="SettingsPopup/SettingsContainer/LegacyToggles" unique_id=2007966471]
 unique_name_in_owner = true
@@ -94,7 +88,7 @@ layout_mode = 2
 button_pressed = true
 text = "Heightmap Shader"
 
-[node name="GridToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer/LegacyToggles"]
+[node name="GridToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer/LegacyToggles" unique_id=261735359]
 unique_name_in_owner = true
 layout_mode = 2
 button_pressed = true
