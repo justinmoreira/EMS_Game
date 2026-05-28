@@ -2,11 +2,6 @@ class_name BaseLevel
 extends Control
 
 const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
-const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
-
-enum TutorialStep { WELCOME, PLACE_TRANSCEIVER, DONE }
-
-var _tutorial_step := TutorialStep.WELCOME
 
 # Unit attribute controls
 const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
@@ -37,72 +32,6 @@ func _ready():
 	if sidebar_node:
 		sidebar_node.resized.connect(_on_window_resized)
 	_on_window_resized()
-
-	GameEvents.units_changed.connect(_on_units_changed_for_tutorial)
-
-	# Check if tutorial was already completed
-	var tutorial_done := false
-	if OS.has_feature("web"):
-		var result = JavaScriptBridge.eval("localStorage.getItem('user_progress') || '{}'")
-		if result is String and result != "":
-			tutorial_done = result.find('"tutorial_complete":true') != -1
-		# Listen for reset tutorial from web UI
-		JavaScriptBridge.eval("if(window.initTutorialListener) window.initTutorialListener()")
-
-	if tutorial_done:
-		_tutorial_step = TutorialStep.DONE
-	else:
-		_start_tutorial()
-
-
-func _start_tutorial() -> void:
-	if intro_popup_open:
-		return
-
-	var popup := SANDBOX_INTRO_POPUP.instantiate()
-	intro_popup_open = true
-
-	$CanvasLayer.add_child(popup)
-
-	if popup.has_signal("continued"):
-		popup.continued.connect(_on_intro_popup_closed)
-
-
-func _on_intro_popup_closed() -> void:
-	intro_popup_open = false
-	_advance_tutorial()
-
-
-func _advance_tutorial() -> void:
-	match _tutorial_step:
-		TutorialStep.WELCOME:
-			_tutorial_step = TutorialStep.PLACE_TRANSCEIVER
-			GameEvents.tutorial_filter_sidebar.emit([sidebar_node.EntityType.TRANSCEIVER])
-			_show_tutorial_hint("Drag a [b]Transceiver[/b] from the sidebar onto the map to begin.")
-		TutorialStep.PLACE_TRANSCEIVER:
-			_tutorial_step = TutorialStep.DONE
-			GameEvents.tutorial_filter_sidebar.emit([])
-			if OS.has_feature("web"):
-				JavaScriptBridge.eval(
-					"if(window.setProgress) window.setProgress('{\"tutorial_complete\":true}')"
-				)
-			_show_tutorial_hint(
-				"Great! You placed a transceiver.\nNow try adding Jammers and Sensors."
-			)
-		TutorialStep.DONE:
-			pass
-
-
-func _on_units_changed_for_tutorial() -> void:
-	if _tutorial_step == TutorialStep.PLACE_TRANSCEIVER:
-		if get_tree().get_nodes_in_group("transceivers").size() > 0:
-			_advance_tutorial()
-
-
-func _show_tutorial_hint(text: String) -> void:
-	var popup := TUTORIAL_HINT_POPUP.instantiate()
-	popup.hint_text = text
-	$CanvasLayer.add_child(popup)
 
 
 func _on_window_resized() -> void:
@@ -224,6 +153,9 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	# Connect the selection signal
 	_on_unit_placed(unit)
 	_on_unit_selected(unit)
+
+	GameEvents.unit_placed.emit(unit)
+	GameEvents.units_changed.emit()
 
 
 func _on_unit_placed(unit: Node) -> void:

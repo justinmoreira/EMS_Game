@@ -42,21 +42,26 @@ var _attr_section: PanelContainer
 var _attr_content: VBoxContainer
 var _tutorial_active: bool = false
 
+# Tutorial vars
+var _tutorial_allowed_types: Array = []
+var _tutorial_allowed_attributes: Array = []
+
 
 func _ready() -> void:
 	GameEvents.units_changed.connect(_update_simulate_button)
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
+	GameEvents.tutorial_filter_attributes.connect(_on_tutorial_filter_attributes)
 	_build_sidebar()
 	_refresh_attribute_panel()
 
 
 func select_entity(type: EntityType, display_name: String = "", node: Node = null) -> void:
-	# If switching to a different entity type, clear old pending attributes
+	if _tutorial_active and type != EntityType.NONE and not type in _tutorial_allowed_types:
+		return
+
 	if type != EntityType.NONE and type != pending_entity_type:
 		pending_attributes.clear()
 
-	if _tutorial_active:
-		return
 	selected_entity = type
 	selected_entity_name = display_name
 	selected_node = node
@@ -193,6 +198,7 @@ func _build_tray() -> PanelContainer:
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 8)
 	vbox.add_child(stack)
+
 	var tx_card := _build_entity_card(
 		"Transceiver",
 		"T",
@@ -372,7 +378,8 @@ func _refresh_attribute_panel() -> void:
 				"dBm",
 				C_BLUE,
 				func(v): _write("power", int(v)),
-				true
+				true,
+				"power"
 			)
 			_add_slider(
 				"Frequency",
@@ -382,7 +389,8 @@ func _refresh_attribute_panel() -> void:
 				"MHz",
 				C_BLUE,
 				func(v): _write("frequency", v),
-				true
+				true,
+				"frequency"
 			)
 			_add_slider(
 				"Height",
@@ -392,14 +400,16 @@ func _refresh_attribute_panel() -> void:
 				"m",
 				C_BLUE,
 				func(v): _write("height", int(v)),
-				true
+				true,
+				"height"
 			)
 			_add_dropdown(
 				"Bandwidth",
 				["Narrow", "Medium", "Wide"],
 				_prop_int("transceiver_bandwidth", 1),
 				C_BLUE,
-				func(v): _write("transceiver_bandwidth", v)
+				func(v): _write("transceiver_bandwidth", v),
+				"bandwidth"
 			)
 
 		EntityType.JAMMER:
@@ -420,7 +430,8 @@ func _refresh_attribute_panel() -> void:
 				"dBm",
 				C_RED,
 				func(v): _write("power", int(v)),
-				true
+				true,
+				"power"
 			)
 			_add_slider(
 				"Frequency",
@@ -430,7 +441,8 @@ func _refresh_attribute_panel() -> void:
 				"MHz",
 				C_RED,
 				func(v): _write("frequency", v),
-				true
+				true,
+				"frequency"
 			)
 			_add_slider(
 				"Height",
@@ -440,14 +452,16 @@ func _refresh_attribute_panel() -> void:
 				"m",
 				C_RED,
 				func(v): _write("height", int(v)),
-				true
+				true,
+				"height"
 			)
 			_add_dropdown(
 				"Bandwidth",
 				["Narrow", "Medium", "Wide"],
 				_prop_int("jammer_bandwidth", 1),
 				C_RED,
-				func(v): _write("jammer_bandwidth", v)
+				func(v): _write("jammer_bandwidth", v),
+				"bandwidth"
 			)
 
 		EntityType.SENSOR:
@@ -468,7 +482,8 @@ func _refresh_attribute_panel() -> void:
 				"dBm",
 				C_PURPLE,
 				func(v): _write("sensitivity", int(v)),
-				true
+				true,
+				"sensitivity"
 			)
 			_add_slider(
 				"Tuning Frequency",
@@ -478,7 +493,8 @@ func _refresh_attribute_panel() -> void:
 				"MHz",
 				C_PURPLE,
 				func(v): _write_node("tuning_frequency", int(v)),
-				true
+				true,
+				"tuning_frequency"
 			)
 			_add_slider(
 				"Height",
@@ -488,21 +504,27 @@ func _refresh_attribute_panel() -> void:
 				"m",
 				C_PURPLE,
 				func(v): _write("height", int(v)),
-				true
+				true,
+				"height"
 			)
 			_add_dropdown(
 				"Bandwidth",
 				["Narrow", "Medium", "Wide"],
 				_prop_int("sensor_bandwidth", 1),
 				C_PURPLE,
-				func(v): _write("sensor_bandwidth", v)
+				func(v): _write("sensor_bandwidth", v),
+				"bandwidth"
 			)
 			_add_toggle(
 				"Scanning",
 				_prop_bool("is_scanning", true),
 				C_PURPLE,
-				func(v): _write("is_scanning", v)
+				func(v): _write("is_scanning", v),
+				"scanning"
 			)
+
+	if not _tutorial_allowed_attributes.is_empty():
+		_on_tutorial_filter_attributes(_tutorial_allowed_attributes)
 
 
 func _add_accent_bar(accent: Color) -> void:
@@ -520,9 +542,10 @@ func _add_slider(
 	unit: String,
 	accent: Color,
 	on_change: Callable,
-	integers: bool = false
+	integers: bool = false,
+	attribute_key: String = ""
 ) -> void:
-	var vbox := _make_row_container()
+	var vbox := _make_row_container(attribute_key)
 
 	var top := HBoxContainer.new()
 	top.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -578,9 +601,14 @@ func _add_slider(
 
 
 func _add_dropdown(
-	label: String, options: Array, current_idx: int, accent: Color, on_change: Callable
+	label: String,
+	options: Array,
+	current_idx: int,
+	accent: Color,
+	on_change: Callable,
+	attribute_key: String = ""
 ) -> void:
-	var vbox := _make_row_container()
+	var vbox := _make_row_container(attribute_key)
 	var hbox := HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_theme_constant_override("separation", 8)
@@ -592,15 +620,23 @@ func _add_dropdown(
 	dd.custom_minimum_size = Vector2(110, 0)
 	dd.add_theme_font_size_override("font_size", 13)
 	dd.add_theme_color_override("font_color", accent)
+
 	for opt in options:
 		dd.add_item(opt)
+
 	dd.select(current_idx)
 	dd.item_selected.connect(func(idx): on_change.call(idx))
 	hbox.add_child(dd)
 
 
-func _add_toggle(label: String, current: bool, accent: Color, on_change: Callable) -> void:
-	var vbox := _make_row_container()
+func _add_toggle(
+	label: String,
+	current: bool,
+	accent: Color,
+	on_change: Callable,
+	attribute_key: String = ""
+) -> void:
+	var vbox := _make_row_container(attribute_key)
 	var hbox := HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_theme_constant_override("separation", 8)
@@ -614,8 +650,12 @@ func _add_toggle(label: String, current: bool, accent: Color, on_change: Callabl
 	hbox.add_child(toggle)
 
 
-func _make_row_container() -> VBoxContainer:
+func _make_row_container(attribute_key: String = "") -> VBoxContainer:
 	var panel := PanelContainer.new()
+
+	if attribute_key != "":
+		panel.name = attribute_key
+
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_LIGHT, 10))
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_attr_body.add_child(panel)
@@ -624,6 +664,7 @@ func _make_row_container() -> VBoxContainer:
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_theme_constant_override("separation", 8)
 	panel.add_child(vbox)
+
 	return vbox
 
 
@@ -648,6 +689,7 @@ func _on_reset_pressed() -> void:
 				unit.get_parent().queue_free()
 			select_entity(EntityType.NONE)
 			SimulationManager.clear_all_links()
+			GameEvents.units_changed.emit()
 			dialog.queue_free()
 	)
 	dialog.canceled.connect(func(): dialog.queue_free())
@@ -667,9 +709,14 @@ func _on_delete_pressed() -> void:
 
 	dialog.confirmed.connect(
 		func():
-			selected_node.get_parent().queue_free()
+			var deleted_unit := selected_node.get_parent()
+
+			GameEvents.unit_deleted.emit(deleted_unit)
+
+			deleted_unit.queue_free()
 			select_entity(EntityType.NONE)
 			SimulationManager.clear_all_links()
+			GameEvents.units_changed.emit()
 			dialog.queue_free()
 	)
 	dialog.canceled.connect(func(): dialog.queue_free())
@@ -778,6 +825,9 @@ func _write(p: String, value) -> void:
 
 	c.set(p, value)
 
+	GameEvents.unit_attribute_changed.emit(c, p, value)
+	GameEvents.units_changed.emit()
+
 	var unit = c.get_parent()
 	if unit:
 		var scene_path = unit.scene_file_path
@@ -810,6 +860,9 @@ func _write_node(p: String, value) -> void:
 
 	selected_node.set(p, value)
 
+	GameEvents.unit_attribute_changed.emit(selected_node, p, value)
+	GameEvents.units_changed.emit()
+
 	var scene_path = selected_node.scene_file_path
 	if scene_path:
 		var packed_scene := PackedScene.new()
@@ -830,6 +883,8 @@ func _clear_selection() -> void:
 # ════════════════════════════════════════════
 #  STYLE HELPERS
 # ════════════════════════════════════════════
+
+
 func _flat_style(bg: Color, padding: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
@@ -866,23 +921,51 @@ func _make_label(text: String, color: Color, txt_size: int, expand: bool = false
 
 
 func _on_tutorial_filter(allowed_types: Array) -> void:
+	_tutorial_allowed_types = allowed_types
 	_tutorial_active = not allowed_types.is_empty()
-	_attr_content.modulate.a = 0.3 if _tutorial_active else 1.0
-	_set_interactivity(_attr_content, not _tutorial_active)
+
 	for type in _entity_cards:
 		var card = _entity_cards[type]
 		var enabled = not _tutorial_active or type in allowed_types
+
 		card.modulate.a = 1.0 if enabled else 0.3
-		card.set_process_input(enabled)
 		card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+		card.set_process_input(enabled)
+		card.set_process_unhandled_input(enabled)
+		card.set_process_unhandled_key_input(enabled)
+
 		for child in card.get_children():
-			child.mouse_filter = (
-				Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
-			)
+			if child is Control:
+				child.mouse_filter = Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
+
+
+func _on_tutorial_filter_attributes(allowed_attributes: Array) -> void:
+	_tutorial_allowed_attributes = allowed_attributes
+
+	if _attr_body == null:
+		return
+
+	var lock_attributes := not allowed_attributes.is_empty()
+
+	for row in _attr_body.get_children():
+		if not row is Control:
+			continue
+
+		var row_name := row.name.to_lower()
+		var enabled := not lock_attributes
+
+		for allowed_attribute in allowed_attributes:
+			if row_name.contains(str(allowed_attribute).to_lower()):
+				enabled = true
+				break
+
+		row.modulate.a = 1.0 if enabled else 0.35
+		_set_interactivity(row, enabled)
 
 
 func _set_interactivity(node: Control, enabled: bool) -> void:
 	node.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+
 	for child in node.get_children():
 		if child is Control:
 			_set_interactivity(child, enabled)
