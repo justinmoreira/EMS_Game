@@ -32,8 +32,10 @@ func _ready() -> void:
 		push_error("Ensure ContourOverlay exists and has a ShaderMaterial!")
 		return
 
-	# Pulls in BaseLevel's resize handler / sidebar_width / drop logic.
-	# Without this, sidebar_width stays 0 and drops/coords break.
+	# Runs BaseLevel init: offsets the background past the sidebar, hooks window
+	# resize, and pushes initial shader params. Safe now that overlay/terrain
+	# coordinate math shares one source of truth (background rect) — the sway
+	# this used to cause was the aspect desync, now fixed.
 	super._ready()
 
 	height_grid = _generate_terrain(grid_w, grid_h)
@@ -112,10 +114,16 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 	var peaks := _suppress(peak_candidates, SUPPRESS_RADIUS_PEAK, true)
 	var valleys := _suppress(valley_candidates, SUPPRESS_RADIUS_VALLEY, false)
 
-	# Step 3 – convert grid positions to pixel positions
+	# Step 3 – describe each label.
+	# px_pos: container-space pixels, used only for overlap deconfliction below.
+	# grid_uv: the heightmap sample coordinate (0..1). This is exactly what the
+	#   shader samples, so world_uv_to_screen(grid_uv) lands the label on the
+	#   rendered feature through any zoom/pan/aspect change.
 	var container_size: Vector2 = map_container.size
 	var sx: float = container_size.x / float(w)
 	var sy: float = container_size.y / float(h)
+	var inv_w := 1.0 / float(w)
+	var inv_h := 1.0 / float(h)
 
 	# Collect label descriptors before spawning so we can deconflict
 	var label_descs: Array[Dictionary] = []
@@ -126,6 +134,7 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 			. append(
 				{
 					"px_pos": Vector2(p["x"] * sx, p["y"] * sy),
+					"grid_uv": Vector2(p["x"] * inv_w, p["y"] * inv_h),
 					"val": p["val"],
 					"color": Color.WHITE,
 					"font_size": 20,
@@ -140,6 +149,7 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 			. append(
 				{
 					"px_pos": Vector2(v["x"] * sx, v["y"] * sy),
+					"grid_uv": Vector2(v["x"] * inv_w, v["y"] * inv_h),
 					"val": v["val"],
 					"color": Color.WHITE,
 					"font_size": 20,
@@ -228,9 +238,7 @@ func _spawn_label(desc: Dictionary) -> void:
 	)
 	lbl.size = sz
 
-	var px: Vector2 = desc["px_pos"]
-	var screen_pos: Vector2 = map_container.global_position + px
-	lbl.set_meta("world_uv", screen_to_world_uv(screen_pos))
+	lbl.set_meta("world_uv", desc["grid_uv"])
 	lbl.set_meta("half_size", sz * 0.5)
 
 	add_child(lbl)
@@ -242,19 +250,11 @@ func _spawn_label(desc: Dictionary) -> void:
 
 
 func update_shader() -> void:
-	# override for label/unit positions
+	# super pushes zoom/offset/aspect_ratio to the contour shader (same node as
+	# `background`). The shader now contains the aspect-contain math, so the
+	# manual offset/aspect compensation here is no longer needed — and was the
+	# source of zoom-drift between units and terrain.
 	super.update_shader()
-
-	var map := get_map_size()
-	var aspect := map.x / map.y
-	var shader_offset := offset
-
-	if aspect > 1.0:
-		shader_offset.x /= aspect
-	else:
-		shader_offset.y /= aspect
-
-	contour_rect.material.set_shader_parameter("offset", shader_offset)
 	_reposition_labels()
 
 
