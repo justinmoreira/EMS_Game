@@ -56,8 +56,7 @@ func _exit_tree() -> void:
 	clear_all_links()
 
 
-func _process(delta: float) -> void:
-	_update_dash_offsets(delta)
+func _process(_delta: float) -> void:
 	_update_active_link_visuals()
 
 
