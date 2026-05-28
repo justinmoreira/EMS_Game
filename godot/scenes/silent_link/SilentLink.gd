@@ -140,6 +140,7 @@ func _process(_delta: float) -> void:
 func _finish(success: bool) -> void:
 	if _simulation_over:
 		return
+	set_process(false)
 	_simulation_over = true
 	_completion_time = Time.get_ticks_msec() / 1000.0 - _start_time
 	if success:
@@ -154,17 +155,23 @@ func _simulate_link() -> void:
 		_show_hint("Link not possible - check your placements and retry!")
 		_finish(false)
 		return
-	_link_established = true
+
+	# Always run these to update detection and jamming for this frame
+	_check_detection()
+	_check_jamming()
 
 	if _player_detected:
 		_show_hint("Detected by enemy! Try again.")
 		_finish(false)
+		return
 	elif _jammed:
 		_show_hint("Signal jammed! Try again.")
 		_finish(false)
-	else:
-		# Only succeed if not jammed OR detected
-		_finish(true)
+		return
+
+	# Only succeed if not jammed OR detected
+	_link_established = true
+	_finish(true)
 
 
 func _advance() -> void:
@@ -316,7 +323,7 @@ func _calculate_score(success: bool = true) -> int:
 
 	for unit in _player_units:
 		var freq = unit.frequency
-		# figure out distance freq penalty
+		# figure out distance penalty
 		if freq < 2:
 			frequency_penalty += 200
 		elif freq > 2:
