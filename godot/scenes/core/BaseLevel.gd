@@ -345,9 +345,14 @@ func _unhandled_input(event: InputEvent) -> void:
 					):
 						clicked_unit = true
 						break
-				if not clicked_unit:
-					_deselect_current_unit()
-					get_tree().root.set_input_as_handled()
+
+				# Clicking on a unit hands off to the unit's own drag handler —
+				# don't engage map pan or the two thrash each other.
+				if clicked_unit:
+					return
+
+				_deselect_current_unit()
+				get_tree().root.set_input_as_handled()
 
 			dragging = true
 			last_mouse_pos = event.position
