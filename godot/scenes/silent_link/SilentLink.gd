@@ -164,7 +164,7 @@ func _simulate_link() -> void:
 		_show_hint("Detected by enemy! Try again.")
 		_finish(false)
 		return
-	elif _jammed:
+	if _jammed:
 		_show_hint("Signal jammed! Try again.")
 		_finish(false)
 		return
