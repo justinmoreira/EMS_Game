@@ -6,8 +6,13 @@ import { setProgress, syncStatus } from "@/lib/progress";
 import { supabase } from "@/lib/supabase";
 import { BASE_URL } from "@/utils";
 
-function LoginForm() {
-  const [mode, setMode] = useState<"login" | "signup">("login");
+function LoginForm({
+  mode,
+  setMode,
+}: {
+  mode: "login" | "signup";
+  setMode: (m: "login" | "signup") => void;
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -232,6 +237,7 @@ function getCachedName(): string {
 export default function AccountModal() {
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
+  const [mode, setMode] = useState<"login" | "signup">("login");
   useEffect(() => {
     setReady(true);
     const el = document.getElementById("account-placeholder");
@@ -301,7 +307,7 @@ export default function AccountModal() {
               ) : user ? (
                 <ProfileView user={user} />
               ) : (
-                <LoginForm />
+                <LoginForm mode={mode} setMode={setMode} />
               )}
               <button
                 type="button"
