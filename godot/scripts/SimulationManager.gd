@@ -4,60 +4,14 @@ enum LinkState {
 	CONNECTING, SUCCESS, FAILED_OUT_OF_RANGE, FAILED_JAMMED, FREQUENCY_DIFF, BANDWIDTH_PENALTY
 }
 
-# Visual Constants
-
-const LINE_WIDTH := 4.0
-const ARROW_SIZE := 14.0
-const LINE_OFFSET := 12.0
-const NODE_PADDING := 22.0
-const VISUAL_TRANSITION_DELAY := 0.12
-
-const STATUS_VISUAL_SCRIPT := preload("res://scripts/UnitStatusVisual.gd")
-const STATUS_VISUAL_NODE_NAME := "UnitStatusVisual"
-
-
-class LinkData:
-	var source: Transceiver
-	var target: Transceiver
-	var line: PatternedLinkLine
-	var arrow: Polygon2D
-	var state: int = LinkState.CONNECTING
-	var final_state: int = LinkState.CONNECTING
-	var pattern: int = LinkVisuals.LINE_PATTERN_MOVING_DASHED
-	var color: Color = LinkVisuals.C_CONNECTING
-	var version: int = 1
-
-	func _init(
-		new_source: Transceiver,
-		new_target: Transceiver,
-		new_line: PatternedLinkLine,
-		new_arrow: Polygon2D
-	) -> void:
-		source = new_source
-		target = new_target
-		line = new_line
-		arrow = new_arrow
-
-
-#Data Storage
-var active_links: Dictionary[String, LinkData] = {}
-var link_results: Dictionary = {}
-var detect_results: Dictionary = {}
-var timer: Timer
-var links_visible: bool = true
+# link_results: Array of {"source": Unit, "target": Unit, "state": int}
+# detect_results: Array of {"sensor": Unit, "transceiver": Unit, "detected": bool}
+var link_results: Array[Dictionary] = []
+var detect_results: Array[Dictionary] = []
 
 
 func _ready() -> void:
-	setup_timer()
 	call_deferred("simulate")
-
-
-func _exit_tree() -> void:
-	clear_all_links()
-
-
-func _process(_delta: float) -> void:
-	_update_active_link_visuals()
 
 
 func simulate() -> void:
@@ -69,31 +23,34 @@ func simulate() -> void:
 	var sensors = get_tree().get_nodes_in_group("sensors")
 
 	for i in range(transceivers.size()):
-		var unit_a = transceivers[i] as Transceiver
+		var unit_a = transceivers[i] as Unit
 		for j in range(transceivers.size()):
 			if i == j:
 				continue
-			var unit_b = transceivers[j] as Transceiver
-			var result = calculate_link(unit_a, unit_b, jammers)
-			# Instance ID key drives visuals (always unique)
-			link_results[_vis_key(unit_a, unit_b)] = result
+			var unit_b = transceivers[j] as Unit
+			link_results.append(
+				{
+					"source": unit_a,
+					"target": unit_b,
+					"state": calculate_link(unit_a, unit_b, jammers)
+				}
+			)
 
 	for sensor in sensors:
 		for tx in transceivers:
-			var detected := calculate_detection(sensor, tx)
-			var d_key := str(sensor.get_instance_id()) + "_detects_" + str(tx.get_instance_id())
-			detect_results[d_key] = detected
+			detect_results.append(
+				{"sensor": sensor, "transceiver": tx, "detected": calculate_detection(sensor, tx)}
+			)
 
-	_draw_links_from_results(transceivers)
-	_update_unit_status_visuals(transceivers)
+	GameEvents.simulation_complete.emit(link_results, detect_results)
 
 
 # tx is the transmitter, rx is the receiver — asymmetric by design.
 # Different power/height/bandwidth on each side means A->B != B->A.
-func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> int:
+func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 	var frequency_diff = abs(tx.frequency - rx.frequency)
-	var bw_key = PhysicsEngine.BW_LOOKUP[rx.transceiver_bandwidth]
-	var bandwidth_half = PhysicsEngine.BANDWIDTH_VALUES.get(bw_key, 1.0) / 2.0
+	var bw_idx: int = rx.transceiver_bandwidth
+	var bandwidth_half = PhysicsEngine.BANDWIDTH_MHZ[bw_idx] / 2.0
 
 	if frequency_diff > bandwidth_half:
 		return LinkState.FREQUENCY_DIFF
@@ -109,7 +66,7 @@ func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> int:
 		rx.frequency, rx.height, rx.global_position, jammers
 	)
 
-	var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER.get(bw_key, 1.0)
+	var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
 
 	if !PhysicsEngine.range_check(received_power):
 		return LinkState.FAILED_OUT_OF_RANGE
@@ -120,268 +77,6 @@ func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> int:
 	return LinkState.SUCCESS
 
 
-func calculate_detection(srx: Sensor, tx: Transceiver) -> bool:
+func calculate_detection(srx: Unit, tx: Unit) -> bool:
 	var dist = PhysicsEngine.calculate_distance(srx.global_position, tx.global_position)
 	return PhysicsEngine.is_detected(tx, srx, dist)
-
-
-# Iterates all ordered transceiver pairs and draw arrow pair
-func _draw_links_from_results(transceivers: Array) -> void:
-	var current_sim_keys = []
-
-	for src_tx in transceivers:
-		for tgt_tx in transceivers:
-			if src_tx == tgt_tx:
-				continue
-			var key = _vis_key(src_tx, tgt_tx)
-			if link_results.has(key):
-				current_sim_keys.append(key)
-				_draw_directional_link(src_tx, tgt_tx, link_results[key])
-
-	## Remove any arrows that belong to pairs no longer in the simulation
-	var keys_to_purge = []
-	for active_key in active_links.keys():
-		if not active_key in current_sim_keys:
-			keys_to_purge.append(active_key)
-	for k in keys_to_purge:
-		_free_link_nodes(active_links[k])
-		active_links.erase(k)
-
-
-#Creates or updates the arrow for a single directed link
-func _draw_directional_link(source: Transceiver, target: Transceiver, final_state: int) -> void:
-	var key = _vis_key(source, target)
-
-	if not active_links.has(key):
-		_create_link_nodes(source, target, key)
-
-	var data: LinkData = active_links[key]
-	data.version += 1
-	data.final_state = final_state
-
-	_set_link_visual_state(key, LinkState.CONNECTING)
-	_update_link_geometry(key)
-	_apply_visibility_for_key(key)
-	_resolve_link_visual_after_delay(key, data.version)
-
-
-# Instantiates the Line2D and arrowhead Polygon2D for a new link entry.
-func _create_link_nodes(source: Transceiver, target: Transceiver, key: String) -> void:
-	var scene := get_tree().current_scene
-
-	var line := PatternedLinkLine.new()
-	line.name = "PatternedLinkLine"
-	line.z_index = 100
-	scene.add_child(line)
-
-	var arrow := Polygon2D.new()
-	arrow.polygon = PackedVector2Array(
-		[
-			Vector2(ARROW_SIZE, 0),
-			Vector2(-ARROW_SIZE * 0.65, ARROW_SIZE * 0.45),
-			Vector2(-ARROW_SIZE * 0.65, -ARROW_SIZE * 0.45)
-		]
-	)
-	arrow.z_index = 101
-	scene.add_child(arrow)
-
-	active_links[key] = LinkData.new(source, target, line, arrow)
-
-
-#Recalculates the screen-space positions of a link's line and arrowhead.
-func _update_link_geometry(key: String) -> void:
-	var data: LinkData = active_links[key]
-
-	if not is_instance_valid(data.source) or not is_instance_valid(data.target):
-		return
-
-	var start: Vector2 = data.source.global_position
-	var end: Vector2 = data.target.global_position
-	var delta := end - start
-
-	if delta.length() < 0.1:
-		return
-
-	var dir := delta.normalized()
-	var normal := Vector2(-dir.y, dir.x)
-
-	var line_start := start + dir * NODE_PADDING + normal * LINE_OFFSET
-	var line_end := end - dir * NODE_PADDING + normal * LINE_OFFSET
-
-	data.line.set_points(line_start, line_end)
-
-	data.arrow.global_position = line_end - dir * (ARROW_SIZE * 0.3)
-	data.arrow.rotation = dir.angle()
-
-
-# Applies the color for a given LinkState to a link's line and arrowhead.
-func _set_link_visual_state(key: String, state: int) -> void:
-	if not active_links.has(key):
-		return
-
-	var data: LinkData = active_links[key]
-	var color := LinkVisuals.C_CONNECTING
-	var pattern := LinkVisuals.LINE_PATTERN_MOVING_DASHED
-
-	match state:
-		LinkState.SUCCESS:
-			color = LinkVisuals.C_SUCCESS
-			pattern = LinkVisuals.LINE_PATTERN_SOLID
-		LinkState.FAILED_OUT_OF_RANGE:
-			color = LinkVisuals.C_OUT_OF_RANGE
-			pattern = LinkVisuals.LINE_PATTERN_DASHED
-		LinkState.FAILED_JAMMED:
-			color = LinkVisuals.C_JAMMED
-			pattern = LinkVisuals.LINE_PATTERN_ZIGZAG
-		LinkState.FREQUENCY_DIFF:
-			color = LinkVisuals.C_FREQUENCY_DIFF
-			pattern = LinkVisuals.LINE_PATTERN_DASHED
-		LinkState.BANDWIDTH_PENALTY:
-			color = LinkVisuals.C_BANDWIDTH_PENALTY
-			pattern = LinkVisuals.LINE_PATTERN_DASHED
-		_:
-			color = LinkVisuals.C_CONNECTING
-			pattern = LinkVisuals.LINE_PATTERN_MOVING_DASHED
-
-	data.color = color
-	data.pattern = pattern
-	data.state = state
-
-	data.line.set_visual(color, pattern)
-	data.arrow.color = color
-
-
-func _resolve_link_visual_after_delay(key: String, version: int) -> void:
-	await get_tree().create_timer(VISUAL_TRANSITION_DELAY).timeout
-
-	if not active_links.has(key):
-		return
-
-	var data: LinkData = active_links[key]
-
-	if data.version == version:
-		_set_link_visual_state(key, data.final_state)
-
-
-# Called every frame. Updates geometry for all active links
-func _update_active_link_visuals() -> void:
-	var dead_keys := []
-
-	for key in active_links.keys():
-		var data: LinkData = active_links[key]
-
-		if not is_instance_valid(data.source) or not is_instance_valid(data.target):
-			dead_keys.append(key)
-			continue
-
-		_update_link_geometry(key)
-
-	for key in dead_keys:
-		_free_link_nodes(active_links[key])
-		active_links.erase(key)
-
-
-func _update_unit_status_visuals(transceivers: Array) -> void:
-	for tx in transceivers:
-		if !is_instance_valid(tx):
-			continue
-
-		var visual := _get_or_create_status_visual(tx)
-		var status := _compute_status_for_transceiver(tx)
-		visual.set_status(status)
-
-
-func _get_or_create_status_visual(unit: Node) -> UnitStatusVisual:
-	var existing = unit.get_node_or_null(STATUS_VISUAL_NODE_NAME)
-	if existing != null:
-		return existing as UnitStatusVisual
-
-	var visual := STATUS_VISUAL_SCRIPT.new() as UnitStatusVisual
-	visual.name = STATUS_VISUAL_NODE_NAME
-	unit.add_child(visual)
-	return visual
-
-
-func _compute_status_for_transceiver(tx: Transceiver) -> int:
-	var tx_id := str(tx.get_instance_id())
-	var tx_incoming_suffix := "_to_" + tx_id
-
-	var has_out_of_range := false
-
-	# Jammed/out-of-range should only apply to the RECEIVER of a failed link.
-	for key in link_results.keys():
-		if !key.ends_with(tx_incoming_suffix):
-			continue
-
-		var state: int = link_results[key]
-
-		if state == LinkState.FAILED_JAMMED:
-			return UnitStatusVisual.Status.JAMMED
-
-		if state == LinkState.FAILED_OUT_OF_RANGE:
-			has_out_of_range = true
-
-	# Sensors detect emitters/transceivers.
-	for d_key in detect_results.keys():
-		if d_key.ends_with("_detects_" + tx_id) and detect_results[d_key]:
-			return UnitStatusVisual.Status.DETECTED
-
-	if has_out_of_range:
-		return UnitStatusVisual.Status.OUT_OF_RANGE
-
-	return UnitStatusVisual.Status.NONE
-
-
-func _vis_key(a: Transceiver, b: Transceiver) -> String:
-	return str(a.get_instance_id()) + "_to_" + str(b.get_instance_id())
-
-
-func _free_link_nodes(data: LinkData) -> void:
-	if is_instance_valid(data.line):
-		data.line.queue_free()
-
-	if is_instance_valid(data.arrow):
-		data.arrow.queue_free()
-
-
-func clear_all_links() -> void:
-	for key in active_links:
-		_free_link_nodes(active_links[key])
-	active_links.clear()
-
-
-func _apply_visibility_for_key(key: String) -> void:
-	var data: LinkData = active_links[key]
-
-	if is_instance_valid(data.line):
-		data.line.visible = links_visible
-
-	if is_instance_valid(data.arrow):
-		data.arrow.visible = links_visible
-
-
-func setup_timer():
-	timer = Timer.new()
-	timer.one_shot = true
-	timer.timeout.connect(_on_timer_timeout)
-	add_child(timer)
-
-
-func set_transmission_speed(frequency: float) -> void:
-	var delay = remap(frequency, 30.0, 3000.0, 10.0, 0.1)
-	timer.wait_time = delay
-
-
-func send_message():
-	timer.start()
-
-
-func _on_timer_timeout():
-	pass
-
-
-func _input(event):
-	if event is InputEventKey and event.pressed and event.keycode == KEY_T:
-		links_visible = !links_visible
-		for k in active_links:
-			_apply_visibility_for_key(k)
