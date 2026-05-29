@@ -113,13 +113,13 @@ func _begin_simulation() -> void:
 	for u in get_tree().get_nodes_in_group("transceivers"):
 		if not u.name.begins_with("Friendly"):
 			_player_units.append(u)
+	_player_detected = false
+	_jammed = false
 	if _step != Step.PLANNING and _step != Step.COMPLETE:
 		return
 	_step = Step.SIMULATING
 	_simulation_over = false
 	_link_established = false
-	_player_detected = false
-	_jammed = false
 	_simulate_link()
 
 
