@@ -1,24 +1,8 @@
-[gd_scene format=3]
+[gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scenes/core/EMSUnit.gd" id="1_dem8i"]
-[ext_resource type="PackedScene" path="res://scenes/core/components/Sensor.tscn" id="2_xbxfc"]
-[ext_resource type="Script" path="res://scenes/core/components/Sensor.gd" id="3_7nrp4"]
-[ext_resource type="Script" path="res://scenes/core/components/UnitVisual.gd" id="3_tm6hg"]
+[ext_resource type="Script" path="res://scenes/core/Unit.gd" id="1_unit"]
+[ext_resource type="Resource" path="res://data/units/sensor.tres" id="2_def"]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_o81bo"]
-radius = 32.0
-
-[node name="EMSUnit - Sensor" type="Area2D" unique_id=864604190]
-script = ExtResource("1_dem8i")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
-shape = SubResource("CircleShape2D_o81bo")
-
-[node name="Sensor" type="Node2D" parent="." unique_id=2031422171 instance=ExtResource("2_xbxfc")]
-script = ExtResource("3_7nrp4")
-
-[node name="Visual" type="Node2D" parent="." unique_id=1094016982]
-script = ExtResource("3_tm6hg")
-unit_label = "S"
-circle_color = Color(1, 0.36078432, 0.36078432, 1)
-sprite_sheet_path = "res://assets/sprites/sensorAni.png"
+[node name="SensorUnit" type="Node2D" unique_id=864604190]
+script = ExtResource("1_unit")
+definition = ExtResource("2_def")

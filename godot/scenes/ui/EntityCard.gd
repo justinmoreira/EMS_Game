@@ -14,6 +14,11 @@ var scene_path: String
 var display_name: String
 var _sprite_path: String = ""
 
+# Optional callable; returns Dictionary of attributes to apply on drop.
+# Set by Sidebar so the drag payload carries pending attributes without
+# BaseLevel having to reach into Sidebar.
+var pending_provider: Callable
+
 # Style colors (matched from Sidebar)
 var _bg_normal: Color
 var _bg_hover: Color
@@ -139,7 +144,8 @@ func _get_drag_data(_at_position: Variant) -> Variant:
 	preview.add_child(icon)
 	set_drag_preview(preview)
 
-	return {"type": entity_type, "scene_path": scene_path}
+	var override: Dictionary = pending_provider.call() if pending_provider else {}
+	return {"type": entity_type, "scene_path": scene_path, "attributes_override": override}
 
 
 # ── Inner class: draws a circle + letter ───
