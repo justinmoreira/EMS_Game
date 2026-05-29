@@ -34,6 +34,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      keep_alive: {
+        Row: {
+          id: number
+          last_ping: string
+        }
+        Insert: {
+          id: number
+          last_ping?: string
+        }
+        Update: {
+          id?: number
+          last_ping?: string
+        }
+        Relationships: []
+      }
       sandbox_states: {
         Row: {
           created_at: string
