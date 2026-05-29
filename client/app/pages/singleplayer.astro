@@ -50,6 +50,7 @@ const modes = [
     <a
       id="play-now"
       href={`${BASE_URL}/tutorial`}
+      data-astro-reload
       class="pointer-events-auto inline-flex min-w-56 items-center justify-center rounded-xl bg-emerald-400 px-12 py-4 text-xl font-bold text-black shadow-lg shadow-emerald-950/50 transition-colors hover:bg-emerald-300"
     >
       Play Now
@@ -153,7 +154,17 @@ const modes = [
     // See identical block in index.astro for rationale — re-init only
     // when #vanta-bg has no canvas (i.e. fresh render, not a persisted
     // carry-over from the previous page).
-    (() => {
+    //
+    // Poll for VANTA: on swaps from a page that didn't load three/vanta
+    // (e.g. /play → /singleplayer), Astro inserts the <script src> tags
+    // but they're still loading async when this rerun fires. Without the
+    // wait, VANTA is undefined and the background stays black.
+    (function init(attempt) {
+      attempt = attempt || 0;
+      if (typeof VANTA === "undefined") {
+        if (attempt > 200) return; // give up after ~5s
+        return setTimeout(() => init(attempt + 1), 25);
+      }
       const el = document.getElementById("vanta-bg");
       if (!el || el.querySelector("canvas")) return;
       VANTA.NET({

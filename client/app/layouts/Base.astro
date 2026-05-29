@@ -36,24 +36,5 @@ const { title } = Astro.props;
   >
     <NavBar />
     <slot />
-    <script is:inline define:vars={{ BASE_URL }}>
-      if (location.hostname === "localhost") {
-        setInterval(() => {
-          if (document.hidden || !navigator.onLine) return;
-          fetch(BASE_URL + "/godot/index.pck", {
-            method: "HEAD",
-            cache: "no-store",
-          })
-            .then((res) => res.headers.get("last-modified"))
-            .then((modified) => {
-              if (window.lastGodotBuild && window.lastGodotBuild !== modified) {
-                location.reload();
-              }
-              window.lastGodotBuild = modified;
-            })
-            .catch(() => {});
-        }, 2000);
-      }
-    </script>
   </body>
 </html>

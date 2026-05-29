@@ -244,7 +244,9 @@ _apply_pending_migrations:
     fi
 
     echo "📋 Pending migrations detected ($file_count files vs $applied_count applied) — applying..."
-    supabase migration up
+    if ! supabase migration up; then
+        supabase db reset
+    fi
 
 [group('dev')]
 [doc('Wait for local Supabase auth to become healthy')]
@@ -286,10 +288,30 @@ _hmr_serve:
 dev:
     #!/usr/bin/env bash
     echo "⚡ Bringing up dev (db + Godot build + client deps in parallel)..."
-    just db-restart soft &
-    just build_game &
-    just _init_client &
+
+    # Recursive descendant kill. Plain `kill $(jobs -p)` only hits our direct
+    # `just` children; the real culprit (godot4, spawned as a grandchild of
+    # `just build_game`) kept running and flooded the terminal after the parent
+    # failed. Walking the pgrep tree catches it.
+    _kill_tree() {
+        local pid=$1 child
+        for child in $(pgrep -P "$pid" 2>/dev/null); do _kill_tree "$child"; done
+        kill "$pid" 2>/dev/null || true
+    }
+
+    pids=()
+    # If a preflight job fails (wait -n returns non-zero), kill the trees of
+    # all siblings so nothing keeps churning after `just dev` exits.
+    trap 'for p in "${pids[@]}"; do _kill_tree "$p"; done' EXIT
+
+    just db-restart soft & pids+=($!)
+    just build_game & pids+=($!)
+    just _init_client & pids+=($!)
     for _ in 1 2 3; do wait -n || exit $?; done
+
+    # Preflight done — drop the trap so it doesn't try to kill the long-running
+    # watcher/dev server below.
+    trap - EXIT
     just _hmr_serve
 
 [group('quality')]
