@@ -417,6 +417,7 @@ func _add_send_message_button(accent: Color) -> void:
 	btn.pressed.connect(func(): GameEvents.message_send_requested.emit(selected_node))
 	_attr_body.add_child(btn)
 
+
 func _definition_for(t: EntityType) -> UnitDefinition:
 	match t:
 		EntityType.TRANSCEIVER:
