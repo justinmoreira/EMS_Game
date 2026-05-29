@@ -270,18 +270,71 @@ _wait_supabase:
     fi
 
 [group('dev')]
-[doc('Start Astro dev server with auto Godot rebuild on changes')]
+[doc('Start Astro dev server with auto Godot rebuild on changes; restarts dev server on health-check failure')]
 [private]
 _hmr_serve:
     #!/usr/bin/env bash
     CLIENT_PATH={{client_path}} ./scripts/gen-env.sh
+
+    # Recursive descendant kill — bun spawns vite as a grandchild and a plain
+    # kill on $! leaves it orphaned holding the port. Same helper as `dev`.
+    _kill_tree() {
+        local pid=$1 child
+        for child in $(pgrep -P "$pid" 2>/dev/null); do _kill_tree "$child"; done
+        kill "$pid" 2>/dev/null || true
+    }
+
+    DEV_PID=""
+    WATCH_PID=""
+    cleanup() {
+        [ -n "$DEV_PID" ] && _kill_tree "$DEV_PID"
+        [ -n "$WATCH_PID" ] && _kill_tree "$WATCH_PID"
+    }
+    trap 'cleanup; exit' INT TERM
+    trap cleanup EXIT
+
     echo "🔄 Watching godot/ for changes (auto rebuild)..."
-    watchexec --postpone --poll 2000ms -w godot -e gd,tscn,gdshader,tres -- just build_game 2>&1 | tee /tmp/godot-rebuild.log &
+    # Process substitution (> >(tee ...)) keeps $! pointing at watchexec, not
+    # tee — a plain pipe would put tee at the tail of the pipeline and we'd
+    # only kill the logger, leaving watchexec running.
+    watchexec --postpone --poll 2000ms -w godot -e gd,tscn,gdshader,tres -- just build_game > >(tee /tmp/godot-rebuild.log) 2>&1 &
     WATCH_PID=$!
-    trap "kill $WATCH_PID 2>/dev/null" EXIT
+
     PORT=$(python3 scripts/find_port.py)
-    echo "🌐 Starting dev server on port $PORT..."
-    cd {{client_path}} && PORT=$PORT bun run dev --port $PORT
+    echo "🌐 Starting dev server on port $PORT (health-check-supervised)..."
+
+    # Supervised loop: if 3 consecutive HC probes fail, kill the tree and
+    # respawn. Editing astro.config.mjs can crash vite's reload but leave
+    # bun alive in a broken state — the HC catches that.
+    while true; do
+        (cd {{client_path}} && PORT=$PORT bun run dev --port $PORT) &
+        DEV_PID=$!
+        # Warmup must exceed astro's cold-start (~16s observed). Probes
+        # before astro binds will all fail and trip the restart spuriously.
+        sleep 20
+        fails=0
+        while kill -0 $DEV_PID 2>/dev/null; do
+            # TCP probe via bash's /dev/tcp — purely "is the port bound?",
+            # no HTTP request, no curl timeout. Avoids false positives from
+            # vite's lazy first-request compile (which can blow past any
+            # reasonable HTTP timeout).
+            if (exec 3<>/dev/tcp/localhost/$PORT) 2>/dev/null; then
+                exec 3<&-; exec 3>&-
+                fails=0
+            else
+                fails=$((fails + 1))
+                if [ $fails -ge 3 ]; then
+                    echo "⚠️  Dev server unhealthy after $fails HC fails — restarting..."
+                    _kill_tree $DEV_PID
+                    break
+                fi
+            fi
+            sleep 5
+        done
+        wait $DEV_PID 2>/dev/null
+        DEV_PID=""
+        sleep 1
+    done
 
 [group('dev')]
 [doc('Full dev stack: Supabase + Astro + Godot watcher')]
