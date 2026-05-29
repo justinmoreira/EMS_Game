@@ -11,6 +11,17 @@ const TRANSCEIVER_DEF: UnitDefinition = preload("res://data/units/transceiver.tr
 const JAMMER_DEF: UnitDefinition = preload("res://data/units/jammer.tres")
 const SENSOR_DEF: UnitDefinition = preload("res://data/units/sensor.tres")
 
+# Fixed design width reported to the map layout. The panel's content can grow a
+# few px when the attribute rows populate; reporting a constant keeps the map
+# from reflowing/recentering every time the panel changes. The sidebar is
+# opaque on a CanvasLayer above the map, so any minor overhang is hidden.
+const SIDEBAR_WIDTH := 300.0
+
+# Fixed height of the ATTRIBUTES title row. Tall enough for the DELETE/CONFIRM
+# buttons so the row (and everything below it) doesn't shift when they toggle
+# on selecting a placed unit.
+const ATTR_HEADER_ROW_HEIGHT := 34.0
+
 # ── Colors ────────────────────────────────────
 const C_BG_DARK := Color("0d0f14")
 const C_BG_MID := Color("13161e")
@@ -53,11 +64,11 @@ func _ready() -> void:
 	GameEvents.units_changed.connect(_update_reset_button)
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
 	GameEvents.selection_changed.connect(_on_selection_changed)
-	resized.connect(func(): GameEvents.sidebar_resized.emit(size.x))
 	_build_sidebar()
 	_refresh_attribute_panel()
-	# Publish initial size so listeners (BaseLevel) get a value before any resize.
-	GameEvents.sidebar_resized.emit.call_deferred(size.x)
+	# Publish the fixed design width to listeners (BaseLevel). Constant, not the
+	# live size.x, so attribute-panel growth doesn't recenter the map.
+	GameEvents.sidebar_resized.emit.call_deferred(SIDEBAR_WIDTH)
 
 
 func _on_selection_changed(unit: Node) -> void:
@@ -191,9 +202,11 @@ func _on_saves_pressed() -> void:
 
 func _populate_tray(panel: PanelContainer) -> void:
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_MID, 14))
+	# Hug content height so the tray only takes what the cards + hint need; the
+	# attribute panel below gets the freed vertical space.
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 	var vbox := VBoxContainer.new()
-	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_theme_constant_override("separation", 8)
 	panel.add_child(vbox)
@@ -201,7 +214,6 @@ func _populate_tray(panel: PanelContainer) -> void:
 	vbox.add_child(_make_label("ENTITIES", C_DIM, 15))
 
 	var stack := VBoxContainer.new()
-	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 8)
 	vbox.add_child(stack)
@@ -286,10 +298,16 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 
 	var attr_header_row := HBoxContainer.new()
 	attr_header_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Reserve the DELETE/CONFIRM button height always, so the row doesn't grow
+	# (and shove "ATTRIBUTES"/the panel down) when those buttons toggle on
+	# selecting a live unit.
+	attr_header_row.custom_minimum_size.y = ATTR_HEADER_ROW_HEIGHT
 	attr_header_row.add_theme_constant_override("separation", 8)
 	_attr_content.add_child(attr_header_row)
 
-	attr_header_row.add_child(_make_label("ATTRIBUTES", C_DIM, 15))
+	var attr_title := _make_label("ATTRIBUTES", C_DIM, 15)
+	attr_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	attr_header_row.add_child(attr_title)
 
 	# Spacer pushes action buttons to the right of the title row so the
 	# layout is stable whether or not those buttons are visible — no
@@ -313,6 +331,7 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	del_style.set_content_margin_all(8)
 	delete_btn.add_theme_stylebox_override("normal", del_style)
 	delete_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	delete_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	delete_btn.pressed.connect(_on_delete_pressed)
 	delete_btn.visible = false
 
@@ -334,6 +353,7 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	cfm_style.set_content_margin_all(8)
 	confirm_btn.add_theme_stylebox_override("normal", cfm_style)
 	confirm_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	confirm_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	confirm_btn.pressed.connect(_on_confirm_pressed)
 	confirm_btn.visible = false
 

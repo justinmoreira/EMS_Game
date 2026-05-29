@@ -158,13 +158,12 @@ func _input(event: InputEvent) -> void:
 		and event.button_index == MOUSE_BUTTON_LEFT
 		and not event.pressed
 	):
-		# Click (no movement) → select only; drag (with movement) → recompute
-		# links to reflect the new geometry. Avoids redundant sims on pure
-		# selection clicks and preserves main #61's auto-sim-on-drag UX.
-		if _drag_distance < CLICK_DRAG_THRESHOLD_PX:
-			GameEvents.select(self)
-		else:
+		# A drag (moved past threshold) re-sims so links reflect the new geometry.
+		# Either way, end with this unit selected so its panel shows what you
+		# just clicked / placed / moved.
+		if _drag_links_cleared:
 			GameEvents.simulation_requested.emit()
+		GameEvents.select(self)
 		_is_being_dragged = false
 		get_tree().root.set_input_as_handled()
 		return
