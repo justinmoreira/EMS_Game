@@ -294,7 +294,7 @@ export default function AccountModal() {
                 &times;
               </button>
               <h2 class="text-xl font-bold mb-6">
-                {user ? "Account" : "Sign In"}
+                {user ? "Account" : mode === "signup" ? "Sign Up" : "Sign In"}
               </h2>
               {authLoading.value ? (
                 <div class="text-neutral-500">Loading...</div>
