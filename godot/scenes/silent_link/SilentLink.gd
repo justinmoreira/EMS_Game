@@ -41,7 +41,7 @@ func add_to_groups_recursive(node):
 
 func _ready() -> void:
 	super._ready()
-	GameEvents.simulation_requested.connect(_begin_simulation)
+	call_deferred("_connect_sim_signal")
 	set_process(true)
 
 	add_to_groups_recursive(self)
@@ -63,6 +63,17 @@ func _ready() -> void:
 
 	_scene_ready = true
 	_start()
+
+
+func _exit_tree() -> void:
+	# Only disconnect if connected (avoids errors)
+	if GameEvents.simulation_requested.is_connected(Callable(self, "_begin_simulation")):
+		GameEvents.simulation_requested.disconnect(Callable(self, "_begin_simulation"))
+
+
+func _connect_sim_signal():
+	if not GameEvents.simulation_requested.is_connected(Callable(self, "_begin_simulation")):
+		GameEvents.simulation_requested.connect(Callable(self, "_begin_simulation"))
 
 
 func _start() -> void:
@@ -347,7 +358,7 @@ func _on_next_level_pressed() -> void:
 		get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")
 		return
 
-	get_tree().change_scene_to_file("res://scenes/silent-link/level-%d.tscn" % _current_level)
+	get_tree().change_scene_to_file("res://scenes/silent_link/level-%d.tscn" % _current_level)
 
 
 func _on_finish_pressed() -> void:
