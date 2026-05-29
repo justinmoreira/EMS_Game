@@ -1,10 +1,11 @@
 [gd_scene format=3 uid="uid://dsj74ba2gk75t"]
 
-[ext_resource type="Script" uid="uid://crq4tqakx02qk" path="res://scenes/ui/HUD.gd" id="1_hud_script"]
+[ext_resource type="Texture2D" uid="uid://c7d0o05hl4s8p" path="res://assets/gear_icon.png" id="2_atyv1"]
+[ext_resource type="Script" uid="uid://crq4tqakx02qk" path="res://scenes/ui/HUD.gd" id="2_settings_icon"]
 
 [node name="HUD" type="CanvasLayer" unique_id=437482512]
 layer = 10
-script = ExtResource("1_hud_script")
+script = ExtResource("2_settings_icon")
 
 [node name="SettingsButton" type="Button" parent="." unique_id=2145623890]
 unique_name_in_owner = true
@@ -16,7 +17,8 @@ offset_top = 10.0
 offset_right = -10.0
 offset_bottom = 50.0
 grow_horizontal = 0
-text = "⚙"
+icon = ExtResource("2_atyv1")
+icon_alignment = 1
 
 [node name="SettingsPopup" type="PopupPanel" parent="." unique_id=-1240129370]
 unique_name_in_owner = true
@@ -38,7 +40,7 @@ grow_vertical = 2
 layout_mode = 2
 text = "Display Settings"
 
-[node name="Separator1" type="HSeparator" parent="SettingsPopup/SettingsContainer" unique_id=1308664686]
+[node name="Separator1" type="HSeparator" parent="SettingsPopup/SettingsContainer" unique_id=2068724058]
 custom_minimum_size = Vector2(0, 10)
 layout_mode = 2
 
@@ -71,14 +73,14 @@ layout_mode = 2
 button_pressed = true
 text = "Suggestions"
 
-[node name="Separator2" type="HSeparator" parent="SettingsPopup/SettingsContainer" unique_id=1625729021]
+[node name="Separator2" type="HSeparator" parent="SettingsPopup/SettingsContainer" unique_id=1137264128]
 custom_minimum_size = Vector2(0, 10)
 layout_mode = 2
 
 [node name="LegacyToggles" type="VBoxContainer" parent="SettingsPopup/SettingsContainer" unique_id=1245678906]
 layout_mode = 2
 
-[node name="ShaderLabel" type="Label" parent="SettingsPopup/SettingsContainer/LegacyToggles" unique_id=1454297908]
+[node name="ShaderLabel" type="Label" parent="SettingsPopup/SettingsContainer/LegacyToggles" unique_id=635677991]
 layout_mode = 2
 text = "Rendering"
 
@@ -88,7 +90,7 @@ layout_mode = 2
 button_pressed = true
 text = "Heightmap Shader"
 
-[node name="GridToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer/LegacyToggles" unique_id=261735359]
+[node name="GridToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer/LegacyToggles" unique_id=2147092773]
 unique_name_in_owner = true
 layout_mode = 2
 button_pressed = true
