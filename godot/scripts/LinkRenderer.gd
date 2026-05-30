@@ -31,8 +31,13 @@ func _exit_tree() -> void:
 	clear_all()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_update_active_link_visuals()
+	# Animate the moving-dashed pattern (CONNECTING links scroll their dashes).
+	for key in active_links:
+		var data = active_links[key]
+		if is_instance_valid(data.get("line")):
+			data.line.advance_dash(delta)
 
 
 func _input(event):
@@ -81,9 +86,9 @@ func _draw_directional_link(source: Unit, target: Unit, final_state: int) -> voi
 
 func _create_link_nodes(source: Unit, target: Unit, key: String) -> void:
 	var scene = get_tree().current_scene
-	var line = Line2D.new()
-	line.width = LINE_WIDTH
-	line.antialiased = true
+	# PatternedLinkLine draws solid/dashed/moving-dashed/zigzag per link state
+	# (via LinkVisuals) instead of a plain Line2D.
+	var line = PatternedLinkLine.new()
 	line.z_index = 100
 	scene.add_child(line)
 
@@ -125,7 +130,7 @@ func _update_link_geometry(key: String) -> void:
 	var l_start = start + (dir * NODE_PADDING) + (normal * LINE_OFFSET)
 	var l_end = end - (dir * NODE_PADDING) + (normal * LINE_OFFSET)
 
-	data.line.points = PackedVector2Array([l_start, l_end])
+	data.line.set_points(l_start, l_end)
 	data.arrow.global_position = l_end - dir * (ARROW_SIZE * 0.3)
 	data.arrow.rotation = dir.angle()
 
@@ -134,20 +139,29 @@ func _set_link_visual_state(key: String, state: int) -> void:
 	if not active_links.has(key):
 		return
 	var data = active_links[key]
-	var color = C_CONNECTING
+	# Each state maps to a color AND a line pattern (LinkVisuals): success is a
+	# solid green line, connecting scrolls a moving dash, failures use static
+	# dashes, and a jam zigzags.
+	var color = LinkVisuals.C_CONNECTING
+	var pattern = LinkVisuals.LINE_PATTERN_MOVING_DASHED
 	match state:
 		SimulationManager.LinkState.SUCCESS:
-			color = C_SUCCESS
+			color = LinkVisuals.C_SUCCESS
+			pattern = LinkVisuals.LINE_PATTERN_SOLID
 		SimulationManager.LinkState.FAILED_OUT_OF_RANGE:
-			color = C_OUT_OF_RANGE
+			color = LinkVisuals.C_OUT_OF_RANGE
+			pattern = LinkVisuals.LINE_PATTERN_DASHED
 		SimulationManager.LinkState.FAILED_JAMMED:
-			color = C_JAMMED
+			color = LinkVisuals.C_JAMMED
+			pattern = LinkVisuals.LINE_PATTERN_ZIGZAG
 		SimulationManager.LinkState.FREQUENCY_DIFF:
-			color = C_FREQUENCY_DIFF
+			color = LinkVisuals.C_FREQUENCY_DIFF
+			pattern = LinkVisuals.LINE_PATTERN_DASHED
 		SimulationManager.LinkState.BANDWIDTH_PENALTY:
-			color = C_BANDWIDTH_PENALTY
+			color = LinkVisuals.C_BANDWIDTH_PENALTY
+			pattern = LinkVisuals.LINE_PATTERN_DASHED
 	if is_instance_valid(data.line):
-		data.line.default_color = color
+		data.line.set_visual(color, pattern)
 	if is_instance_valid(data.arrow):
 		data.arrow.color = color
 	data["state"] = state
