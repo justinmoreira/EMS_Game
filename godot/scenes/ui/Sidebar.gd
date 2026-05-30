@@ -17,6 +17,11 @@ const SENSOR_DEF: UnitDefinition = preload("res://data/units/sensor.tres")
 # opaque on a CanvasLayer above the map, so any minor overhang is hidden.
 const SIDEBAR_WIDTH := 300.0
 
+# Fixed height of the ATTRIBUTES title row. Tall enough for the DELETE/CONFIRM
+# buttons so the row (and everything below it) doesn't shift when they toggle
+# on selecting a placed unit.
+const ATTR_HEADER_ROW_HEIGHT := 34.0
+
 # ── Colors ────────────────────────────────────
 const C_BG_DARK := Color("0d0f14")
 const C_BG_MID := Color("13161e")
@@ -171,9 +176,11 @@ func _populate_header(panel: PanelContainer) -> void:
 
 func _populate_tray(panel: PanelContainer) -> void:
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_MID, 14))
+	# Hug content height so the tray only takes what the cards + hint need; the
+	# attribute panel below gets the freed vertical space.
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 	var vbox := VBoxContainer.new()
-	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_theme_constant_override("separation", 8)
 	panel.add_child(vbox)
@@ -181,7 +188,6 @@ func _populate_tray(panel: PanelContainer) -> void:
 	vbox.add_child(_make_label("ENTITIES", C_DIM, 15))
 
 	var stack := VBoxContainer.new()
-	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 8)
 	vbox.add_child(stack)
@@ -266,21 +272,29 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 
 	var attr_header_row := HBoxContainer.new()
 	attr_header_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Reserve the DELETE/CONFIRM button height always, so the row doesn't grow
+	# (and shove "ATTRIBUTES"/the panel down) when those buttons toggle on
+	# selecting a live unit.
+	attr_header_row.custom_minimum_size.y = ATTR_HEADER_ROW_HEIGHT
+	attr_header_row.add_theme_constant_override("separation", 8)
 	_attr_content.add_child(attr_header_row)
 
-	attr_header_row.add_child(_make_label("ATTRIBUTES", C_DIM, 15))
+	var attr_title := _make_label("ATTRIBUTES", C_DIM, 15)
+	attr_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	attr_header_row.add_child(attr_title)
 
-	var button_row := HBoxContainer.new()
-	button_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button_row.add_theme_constant_override("separation", 10)
-	_attr_content.add_child(button_row)
+	# Spacer pushes action buttons to the right of the title row so the
+	# layout is stable whether or not those buttons are visible — no
+	# separate row appears/disappears on selection change.
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	attr_header_row.add_child(spacer)
 
 	var delete_btn := Button.new()
-	delete_btn.text = "DELETE UNIT"
+	delete_btn.text = "DELETE"
 	delete_btn.add_theme_font_size_override("font_size", 12)
 	delete_btn.add_theme_color_override("font_color", C_BG_DARK)
 	delete_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	delete_btn.custom_minimum_size = Vector2(120, 0)
 
 	var del_style := StyleBoxFlat.new()
 	del_style.bg_color = C_RED
@@ -289,24 +303,20 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	del_style.corner_radius_bottom_left = 3
 	del_style.corner_radius_bottom_right = 3
 	del_style.set_content_margin_all(8)
-
 	delete_btn.add_theme_stylebox_override("normal", del_style)
+	delete_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	delete_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	delete_btn.pressed.connect(_on_delete_pressed)
 	delete_btn.visible = false
 
-	button_row.add_child(delete_btn)
+	attr_header_row.add_child(delete_btn)
 	_delete_btn = delete_btn
-
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button_row.add_child(spacer)
 
 	var confirm_btn := Button.new()
 	confirm_btn.text = "CONFIRM"
 	confirm_btn.add_theme_font_size_override("font_size", 12)
 	confirm_btn.add_theme_color_override("font_color", C_BG_DARK)
 	confirm_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	confirm_btn.custom_minimum_size = Vector2(120, 0)
 
 	var cfm_style := StyleBoxFlat.new()
 	cfm_style.bg_color = C_GREEN
@@ -315,12 +325,13 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	cfm_style.corner_radius_bottom_left = 3
 	cfm_style.corner_radius_bottom_right = 3
 	cfm_style.set_content_margin_all(8)
-
 	confirm_btn.add_theme_stylebox_override("normal", cfm_style)
+	confirm_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	confirm_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	confirm_btn.pressed.connect(_on_confirm_pressed)
 	confirm_btn.visible = false
 
-	button_row.add_child(confirm_btn)
+	attr_header_row.add_child(confirm_btn)
 	_confirm_btn = confirm_btn
 
 	_attr_header = _make_label("", C_TEXT, 20)
@@ -343,8 +354,9 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	_attr_placeholder.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_attr_placeholder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_attr_placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	_attr_content.add_child(_attr_placeholder)
+	# Attach the placeholder OUTSIDE _attr_content so toggling its visibility
+	# doesn't reflow the attribute panel layout when a unit gets selected.
+	panel.add_child(_attr_placeholder)
 
 
 func _style_divider(sep: HSeparator) -> void:
@@ -381,6 +393,29 @@ func _refresh_attribute_panel() -> void:
 
 	for spec in def.attributes:
 		_add_attribute_input(spec, def)
+
+	# Transceivers get a "Send Message" button that visualizes frequency-
+	# dependent transmission delay. Only meaningful for placed units.
+	if selected_node is Unit and def.id == &"transceiver":
+		_add_send_message_button(def.color)
+
+
+func _add_send_message_button(accent: Color) -> void:
+	var btn := Button.new()
+	btn.text = "SEND MESSAGE"
+	btn.add_theme_font_size_override("font_size", 13)
+	btn.add_theme_color_override("font_color", C_BG_DARK)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var style := StyleBoxFlat.new()
+	style.bg_color = accent
+	style.corner_radius_top_left = 3
+	style.corner_radius_top_right = 3
+	style.corner_radius_bottom_left = 3
+	style.corner_radius_bottom_right = 3
+	style.set_content_margin_all(8)
+	btn.add_theme_stylebox_override("normal", style)
+	btn.pressed.connect(func(): GameEvents.message_send_requested.emit(selected_node))
+	_attr_body.add_child(btn)
 
 
 func _definition_for(t: EntityType) -> UnitDefinition:
@@ -488,8 +523,9 @@ func _add_slider(
 	spin.step = 1.0 if integers else 0.1
 	spin.rounded = integers
 	spin.suffix = unit
-	spin.size_flags_horizontal = Control.SIZE_SHRINK_END
-	spin.custom_minimum_size = Vector2(140, 0)
+	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Min keeps the +/− arrows usable; otherwise scales with row width.
+	spin.custom_minimum_size = Vector2(70, 0)
 	spin.add_theme_font_size_override("font_size", 13)
 	spin.add_theme_color_override("font_color", accent)
 	top.add_child(spin)
@@ -539,8 +575,8 @@ func _add_dropdown(
 	hbox.add_child(_make_label(label, C_DIM, 13, true))
 
 	var dd := OptionButton.new()
-	dd.size_flags_horizontal = Control.SIZE_SHRINK_END
-	dd.custom_minimum_size = Vector2(110, 0)
+	dd.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dd.custom_minimum_size = Vector2(70, 0)
 	dd.add_theme_font_size_override("font_size", 13)
 	dd.add_theme_color_override("font_color", accent)
 	for opt in options:
@@ -620,18 +656,21 @@ func _on_confirm_pressed() -> void:
 	if not selected_node:
 		return
 
-	# Round-6 routes attribute writes through _write_attribute, which goes
-	# straight to selected_node.set_value when a Unit is selected. So pending
-	# is normally empty here; flush stragglers just in case.
+	# Drop any LineEdit focus so its focus_exited fires (flushes the typed
+	# value through _write_attribute) and the keyboard isn't trapped after
+	# the user commits. Selection stays — Confirm is "apply + sim", not
+	# "apply + close" (that was the older qol-bugs behavior — see commit
+	# history if you want to revert).
+	get_viewport().gui_release_focus()
+
+	# _write_attribute writes through to selected_node.set_value when a Unit
+	# is selected, so pending is normally empty here; flush stragglers just
+	# in case.
 	if selected_node is Unit:
 		for id in pending_attributes:
 			selected_node.set_value(id, pending_attributes[id])
 	pending_attributes.clear()
 
-	# clear_selection routes through GameEvents → BaseLevel handles the
-	# visual unhighlight; no direct Visual node poke here.
-	GameEvents.clear_selection()
-	select_entity(EntityType.NONE)
 	GameEvents.simulation_requested.emit()
 
 
@@ -664,7 +703,7 @@ func _add_text_input(label: String, current: String, accent: Color, on_change: C
 	var input := LineEdit.new()
 	input.text = current
 	input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	input.custom_minimum_size = Vector2(140, 0)
+	input.custom_minimum_size = Vector2(60, 0)
 	input.add_theme_font_size_override("font_size", 13)
 	input.add_theme_color_override("font_color", accent)
 	input.text_submitted.connect(func(v): on_change.call(v))
@@ -699,11 +738,12 @@ func _apply_style(
 	control.add_theme_stylebox_override("panel", s)
 
 
-## Shorthand label factory
+## Shorthand label factory. No fixed minimum width — text intrinsic-sizes itself
+## so rows stay narrower than the sidebar's content area. Set `expand=true` for
+## row labels that should grab leftover horizontal space.
 func _make_label(text: String, color: Color, txt_size: int, expand: bool = false) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.custom_minimum_size.x = 120
 	lbl.add_theme_color_override("font_color", color)
 	lbl.add_theme_font_size_override("font_size", txt_size)
 	if expand:

@@ -55,3 +55,12 @@ signal sidebar_resized(width: float)
 # Sim broadcast — SimulationManager emits, renderers/listeners react.
 @warning_ignore("unused_signal")
 signal simulation_complete(link_results: Array, detect_results: Array)
+
+# Message relay — Sidebar emits send_requested; MessageRelay computes per-receiver
+# delay (higher frequency = faster) and emits message_dispatched, which the
+# renderer animates as a traveling pulse. Educational: visualize the benefit
+# of higher transmitter frequency.
+@warning_ignore("unused_signal")
+signal message_send_requested(from_unit: Node)
+@warning_ignore("unused_signal")
+signal message_dispatched(from_unit: Node, to_unit: Node, delay: float)
