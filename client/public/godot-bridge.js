@@ -78,3 +78,33 @@ window.initTutorialListener = function () {
     }
   };
 })();
+
+// Multiplayer SUBMIT bridge. Defined here (alongside saveSandbox) instead
+// of inside the React component so the symbol exists in the global scope
+// the moment godot-bridge.js loads — Godot's JavaScriptBridge.eval can
+// land here without racing Preact hydration. The real handler
+// (window.submitMpAction) is wired up by MultiplayerMatch.tsx once the
+// match row is fetched; this trampoline forwards to it and surfaces
+// problems via console so a silent click is no longer ambiguous.
+window.mpSubmitBoard = function (boardJson) {
+  console.log(
+    '[bridge] mpSubmitBoard called, payload bytes:',
+    (boardJson || '').length,
+  );
+  if (typeof window.submitMpAction !== 'function') {
+    console.warn(
+      '[bridge] mpSubmitBoard: window.submitMpAction is not defined — Preact effect may not have run yet, or you are not signed in',
+    );
+    return;
+  }
+  try {
+    var p = window.submitMpAction(boardJson);
+    if (p && typeof p.then === 'function') {
+      p.catch(function (e) {
+        console.error('[bridge] mpSubmitBoard: submitMpAction rejected:', e);
+      });
+    }
+  } catch (e) {
+    console.error('[bridge] mpSubmitBoard: submitMpAction threw:', e);
+  }
+};

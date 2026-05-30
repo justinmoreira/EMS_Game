@@ -33,6 +33,9 @@ var unit_attributes_visible: bool = false
 # --- Initialization ---
 
 
+var _opponent_board_cb: Variant = null
+
+
 func _ready():
 	get_tree().get_root().size_changed.connect(_on_window_resized)
 	GameEvents.selection_changed.connect(_on_selection_changed)
@@ -40,7 +43,110 @@ func _ready():
 	GameEvents.reset_requested.connect(_on_reset_requested)
 	GameEvents.delete_requested.connect(_on_delete_requested)
 	GameEvents.sidebar_resized.connect(_on_sidebar_resized)
+	GameEvents.mp_submit_requested.connect(_on_mp_submit_requested)
+	_register_mp_receive_hook()
 	_on_window_resized()
+
+
+# Exposes window.godotApplyOpponentBoard so MultiplayerMatch.tsx (which
+# subscribes to match_actions INSERTs) can push the opponent's snapshot
+# straight into the scene. Stored on `self` to keep the Callable alive —
+# JavaScriptBridge.create_callback returns a ref that's GC'd if dropped.
+func _register_mp_receive_hook() -> void:
+	if not OS.has_feature("web"):
+		return
+	var window: Variant = JavaScriptBridge.get_interface("window")
+	if window == null:
+		return
+	_opponent_board_cb = JavaScriptBridge.create_callback(_on_js_apply_opponent_board)
+	window.godotApplyOpponentBoard = _opponent_board_cb
+
+
+# JS bridge entry: receives (board_json_string, owner_player_id_string).
+func _on_js_apply_opponent_board(args: Array) -> void:
+	if args.size() < 2:
+		push_warning("[BaseLevel] godotApplyOpponentBoard called with %d args (need 2)" % args.size())
+		return
+	var json := str(args[0])
+	var owner_id := str(args[1])
+	if json.is_empty() or owner_id.is_empty():
+		return
+	var snapshot: Variant = JSON.parse_string(json)
+	if not (snapshot is Array):
+		push_warning("[BaseLevel] opponent board parse failed or not Array")
+		return
+	print("[BaseLevel] applying opponent board: ", (snapshot as Array).size(), " units, owner=", owner_id.substr(0, 8))
+	apply_opponent_board(snapshot as Array, owner_id)
+
+
+# Additively applies a remote player's snapshot. Existing units owned by
+# the SAME remote player are wiped first (so each opponent submit
+# replaces their previous state rather than stacking), but your own
+# units (no owner_player_id) are left alone. The unit-color scaffolding
+# in Unit._resolve_circle_color reads physical_state.owner_player_id
+# and inverts RGB when it doesn't match window.MULTIPLAYER_PLAYER_ID.
+func apply_opponent_board(snapshot: Array, owner_id: String) -> void:
+	for child in get_children():
+		if not (child is Unit):
+			continue
+		var existing_owner: Variant = (child as Unit).physical_state.get(&"owner_player_id", null)
+		if existing_owner is String and (existing_owner as String) == owner_id:
+			child.queue_free()
+	await get_tree().process_frame
+
+	for entry in snapshot:
+		if not (entry is Dictionary):
+			continue
+		var type_id := StringName(String((entry as Dictionary).get("type", "")))
+		var scene: PackedScene = _UNIT_SCENES.get(type_id)
+		if scene == null:
+			continue
+		var state: Dictionary = (entry as Dictionary).get("state", {})
+		var world_uv := Vector2.ZERO
+		var uv_raw: Variant = state.get("world_uv", null)
+		if uv_raw is Dictionary:
+			world_uv = Vector2(
+				float((uv_raw as Dictionary).get("x", 0.0)),
+				float((uv_raw as Dictionary).get("y", 0.0))
+			)
+
+		var unit: Unit = scene.instantiate()
+		unit.owner = null
+		# Seed owner_player_id into physical_state BEFORE add_child so
+		# Unit._ready → _spawn_visual → _resolve_circle_color sees the
+		# tag on the very first draw and inverts the color. Unit._set
+		# only writes pre-existing keys; physical_state is a plain Dict
+		# at this stage so direct assignment is the way in.
+		unit.physical_state[&"owner_player_id"] = owner_id
+		for k in state:
+			if String(k) == "world_uv":
+				continue
+			unit.set(k, state[k])
+		add_child(unit)
+		unit.set_value(&"world_uv", world_uv)
+		unit.global_position = world_uv_to_screen(world_uv)
+
+
+# Multiplayer SUBMIT: snapshot the current unit layout and ship it to JS,
+# which forwards to MultiplayerMatch.tsx's submitMpAction (inserts a row
+# in match_actions for the current turn). serialize_units already returns
+# the same JSON-friendly shape ScenePersister uses for sandbox autosaves.
+func _on_mp_submit_requested() -> void:
+	if not OS.has_feature("web"):
+		return
+	var snapshot := serialize_units()
+	# Double-stringify: inner produces the snapshot JSON; outer wraps it
+	# as a JS string literal so the eval'd source carries it intact.
+	var snapshot_json := JSON.stringify(snapshot)
+	var js_arg := JSON.stringify(snapshot_json)
+	print(
+		"[BaseLevel] MP submit: serialized ",
+		snapshot.size(),
+		" units, ",
+		snapshot_json.length(),
+		" bytes"
+	)
+	JavaScriptBridge.eval("window.mpSubmitBoard(" + js_arg + ")")
 
 
 func _on_sidebar_resized(width: float) -> void:

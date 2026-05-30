@@ -64,3 +64,9 @@ signal simulation_complete(link_results: Array, detect_results: Array)
 signal message_send_requested(from_unit: Node)
 @warning_ignore("unused_signal")
 signal message_dispatched(from_unit: Node, to_unit: Node, delay: float)
+
+# Multiplayer SUBMIT — Sidebar emits when the user presses the header
+# button in MP mode. BaseLevel serializes the current unit layout and
+# bridges the JSON to JS (window.mpSubmitBoard → window.submitMpAction).
+@warning_ignore("unused_signal")
+signal mp_submit_requested
