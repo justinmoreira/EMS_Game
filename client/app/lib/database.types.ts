@@ -49,6 +49,71 @@ export type Database = {
         }
         Relationships: []
       }
+      match_actions: {
+        Row: {
+          action: Json
+          created_at: string
+          match_id: string
+          player_id: string
+          turn_number: number
+        }
+        Insert: {
+          action: Json
+          created_at?: string
+          match_id: string
+          player_id: string
+          turn_number: number
+        }
+        Update: {
+          action?: Json
+          created_at?: string
+          match_id?: string
+          player_id?: string
+          turn_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_actions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matches: {
+        Row: {
+          created_at: string
+          current_turn: number
+          guest_id: string | null
+          host_id: string | null
+          id: string
+          seed: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_turn?: number
+          guest_id?: string | null
+          host_id?: string | null
+          id: string
+          seed: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_turn?: number
+          guest_id?: string | null
+          host_id?: string | null
+          id?: string
+          seed?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sandbox_states: {
         Row: {
           created_at: string

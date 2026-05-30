@@ -17,7 +17,7 @@ const modes = [
     id: "sandbox",
     name: "Sandbox",
     icon: "cube",
-    href: `${BASE_URL}/play`,
+    href: `${BASE_URL}/sandbox`,
     description:
       "Experiment freely with transceivers, sensors, jammers, and terrain without mission restrictions.",
     badge: "Playable",
@@ -98,47 +98,60 @@ const modes = [
         </div>
       </div>
 
-      <div
-        class="mb-16 flex w-full max-w-3xl flex-col gap-5 rounded-2xl border border-white/10 bg-black/45 p-6 shadow-2xl backdrop-blur-md md:flex-row md:items-center md:justify-between"
-      >
-        <div class="flex gap-5">
-          <div
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-emerald-400 text-emerald-400"
-          >
-            i
-          </div>
+    </section>
+  </main>
 
-          <div>
-            <h2 class="font-semibold text-white">
-              Choose your singleplayer game mode
-            </h2>
-
-            <p
-              id="mode-description"
-              class="mt-2 max-w-md text-sm leading-6 text-neutral-300"
-            >
-              Learn the basics of EMS gameplay, unit placement, frequency
-              matching, and signal behavior.
-            </p>
-          </div>
+  <!-- Equal-gap positioning: GemsTitle is centered at 50vh with content
+       half-height ≈ 5.5rem mobile / 6.5rem desktop, so the Play Now
+       button bottom sits at ~50vh + that. Midpoint between button
+       bottom and the viewport floor (100vh) is 75vh + 2.75rem mobile /
+       3.25rem desktop. Anchoring the card's vertical center there
+       (top:<midpoint> + -translate-y-1/2) yields equal gaps above and
+       below. Responsive padding keeps the card compact on short
+       viewports so the symmetric layout doesn't collide with the
+       button. -->
+  <aside
+    class="fixed left-1/2 top-[calc(75vh+2.75rem)] z-10 w-full max-w-3xl -translate-x-1/2 -translate-y-1/2 px-6 md:top-[calc(75vh+3.25rem)]"
+  >
+    <div
+      class="flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-black/45 p-4 shadow-2xl backdrop-blur-md md:flex-row md:items-center md:justify-between md:gap-5 md:p-6"
+    >
+      <div class="flex gap-4 md:gap-5">
+        <div
+          class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-400 text-emerald-400 md:h-9 md:w-9"
+        >
+          i
         </div>
 
-        <div
-          class="rounded-xl border border-white/10 bg-black/40 px-6 py-4 text-sm text-neutral-300"
-        >
-          <p
-            id="mode-badge"
-            class="font-semibold uppercase tracking-wide text-emerald-400"
-          >
-            Recommended
-          </p>
+        <div>
+          <h2 class="font-semibold text-white">
+            Choose your singleplayer game mode
+          </h2>
 
-          <p class="mt-2">Selected game mode</p>
+          <p
+            id="mode-description"
+            class="mt-1 max-w-md text-sm leading-6 text-neutral-300 md:mt-2"
+          >
+            Learn the basics of EMS gameplay, unit placement, frequency
+            matching, and signal behavior.
+          </p>
         </div>
       </div>
 
-    </section>
-  </main>
+      <div
+        class="rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-neutral-300 md:px-6 md:py-4"
+      >
+        <p
+          id="mode-badge"
+          class="font-semibold uppercase tracking-wide text-emerald-400"
+        >
+          Recommended
+        </p>
+
+        <p class="mt-1 md:mt-2">Selected game mode</p>
+      </div>
+    </div>
+  </aside>
 
   <script
     is:inline

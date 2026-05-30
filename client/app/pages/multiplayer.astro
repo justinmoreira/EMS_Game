@@ -1,0 +1,22 @@
+---
+import MultiplayerLobby from "@/components/MultiplayerLobby";
+import Base from "@/layouts/Base.astro";
+---
+
+<Base title="Multiplayer | EMS Sim">
+  <div class="fixed inset-0 -z-10 bg-[#0a0a0a]"></div>
+
+  <main class="mx-auto max-w-4xl px-6 pt-20 pb-12 text-white">
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold">Multiplayer</h1>
+      <p class="mt-2 text-sm text-neutral-400">
+        Click <span class="text-emerald-400">Join</span> to claim a seat in a
+        lobby. Once you're registered, <span class="text-emerald-400">Open</span> the
+        lobby to load the match — the Godot map streams in while you wait for the
+        second player.
+      </p>
+    </header>
+
+    <MultiplayerLobby client:only="preact" />
+  </main>
+</Base>
