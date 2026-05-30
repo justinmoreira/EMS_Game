@@ -5,6 +5,14 @@ extends Control
 const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
 const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
 
+# definition.id → unit scene to instantiate when reconstructing the level
+# from a snapshot. Lookup table for serialize/deserialize_units below.
+const _UNIT_SCENES := {
+	&"transceiver": preload("res://scenes/core/units/TransceiverUnit.tscn"),
+	&"jammer": preload("res://scenes/core/units/JammerUnit.tscn"),
+	&"sensor": preload("res://scenes/core/units/SensorUnit.tscn"),
+}
+
 # Camera / Viewport State
 var zoom := 1.0
 var offset := Vector2.ZERO
@@ -321,3 +329,66 @@ func _get_or_create_attribute_label(unit: Unit) -> UnitAttributesLabel:
 	label.setup(unit, unit)
 	label.visible = unit_attributes_visible
 	return label
+
+
+# --- Unit serialization (pure utilities) ---------------------------------
+#
+# These produce / consume a JSON-friendly snapshot of the level's units.
+# They have NO side effects beyond the unit tree itself — no auto-saving,
+# no event emission besides the explicit simulation_requested at the end of
+# deserialize_units. A persister Node (e.g., ScenePersister.gd) decides
+# when/where to call these for any given level.
+#
+# Snapshot shape:  Array of { "type": StringName id, "state": Dictionary }
+# `state` is the unit's physical_state.duplicate(), with any Vector2 entries
+# (currently just world_uv) split into {"x", "y"} for JSON friendliness.
+
+
+func serialize_units() -> Array:
+	var out: Array = []
+	for child in get_children():
+		if not (child is Unit and child.definition):
+			continue
+		var state: Dictionary = child.physical_state.duplicate()
+		var uv = state.get(&"world_uv", null)
+		if uv is Vector2:
+			state[&"world_uv"] = {"x": uv.x, "y": uv.y}
+		out.append({"type": String(child.definition.id), "state": state})
+	return out
+
+
+func deserialize_units(snapshot: Array) -> void:
+	# Wipe the current scene before instantiating from the snapshot. queue_free
+	# is deferred so we wait a frame before adding the replacements; otherwise
+	# the new units race with the doomed ones and units_changed double-fires.
+	for group in [&"transceivers", &"jammers", &"sensors"]:
+		for u in get_tree().get_nodes_in_group(group):
+			u.queue_free()
+	await get_tree().process_frame
+
+	for entry in snapshot:
+		if not (entry is Dictionary):
+			continue
+		var type_id := StringName(String(entry.get("type", "")))
+		var scene: PackedScene = _UNIT_SCENES.get(type_id)
+		if scene == null:
+			continue
+		var state: Dictionary = entry.get("state", {})
+		var world_uv := Vector2.ZERO
+		var uv_raw = state.get("world_uv", null)
+		if uv_raw is Dictionary:
+			world_uv = Vector2(float(uv_raw.get("x", 0.0)), float(uv_raw.get("y", 0.0)))
+
+		var unit: Unit = scene.instantiate()
+		unit.owner = null
+		# Seed physical_state BEFORE add_child so _ready sees the user's saved
+		# values and skips the auto-name fallback.
+		for k in state:
+			if String(k) == "world_uv":
+				continue
+			unit.set(k, state[k])
+		add_child(unit)
+		unit.set_value(&"world_uv", world_uv)
+		unit.global_position = world_uv_to_screen(world_uv)
+
+	GameEvents.simulation_requested.emit()

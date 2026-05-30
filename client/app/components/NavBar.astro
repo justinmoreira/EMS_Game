@@ -5,7 +5,6 @@ import { BASE_URL } from "@/utils";
 
 <nav
   class="fixed top-0 left-0 right-0 z-50 bg-neutral-900/80 backdrop-blur-sm border-b border-neutral-700"
-  transition:persist
 >
   <div class="relative flex items-center justify-between px-6 h-12">
     <a href={`${BASE_URL}/`} class="text-sm font-bold tracking-wide">
@@ -15,7 +14,7 @@ import { BASE_URL } from "@/utils";
       class="absolute left-1/2 -translate-x-1/2 flex items-center gap-6"
     >
       <a
-        href={`${BASE_URL}/play`}
+        href={`${BASE_URL}/singleplayer`}
         class="text-sm font-medium hover:text-white text-neutral-300 transition-colors"
       >
         Singleplayer
@@ -47,6 +46,7 @@ import { BASE_URL } from "@/utils";
             "Account";
       } catch {}
     </script>
-    <AccountModal client:only="preact" />
+    <AccountModal client:only="preact" transition:persist />
+
   </div>
 </nav>
