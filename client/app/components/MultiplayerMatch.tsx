@@ -63,7 +63,9 @@ export default function MultiplayerMatch() {
   useEffect(() => {
     if (verifying) return;
     if (user === null) {
-      console.log("[mp/match] auth verification done, no user — redirecting to /singleplayer");
+      console.log(
+        "[mp/match] auth verification done, no user — redirecting to /singleplayer",
+      );
       window.location.href = `${BASE_URL}/singleplayer`;
     }
   }, [verifying, user]);
@@ -322,9 +324,7 @@ export default function MultiplayerMatch() {
     return (
       <Overlay>
         <Card title="Signed out">
-          <p class="text-sm text-neutral-400">
-            Returning to singleplayer...
-          </p>
+          <p class="text-sm text-neutral-400">Returning to singleplayer...</p>
         </Card>
       </Overlay>
     );
@@ -429,4 +429,3 @@ function BackToLobbiesButton() {
     </a>
   );
 }
-

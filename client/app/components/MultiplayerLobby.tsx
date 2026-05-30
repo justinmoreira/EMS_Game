@@ -66,9 +66,7 @@ export default function MultiplayerLobby() {
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "matches" },
         (payload: { old: { id?: string } }) =>
-          setMatches((prev) =>
-            prev.filter((m) => m.id !== payload.old.id),
-          ),
+          setMatches((prev) => prev.filter((m) => m.id !== payload.old.id)),
       )
       .subscribe();
     return () => {

@@ -32,7 +32,6 @@ var unit_attributes_visible: bool = false
 
 # --- Initialization ---
 
-
 var _opponent_board_cb: Variant = null
 
 
@@ -65,7 +64,9 @@ func _register_mp_receive_hook() -> void:
 # JS bridge entry: receives (board_json_string, owner_player_id_string).
 func _on_js_apply_opponent_board(args: Array) -> void:
 	if args.size() < 2:
-		push_warning("[BaseLevel] godotApplyOpponentBoard called with %d args (need 2)" % args.size())
+		push_warning(
+			"[BaseLevel] godotApplyOpponentBoard called with %d args (need 2)" % args.size()
+		)
 		return
 	var json := str(args[0])
 	var owner_id := str(args[1])
@@ -75,7 +76,12 @@ func _on_js_apply_opponent_board(args: Array) -> void:
 	if not (snapshot is Array):
 		push_warning("[BaseLevel] opponent board parse failed or not Array")
 		return
-	print("[BaseLevel] applying opponent board: ", (snapshot as Array).size(), " units, owner=", owner_id.substr(0, 8))
+	print(
+		"[BaseLevel] applying opponent board: ",
+		(snapshot as Array).size(),
+		" units, owner=",
+		owner_id.substr(0, 8)
+	)
 	apply_opponent_board(snapshot as Array, owner_id)
 
 
