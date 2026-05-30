@@ -119,7 +119,7 @@ func _sort_keys_by_radius_desc(a, b) -> int:
 	return -1 if ra > rb else 1
 
 
-func _draw() -> void:	
+func _draw() -> void:
 	var font := ThemeDB.fallback_font
 
 	# Draw selection corners if selected

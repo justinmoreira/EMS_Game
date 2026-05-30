@@ -113,8 +113,7 @@ func update_ranges() -> void:
 		var bw_penalty: float = PhysicsEngine.bandwidth_penalty(bw_idx)
 		if bw_penalty > 0.0:
 			var strong_range = PhysicsEngine.calculate_signal_range(
-				power, height, height, frequency,
-				PhysicsEngine.NOISE_FLOOR / bw_power
+				power, height, height, frequency, PhysicsEngine.NOISE_FLOOR / bw_power
 			)
 			_unit_visual.set_ring("strong_range", min(strong_range, max_range), "STRONG SIGNAL")
 		else:

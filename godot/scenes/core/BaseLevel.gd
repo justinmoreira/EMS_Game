@@ -207,6 +207,7 @@ func _set_unit_selected_visual(unit: Unit, selected: bool) -> void:
 
 # --- Sidebar button handlers ---
 
+
 func _set_unit_hover_visual(unit: Node, hovered: bool) -> void:
 	if unit == null:
 		return
@@ -241,6 +242,7 @@ func _get_unit_component(unit: Node) -> Node:
 		if child.name in ["Transceiver", "Jammer", "Sensor"]:
 			return child
 	return null
+
 
 func _on_reset_requested() -> void:
 	# LinkRenderer also subscribes to reset_requested and clears its own visuals.

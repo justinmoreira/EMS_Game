@@ -77,8 +77,8 @@ func _on_grid_toggled(is_pressed: bool):
 	var level = get_tree().current_scene
 	if level.has_method("toggle_grid"):
 		level.toggle_grid(is_pressed)
-	
-	
+
+
 func _on_link_lines_toggled(is_pressed: bool):
 	settings["link_lines"] = is_pressed
 	_save_settings()
