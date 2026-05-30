@@ -82,3 +82,9 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 func calculate_detection(srx: Unit, tx: Unit) -> bool:
 	var dist = PhysicsEngine.calculate_distance(srx.global_position, tx.global_position)
 	return PhysicsEngine.is_detected(tx, srx, dist)
+
+
+func _update_all_unit_ranges() -> void:
+	for group in [&"transceivers", &"jammers"]:
+		for unit in get_tree().get_nodes_in_group(group):
+			unit.update_ranges()

@@ -20,11 +20,10 @@ var unit_name: String = ""  # Unit name
 var _animated_sprite: AnimatedSprite2D
 
 var signal_rings: Dictionary = {}
-var show_range: bool = true
+var show_range: bool = false
 
 
 func _ready() -> void:
-	name = "Visual"
 	if sprite_sheet_path and ResourceLoader.exists(sprite_sheet_path):
 		_setup_animated_sprite()
 	else:
@@ -120,7 +119,7 @@ func _sort_keys_by_radius_desc(a, b) -> int:
 	return -1 if ra > rb else 1
 
 
-func _draw() -> void:
+func _draw() -> void:	
 	var font := ThemeDB.fallback_font
 
 	# Draw selection corners if selected
@@ -186,53 +185,53 @@ func _draw() -> void:
 			Vector2(offset, offset), Vector2(offset, offset - corner_length), color, thickness, true
 		)
 
-		if show_range and signal_rings.size() > 0:
-			var keys = signal_rings.keys()
-			keys.sort_custom(Callable(self, "_sort_keys_by_radius_desc"))
+	if show_range and signal_rings.size() > 0 and (is_selected or is_hovered):
+		var keys = signal_rings.keys()
+		keys.sort_custom(Callable(self, "_sort_keys_by_radius_desc"))
 
-			for key in keys:
-				var ring = signal_rings[key]
-				var radius_km = ring.get("radius_km", 0.0)
-				if radius_km <= 0.0:
-					continue
+		for key in keys:
+			var ring = signal_rings[key]
+			var radius_km = ring.get("radius_km", 0.0)
+			if radius_km <= 0.0:
+				continue
 
-				var rendered_radius = radius_km * PhysicsEngine.PIXELS_PER_UNIT
-				var range_fill := Color(0.8, 0.8, 0.8, 0.15 if is_selected else 0.05)
-				var range_stroke := Color(0.8, 0.8, 0.8, 0.5 if is_selected else 0.35)
-				var stroke_w := 4 if is_selected else 2
+			var rendered_radius = radius_km * PhysicsEngine.PIXELS_PER_UNIT
+			var range_fill := Color(0.8, 0.8, 0.8, 0.15 if is_selected else 0.05)
+			var range_stroke := Color(0.8, 0.8, 0.8, 0.5 if is_selected else 0.35)
+			var stroke_w := 4 if is_selected else 2
 
-				draw_circle(Vector2.ZERO, rendered_radius, range_fill, true)
-				draw_arc(Vector2.ZERO, rendered_radius, 0, TAU, 64, range_stroke, stroke_w, true)
+			draw_circle(Vector2.ZERO, rendered_radius, range_fill, true)
+			draw_arc(Vector2.ZERO, rendered_radius, 0, TAU, 64, range_stroke, stroke_w, true)
 
-				if is_selected:
-					var label_text = ring.get("label", "")
-					if label_text == "":
-						label_text = str(key)
+			if is_selected:
+				var label_text = ring.get("label", "")
+				if label_text == "":
+					label_text = str(key)
 
-					# Walks down from km to m, and eventually snaps to nearest 25m for close ranges
-					if radius_km >= 3.0:
-						label_text += ": " + str(int(radius_km)) + " km"
-					elif radius_km >= 1.0:
-						label_text += ": " + str(snapped(radius_km * 1000, 100.0)) + " m"
-					else:
-						label_text += ": " + str(snapped(radius_km * 1000, 25.0)) + " m"
+				# Walks down from km to m, and eventually snaps to nearest 25m for close ranges
+				if radius_km >= 3.0:
+					label_text += ": " + str(int(radius_km)) + " km"
+				elif radius_km >= 1.0:
+					label_text += ": " + str(snapped(radius_km * 1000, 100.0)) + " m"
+				else:
+					label_text += ": " + str(snapped(radius_km * 1000, 25.0)) + " m"
 
-					var label_size := font.get_string_size(
-						label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, SIGNAL_RANGE_FONT_SIZE
-					)
-					var label_pos := Vector2(
-						-label_size.x / 2.0, -rendered_radius - label_size.y + 12.0
-					)
-					var text_color := Color(1, 1, 1, 1.0)
-					draw_string(
-						font,
-						label_pos,
-						label_text,
-						HORIZONTAL_ALIGNMENT_LEFT,
-						-1,
-						SIGNAL_RANGE_FONT_SIZE,
-						text_color
-					)
+				var label_size := font.get_string_size(
+					label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, SIGNAL_RANGE_FONT_SIZE
+				)
+				var label_pos := Vector2(
+					-label_size.x / 2.0, -rendered_radius - label_size.y + 12.0
+				)
+				var text_color := Color(1, 1, 1, 1.0)
+				draw_string(
+					font,
+					label_pos,
+					label_text,
+					HORIZONTAL_ALIGNMENT_LEFT,
+					-1,
+					SIGNAL_RANGE_FONT_SIZE,
+					text_color
+				)
 
 	if not _animated_sprite:
 		draw_circle(Vector2.ZERO, RADIUS, Color(circle_color, 0.8))

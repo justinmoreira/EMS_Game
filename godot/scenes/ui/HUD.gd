@@ -16,7 +16,6 @@ func _ready():
 	# Old toggles
 	%Toggle.toggled.connect(_on_shader_toggled)
 	%GridToggle.toggled.connect(_on_grid_toggled)
-	%RangeToggle.toggled.connect(_on_range_toggled)
 
 	# Connect settings button
 	%SettingsButton.pressed.connect(_on_settings_button_pressed)
@@ -78,14 +77,8 @@ func _on_grid_toggled(is_pressed: bool):
 	var level = get_tree().current_scene
 	if level.has_method("toggle_grid"):
 		level.toggle_grid(is_pressed)
-
-
-func _on_range_toggled(is_pressed: bool):
-	var level = get_tree().current_scene
-	if level.has_method("toggle_signal_ranges"):
-		level.toggle_signal_ranges(is_pressed)
-    
-    
+	
+	
 func _on_link_lines_toggled(is_pressed: bool):
 	settings["link_lines"] = is_pressed
 	_save_settings()
@@ -106,7 +99,9 @@ func _on_unit_ranges_toggled(is_pressed: bool):
 	settings["unit_ranges"] = is_pressed
 	_save_settings()
 
-	# ADD LATER
+	var level = get_tree().current_scene
+	if level.has_method("toggle_signal_ranges"):
+		level.toggle_signal_ranges(is_pressed)
 
 
 func _on_unit_details_toggled(is_pressed: bool):

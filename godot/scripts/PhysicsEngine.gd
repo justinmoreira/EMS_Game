@@ -139,7 +139,7 @@ static func calculate_interference(
 	return total_interference
 
 
-func calculate_signal_range(
+static func calculate_signal_range(
 	tx_power: float,
 	height_tx: float,
 	height_rx: float,
@@ -172,7 +172,7 @@ func calculate_signal_range(
 	return max(0.0, max_distance)
 
 
-func range_check(received_power: float) -> bool:
+static func range_check(received_power: float) -> bool:
 	"""
 	Checks if receivedpower is abovenoisefloor
 

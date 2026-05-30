@@ -15,7 +15,7 @@ var last_mouse_pos := Vector2.ZERO
 var currently_selected_unit: Node = null
 var currently_hovered_unit: Node = null
 @export var base_hover_radius: float = 32.0
-@export var show_signal_ranges: bool = true
+@export var show_signal_ranges: bool = false
 # Sidebar layout — populated via signal, no global find_child reach.
 # Width is the live x-size of the sidebar; 0 if no sidebar in this scene.
 var sidebar_width: float = 0.0
@@ -210,24 +210,26 @@ func _set_unit_selected_visual(unit: Unit, selected: bool) -> void:
 func _set_unit_hover_visual(unit: Node, hovered: bool) -> void:
 	if unit == null:
 		return
-	var visual := unit.find_child("Visual")
-	if visual and visual.has_method("set_hovered"):
-		visual.set_hovered(hovered)
+	for child in unit.get_children():
+		if child is UnitVisual:
+			child.set_hovered(hovered)
+			break
 
 
 func _set_unit_show_range_visual(unit: Node, enabled: bool) -> void:
 	if unit == null:
 		return
-	var visual := unit.find_child("Visual")
-	if visual and visual.has_method("set_show_range"):
-		visual.set_show_range(enabled)
+	for child in unit.get_children():
+		if child is UnitVisual:
+			child.set_show_range(enabled)
+			break
 
 
 func toggle_signal_ranges(enabled: bool) -> void:
 	# Toggle display of signal ranges for all unit visuals
 	show_signal_ranges = enabled
 	for child in get_children():
-		if child is EMSUnit:
+		if child is Unit:
 			_set_unit_show_range_visual(child, enabled)
 
 
@@ -281,9 +283,7 @@ func _input(event: InputEvent) -> void:
 			offset += mouse_uv * (old_zoom - zoom)
 			_clamp_offset()
 			update_shader()
-	return
 
-	# Hover logic
 	elif event is InputEventMouseMotion:
 		if dragging or event.position.x < sidebar_width:
 			return
@@ -291,7 +291,7 @@ func _input(event: InputEvent) -> void:
 		var mouse_pos = get_global_mouse_position()
 		var new_hover: Node = null
 		for child in get_children():
-			if child is EMSUnit:
+			if child is Unit:
 				var distance = child.global_position.distance_to(mouse_pos)
 				if distance < _get_hover_radius_pixels():  # hover radius (pixels)
 					new_hover = child
@@ -303,6 +303,7 @@ func _input(event: InputEvent) -> void:
 			currently_hovered_unit = new_hover
 			if currently_hovered_unit:
 				_set_unit_hover_visual(currently_hovered_unit, true)
+	return
 
 
 func _unhandled_input(event: InputEvent) -> void:
