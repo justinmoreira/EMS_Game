@@ -62,9 +62,37 @@ func _ready() -> void:
 # ── Terrain generation ────────────────────────────────────────────────────────
 
 
+# Pulls the noise seed from JS in multiplayer mode so both clients render
+# the same terrain. The Astro bootstrap on /multiplayer/play waits for
+# window.MULTIPLAYER_MATCH to be set before calling engine.startGame()
+# (see multiplayer/play.astro), so by the time we reach _ready() the value
+# is in place. Falls back to randi() for sandbox or any non-web build.
+func _terrain_seed() -> int:
+	if not OS.has_feature("web"):
+		return randi()
+	var mode: Variant = JavaScriptBridge.eval("window.GAME_MODE")
+	if not (mode is String) or (mode as String) != "multiplayer":
+		print("[ContourDemo] sandbox / non-MP — using randi() seed")
+		return randi()
+	# JS numbers come through as Variant float (sometimes int for integer
+	# values); typeof() check is more robust than `is float` against the
+	# Variant null returned when MULTIPLAYER_MATCH isn't published yet.
+	var v: Variant = JavaScriptBridge.eval(
+		"window.MULTIPLAYER_MATCH ? window.MULTIPLAYER_MATCH.seed : null"
+	)
+	var t := typeof(v)
+	if t == TYPE_FLOAT or t == TYPE_INT:
+		print("[ContourDemo] MP seed from window.MULTIPLAYER_MATCH = ", int(v))
+		return int(v)
+	push_warning(
+		"[ContourDemo] MP mode but no seed on window.MULTIPLAYER_MATCH — fell through to randi()"
+	)
+	return randi()
+
+
 func _generate_terrain(w: int, h: int) -> Array:
 	var noise := FastNoiseLite.new()
-	noise.seed = randi()
+	noise.seed = _terrain_seed()
 	noise.frequency = 0.025
 	noise.fractal_octaves = 3
 

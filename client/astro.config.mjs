@@ -62,7 +62,11 @@ export default defineConfig({
         navigateFallback: '/',
         // Don't let the SW intercept navigations to the game routes — it
         // would otherwise serve `/` and the canvas never mounts.
-        navigateFallbackDenylist: [/^\/play\//, /^\/godot\//],
+        navigateFallbackDenylist: [
+          /^\/sandbox/,
+          /^\/multiplayer\/play/,
+          /^\/godot\//,
+        ],
         maximumFileSizeToCacheInBytes: 50 * 1024 * 1024,
         clientsClaim: false,
         skipWaiting: false,

@@ -4,19 +4,27 @@ import Base from "@/layouts/Base.astro";
 import { BASE_URL } from "@/utils";
 ---
 
-<Base title="EMS Sim">
+<Base title="Sandbox | EMS Sim">
   <Fragment slot="head">
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
   </Fragment>
 
+  <!-- Mode flag — read by Sidebar.gd (via JavaScriptBridge.eval) before
+       it lays out the SAVES/RESET buttons. Must be set BEFORE the engine
+       boots, so it lives in an is:inline script ahead of godot/index.js. -->
+  <script is:inline>
+    window.GAME_MODE = "sandbox";
+  </script>
+
   <script is:inline src={`${BASE_URL}/godot-bridge.js`}></script>
   <!-- Side-effect import: hooks sandbox-saved → Dexie/Supabase so live
-       Godot saves get to durable storage while playing. -->
+       Godot saves get to durable storage while playing. Saves are
+       sandbox-only — /multiplayer/play deliberately omits this import. -->
   <script>
     import "@/lib/sandbox";
   </script>
-  <!-- Modal picker — Godot calls window.openSavesPicker() to show it. -->
+  <!-- Modal picker — Godot's SAVES button dispatches `open-saves-picker`. -->
   <SavesPicker client:only="preact" />
   <!-- Game canvas -->
   <canvas

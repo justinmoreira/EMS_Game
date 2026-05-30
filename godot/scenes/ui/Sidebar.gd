@@ -151,10 +151,16 @@ func _populate_header(panel: PanelContainer) -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(spacer)
 
-	# SAVES — only meaningful on web export (where JS bridge exists).
+	# Multiplayer pages set `window.GAME_MODE = "multiplayer"` before the
+	# engine boots, which we read here to relabel the header buttons:
+	# SAVES → SUBMIT and RESET → UNDO. The click handlers stay the same
+	# for now; only the labels swap.
+	var is_mp := _get_game_mode() == "multiplayer"
+
+	# SAVES / SUBMIT — only meaningful on web export (where JS bridge exists).
 	if OS.has_feature("web"):
 		var saves_btn := Button.new()
-		saves_btn.text = "SAVES"
+		saves_btn.text = "SUBMIT" if is_mp else "SAVES"
 		saves_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		saves_btn.add_theme_font_size_override("font_size", 13)
 		saves_btn.add_theme_color_override("font_color", C_BG_DARK)
@@ -171,7 +177,7 @@ func _populate_header(panel: PanelContainer) -> void:
 		hbox.add_child(saves_btn)
 
 	var reset_btn := Button.new()
-	reset_btn.text = "RESET"
+	reset_btn.text = "UNDO" if is_mp else "RESET"
 	reset_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	reset_btn.add_theme_font_size_override("font_size", 13)
 	reset_btn.add_theme_color_override("font_color", C_BG_DARK)
@@ -194,10 +200,31 @@ func _populate_header(panel: PanelContainer) -> void:
 
 
 func _on_saves_pressed() -> void:
-	# Hands off to the SavesPicker Preact island mounted on /play, which
-	# subscribes to window.openSavesPicker (see SavesPicker.tsx).
-	if OS.has_feature("web"):
+	# Same button, two behaviors based on the page that booted us:
+	#   • Sandbox → opens the SavesPicker Preact island (window.openSavesPicker)
+	#   • Multiplayer → emit mp_submit_requested; BaseLevel handles the
+	#     serialize-and-bridge (it owns the unit list, Sidebar doesn't).
+	if not OS.has_feature("web"):
+		return
+	var mode := _get_game_mode()
+	print("[Sidebar] header button pressed (mode=", mode, ")")
+	if mode == "multiplayer":
+		GameEvents.mp_submit_requested.emit()
+	else:
 		JavaScriptBridge.eval("window.openSavesPicker && window.openSavesPicker()")
+
+
+# Mirrors the JS-side `window.GAME_MODE` set by each game page (sandbox.astro,
+# multiplayer/play.astro) before the engine boots. Defaults to "sandbox" so
+# non-web builds and any page that forgets to set the flag behave like the
+# single-player path.
+func _get_game_mode() -> String:
+	if not OS.has_feature("web"):
+		return "sandbox"
+	var v: Variant = JavaScriptBridge.eval("window.GAME_MODE")
+	if v is String and (v as String).length() > 0:
+		return v as String
+	return "sandbox"
 
 
 func _populate_tray(panel: PanelContainer) -> void:
