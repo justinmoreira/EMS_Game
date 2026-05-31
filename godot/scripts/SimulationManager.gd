@@ -47,6 +47,48 @@ func _process(_delta: float) -> void:
 	_update_active_link_visuals()
 
 
+# Terrain helper wrappers
+# TODO: put these in separate Terrain.gd file?
+func world_pos_to_grid(world_pos: Vector2) -> Vector2:
+	"""Convert a world pixel position to grid indices (x, y), clamped to the grid.
+	Returns a Vector2 with integer components.
+	"""
+	if grid_cols == 0 or grid_rows == 0 or map_scale.x == 0:
+		return Vector2(0, 0)
+	var local = world_pos - map_origin
+	var xi: int = int(local.x / map_scale.x)
+	var yi: int = int(local.y / map_scale.y)
+	xi = clamp(xi, 0, grid_cols - 1)
+	yi = clamp(yi, 0, grid_rows - 1)
+	return Vector2(xi, yi)
+
+
+func get_ground_height_at_pos(world_pos: Vector2) -> float:
+	"""Return terrain elevation (meters) at the given world pixel position.
+	If terrain not initialized, returns 0.0.
+	"""
+	if grid_cols == 0 or grid_rows == 0 or map_scale.x == 0:
+		return 0.0
+	var idx = world_pos_to_grid(world_pos)
+	return float(height_grid[int(idx.x)][int(idx.y)])
+
+
+func get_unit_total_height(unit: Node) -> float:
+	"""Return ground height + unit antenna height for a unit node.
+	Assumes the unit node exposes `height` property and `global_position`.
+	"""
+	if unit == null:
+		return 0.0
+	var ground = get_ground_height_at_pos(unit.global_position)
+	var antenna_h = 0.0
+	if unit == null:
+		return ground
+	if unit is Jammer or unit is Sensor or unit is Transceiver:
+		var val = unit.get("height")
+		antenna_h = float(val)
+	return ground + antenna_h
+
+
 func simulate() -> void:
 	link_results.clear()
 	detect_results.clear()
@@ -88,19 +130,28 @@ func calculate_link(tx: Transceiver, rx: Transceiver, jammers: Array) -> int:
 		return LinkState.FREQUENCY_DIFF
 
 	var dist = PhysicsEngine.calculate_distance(tx.global_position, rx.global_position)
+	var z_tx = get_unit_total_height(tx)
+	var z_rx = get_unit_total_height(rx)
 
-	var received_power = PhysicsEngine.calculate_received_power(
-		tx.power, tx.height, rx.height, tx.frequency, dist
+	# Is the unit out of max possible range?
+	# TODO: calculate max range for every unit on sim() and store it
+	var tx_max_range = PhysicsEngine.calculate_signal_range(tx.power, z_tx, z_rx, tx.frequency)
+	if dist > tx_max_range:
+		return LinkState.FAILED_OUT_OF_RANGE
+
+	var terrain_loss = PhysicsEngine.compute_terrain_loss(
+		tx.global_position, rx.global_position, z_tx, z_rx, height_grid, map_origin, map_scale
 	)
 
-	# Interference is evaluated at the receiver's location and height
+	var received_power = PhysicsEngine.calculate_received_power(
+		tx.power, z_tx, z_rx, tx.frequency, dist, terrain_loss
+	)
+
 	var interference = PhysicsEngine.calculate_interference(
 		rx.frequency, rx.height, rx.global_position, jammers
 	)
 
 	var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER.get(bw_key, 1.0)
-
-	print_max_height_along_link(tx, rx)
 
 	if !PhysicsEngine.range_check(received_power):
 		return LinkState.FAILED_OUT_OF_RANGE
@@ -342,6 +393,12 @@ func _update_unit_ranges(component: Node) -> void:
 	if visual == null or not visual.has_method("set_ring"):
 		return
 
+	# !BUG: One small problem... now that terrain exists, the max range is affected by the z level
+	# !BUG: the unit is currently on. Meaning that rings can sometimes take up the whole map or
+	# !BUG:disappear completely. As a result, now rendering heatmaps can be laggy. The default
+	# !BUG: unit values when placed on tall mountains causes giant rings. I'm not sure if this is
+	# !BUG: realistic behaviour? atp... idek... took too many hours to figure out why units can
+	# !BUG: link beyond their "max" range
 	var max_range = PhysicsEngine.calculate_signal_range(
 		component.power, component.height, component.height, component.frequency
 	)
@@ -410,51 +467,3 @@ func set_terrain_data(grid: Array, origin: Vector2, map_size: Vector2) -> void:
 	# Calculate the exact pixel size of each cell
 	map_scale.x = map_size.x / float(grid_cols)
 	map_scale.y = map_size.y / float(grid_rows)
-
-
-func print_max_height_along_link(tx: Transceiver, rx: Transceiver) -> void:
-	# grid is built as grid[x][y] (x = outer index) in the terrain script.
-	if grid_cols == 0 or map_scale.x == 0 or map_scale.y == 0:
-		return
-
-	var tx_local = tx.global_position - map_origin
-	var rx_local = rx.global_position - map_origin
-
-	# Convert world position → grid cell index.
-	# cell_size is in pixels-per-cell, so dividing world px by cell_size gives
-	# the column/row index.
-	var x0: int = int(tx_local.x / map_scale.x)
-	var y0: int = int(tx_local.y / map_scale.y)
-	var x1: int = int(rx_local.x / map_scale.x)
-	var y1: int = int(rx_local.y / map_scale.y)
-
-	var max_h: float = -INF
-
-	# Bresenham line walk.
-	var dx: int = absi(x1 - x0)
-	var dy: int = absi(y1 - y0)
-	var sx: int = 1 if x0 < x1 else -1
-	var sy: int = 1 if y0 < y1 else -1
-	var err: int = dx - dy
-
-	while true:
-		# Bounds-check against the correct axis for each index.
-		# grid[x][y]: x must be < grid_cols, y must be < grid_rows.
-		if x0 >= 0 and x0 < grid_cols and y0 >= 0 and y0 < grid_rows:
-			var h: float = height_grid[x0][y0]
-			if h > max_h:
-				max_h = h
-
-		if x0 == x1 and y0 == y1:
-			break
-
-		var e2: int = 2 * err
-		if e2 > -dy:
-			err -= dy
-			x0 += sx
-		if e2 < dx:
-			err += dx
-			y0 += sy
-
-	# value generated here will eventually be used for terrain interference via fresnel
-	# print("Max height between %s -> %s: %.2f m" % [tx.name, rx.name, max_h])

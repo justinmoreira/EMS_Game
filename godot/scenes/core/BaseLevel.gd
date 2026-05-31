@@ -27,6 +27,7 @@ var currently_hovered_unit: Node = null
 @export var show_signal_ranges: bool = true
 
 var unit_attributes_visible: bool = false
+var terrain_heatmap_enabled: bool = false
 
 @onready var background := $BackgroundTexture
 @onready var sidebar_node = get_tree().root.find_child("Sidebar", true, false)
@@ -278,6 +279,13 @@ func _set_unit_selected_visual(unit: Node, selected: bool) -> void:
 	if visual and visual.has_method("set_selected"):
 		visual.set_selected(selected)
 
+	if selected:
+		if visual and visual.has_method("set_show_terrain_heatmap"):
+			visual.set_show_terrain_heatmap(terrain_heatmap_enabled)
+	else:
+		if visual and visual.has_method("set_show_terrain_heatmap"):
+			visual.set_show_terrain_heatmap(false)
+
 
 func _set_unit_hover_visual(unit: Node, hovered: bool) -> void:
 	if unit == null:
@@ -295,12 +303,28 @@ func _set_unit_show_range_visual(unit: Node, enabled: bool) -> void:
 		visual.set_show_range(enabled)
 
 
+func _set_unit_show_terrain_heatmap(unit: Node, enabled: bool) -> void:
+	if unit == null:
+		return
+	var visual := unit.find_child("Visual")
+	if visual and visual.has_method("set_show_terrain_heatmap"):
+		visual.set_show_terrain_heatmap(enabled)
+
+
 func toggle_signal_ranges(enabled: bool) -> void:
 	# Toggle display of signal ranges for all unit visuals
 	show_signal_ranges = enabled
 	for child in get_children():
 		if child is EMSUnit:
 			_set_unit_show_range_visual(child, enabled)
+
+
+func toggle_terrain_heatmap(enabled: bool) -> void:
+	terrain_heatmap_enabled = enabled
+	for child in get_children():
+		if child is EMSUnit:
+			var should_show = enabled and child == currently_selected_unit
+			_set_unit_show_terrain_heatmap(child, should_show)
 
 
 func _get_unit_component(unit: Node) -> Node:
