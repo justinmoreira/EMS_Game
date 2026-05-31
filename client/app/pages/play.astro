@@ -3,13 +3,13 @@ import Base from "@/layouts/Base.astro";
 import { BASE_URL } from "@/utils";
 ---
 
-<Base title="EMS Sim">
+<Base title="GEMS">
   <Fragment slot="head">
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
   </Fragment>
 
-  <script is:inline src="/godot-bridge.js"></script>
+  <script is:inline src={`${BASE_URL}/godot-bridge.js`}></script>
   <!-- Game canvas -->
   <canvas
     id="canvas"

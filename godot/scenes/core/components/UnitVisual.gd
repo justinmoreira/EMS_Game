@@ -20,18 +20,17 @@ var unit_name: String = ""  # Unit name
 var _animated_sprite: AnimatedSprite2D
 
 var signal_rings: Dictionary = {}
-var show_range: bool = true
 var show_terrain_heatmap: bool = false
+var show_range: bool = false
 
 
-func _ready() -> void:
-	name = "Visual"
+func _ready() -> void:	
 	if sprite_sheet_path and ResourceLoader.exists(sprite_sheet_path):
 		_setup_animated_sprite()
 	else:
 		_setup_fallback_circle()
-
-
+	
+	
 func set_hovered(hovered: bool) -> void:
 	is_hovered = hovered
 	queue_redraw()
@@ -277,10 +276,12 @@ func _draw_terrain_heatmap(max_range_km: float) -> void:
 	var sample_grid := {}
 	var parent_unit = get_parent()
 	var z_tx = 0.0
+	
+	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
 	if parent_unit:
-		z_tx = SimulationManager.get_unit_total_height(parent_unit)
+		z_tx = terrain.get_unit_total_height(parent_unit)
 	else:
-		z_tx = SimulationManager.get_ground_height_at_pos(global_position)
+		z_tx = terrain.get_ground_height_at_pos(global_position)
 
 	# TODO: what if we used polar coordinates, and just sampled along rays instead of a grid? not
 	# TODO: for a visual reason but maybe we could reuse the same samples for range checks and
@@ -295,23 +296,23 @@ func _draw_terrain_heatmap(max_range_km: float) -> void:
 			# TODO: redundant calculations
 			var tif = 1.0
 			if (
-				SimulationManager.height_grid.size() > 0
-				and SimulationManager.map_scale.x != 0
-				and SimulationManager.grid_cols > 0
-				and SimulationManager.grid_rows > 0
+				terrain.height_grid.size() > 0
+				and terrain.map_scale.x != 0
+				and terrain.grid_w > 0
+				and terrain.grid_h > 0
 			):
 				# TODO: This is expensive (sorta)... we should cache this when units move/adjacent
 				# TODO: units with similar properties overlap.
-				var z_gnd = SimulationManager.get_ground_height_at_pos(world_position)
+				var z_gnd = terrain.get_ground_height_at_pos(world_position)
 				var z_rx = z_gnd + 1.0
 				var loss = PhysicsEngine.compute_terrain_loss(
 					global_position,
 					world_position,
 					z_tx,
 					z_rx,
-					SimulationManager.height_grid,
-					SimulationManager.map_origin,
-					SimulationManager.map_scale
+					terrain.height_grid,
+					terrain.map_origin,
+					terrain.map_scale
 				)
 				if loss >= 1e6:
 					tif = 0.0
