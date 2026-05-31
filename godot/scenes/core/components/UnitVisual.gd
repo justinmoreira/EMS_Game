@@ -24,13 +24,13 @@ var show_terrain_heatmap: bool = false
 var show_range: bool = false
 
 
-func _ready() -> void:	
+func _ready() -> void:
 	if sprite_sheet_path and ResourceLoader.exists(sprite_sheet_path):
 		_setup_animated_sprite()
 	else:
 		_setup_fallback_circle()
-	
-	
+
+
 func set_hovered(hovered: bool) -> void:
 	is_hovered = hovered
 	queue_redraw()
@@ -276,7 +276,7 @@ func _draw_terrain_heatmap(max_range_km: float) -> void:
 	var sample_grid := {}
 	var parent_unit = get_parent()
 	var z_tx = 0.0
-	
+
 	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
 	if parent_unit:
 		z_tx = terrain.get_unit_total_height(parent_unit)

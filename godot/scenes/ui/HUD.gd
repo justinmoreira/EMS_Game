@@ -109,7 +109,7 @@ func _on_unit_ranges_toggled(is_pressed: bool):
 func _on_heatmap_toggled(is_pressed: bool):
 	settings["heatmap_toggled"] = is_pressed
 	_save_settings()
-	
+
 	var level = get_tree().current_scene
 	if level.has_method("toggle_terrain_heatmap"):
 		level.toggle_terrain_heatmap(is_pressed)

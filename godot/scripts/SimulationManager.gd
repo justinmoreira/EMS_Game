@@ -17,7 +17,6 @@ func _ready() -> void:
 # func _exit_tree() -> void:
 # 	clear_all_links()
 
-
 # func _process(_delta: float) -> void:
 # 	_update_active_link_visuals()
 
@@ -78,7 +77,13 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 		return LinkState.FAILED_OUT_OF_RANGE
 
 	var terrain_loss = PhysicsEngine.compute_terrain_loss(
-		tx.global_position, rx.global_position, z_tx, z_rx, terrain.height_grid, terrain.map_origin, terrain.map_scale
+		tx.global_position,
+		rx.global_position,
+		z_tx,
+		z_rx,
+		terrain.height_grid,
+		terrain.map_origin,
+		terrain.map_scale
 	)
 
 	var received_power = PhysicsEngine.calculate_received_power(
