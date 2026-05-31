@@ -167,7 +167,9 @@ static func calculate_signal_range(
 
 	var height_factor = calculate_height_factor(height_tx, height_rx)
 	var frequency_factor = 1000.0 / frequency
-	var max_distance = sqrt((GAME_CALCULATION_RATIO * tx_power * height_factor * frequency_factor) / target) - 1.0
+	var max_distance = (
+		sqrt((GAME_CALCULATION_RATIO * tx_power * height_factor * frequency_factor) / target) - 1.0
+	)
 
 	return max(0.0, max_distance)
 
