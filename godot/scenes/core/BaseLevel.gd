@@ -11,6 +11,11 @@ var offset := Vector2.ZERO
 var dragging := false
 var last_mouse_pos := Vector2.ZERO
 
+# Selection State
+var currently_selected_unit: Node = null
+var currently_hovered_unit: Node = null
+@export var base_hover_radius: float = 32.0
+@export var show_signal_ranges: bool = false
 # Sidebar layout — populated via signal, no global find_child reach.
 # Width is the live x-size of the sidebar; 0 if no sidebar in this scene.
 var sidebar_width: float = 0.0
@@ -117,6 +122,11 @@ func _clamp_offset() -> void:
 	offset.y = clamp(offset.y, -margin, margin)
 
 
+func _get_hover_radius_pixels() -> float:
+	# TODO: Implement for selection too?
+	return base_hover_radius * (1.0 / zoom)
+
+
 # --- Drag and Drop Logic ---
 
 
@@ -163,6 +173,9 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	# Preserve main #61's UX: re-sim after placement so links reflect new geometry.
 	SimulationManager.simulate()
 
+	# Apply current visual settings (show/hide ranges)
+	_set_unit_show_range_visual(unit, show_signal_ranges)
+
 	_on_unit_placed(unit)
 	# Newly-placed unit is treated as selected so its panel opens.
 	GameEvents.select(unit)
@@ -193,6 +206,42 @@ func _set_unit_selected_visual(unit: Unit, selected: bool) -> void:
 
 
 # --- Sidebar button handlers ---
+
+
+func _set_unit_hover_visual(unit: Node, hovered: bool) -> void:
+	if unit == null:
+		return
+	for child in unit.get_children():
+		if child is UnitVisual:
+			child.set_hovered(hovered)
+			break
+
+
+func _set_unit_show_range_visual(unit: Node, enabled: bool) -> void:
+	if unit == null:
+		return
+	for child in unit.get_children():
+		if child is UnitVisual:
+			child.set_show_range(enabled)
+			break
+
+
+func toggle_signal_ranges(enabled: bool) -> void:
+	# Toggle display of signal ranges for all unit visuals
+	show_signal_ranges = enabled
+	for child in get_children():
+		if child is Unit:
+			_set_unit_show_range_visual(child, enabled)
+
+
+func _get_unit_component(unit: Node) -> Node:
+	if unit == null:
+		return null
+	# Check children for functional components
+	for child in unit.get_children():
+		if child.name in ["Transceiver", "Jammer", "Sensor"]:
+			return child
+	return null
 
 
 func _on_reset_requested() -> void:
@@ -236,6 +285,26 @@ func _input(event: InputEvent) -> void:
 			offset += mouse_uv * (old_zoom - zoom)
 			_clamp_offset()
 			update_shader()
+
+	elif event is InputEventMouseMotion:
+		if dragging or event.position.x < sidebar_width:
+			return
+
+		var mouse_pos = get_global_mouse_position()
+		var new_hover: Node = null
+		for child in get_children():
+			if child is Unit:
+				var distance = child.global_position.distance_to(mouse_pos)
+				if distance < _get_hover_radius_pixels():  # hover radius (pixels)
+					new_hover = child
+					break
+
+		if new_hover != currently_hovered_unit:
+			if currently_hovered_unit:
+				_set_unit_hover_visual(currently_hovered_unit, false)
+			currently_hovered_unit = new_hover
+			if currently_hovered_unit:
+				_set_unit_hover_visual(currently_hovered_unit, true)
 	return
 
 

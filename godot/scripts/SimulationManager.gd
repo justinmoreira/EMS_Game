@@ -18,6 +18,8 @@ func simulate() -> void:
 	link_results.clear()
 	detect_results.clear()
 
+	_update_all_unit_ranges()
+
 	var transceivers = get_tree().get_nodes_in_group("transceivers")
 	var jammers = get_tree().get_nodes_in_group("jammers")
 	var sensors = get_tree().get_nodes_in_group("sensors")
@@ -80,3 +82,9 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 func calculate_detection(srx: Unit, tx: Unit) -> bool:
 	var dist = PhysicsEngine.calculate_distance(srx.global_position, tx.global_position)
 	return PhysicsEngine.is_detected(tx, srx, dist)
+
+
+func _update_all_unit_ranges() -> void:
+	for group in [&"transceivers", &"jammers"]:
+		for unit in get_tree().get_nodes_in_group(group):
+			unit.update_ranges()
