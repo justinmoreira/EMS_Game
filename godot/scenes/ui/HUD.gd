@@ -85,12 +85,12 @@ func _on_link_lines_toggled(is_pressed: bool):
 	settings["link_lines"] = is_pressed
 	_save_settings()
 
-	# Apply change immediately to SimulationManager
-	if SimulationManager:
-		SimulationManager.links_visible = is_pressed
+	# Apply change immediately to LinkRenderer
+	if LinkRenderer:
+		LinkRenderer.links_visible = is_pressed
 		# Update all active link visuals immediately
-		for key in SimulationManager.active_links:
-			var data = SimulationManager.active_links[key]
+		for key in LinkRenderer.active_links:
+			var data = LinkRenderer.active_links[key]
 			if is_instance_valid(data.get("line")):
 				data.line.visible = is_pressed
 			if is_instance_valid(data.get("arrow")):
