@@ -248,7 +248,7 @@ func toggle_suggestions(enabled: bool) -> void:
 		if suggestions_panel:
 			suggestions_panel.queue_free()
 			suggestions_panel = null
-			
+
 
 func _on_reset_requested() -> void:
 	# LinkRenderer also subscribes to reset_requested and clears its own visuals.
