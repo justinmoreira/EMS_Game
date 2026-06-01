@@ -14,6 +14,13 @@ func _ready() -> void:
 	call_deferred("simulate")
 
 
+# func _exit_tree() -> void:
+# 	clear_all_links()
+
+# func _process(_delta: float) -> void:
+# 	_update_active_link_visuals()
+
+
 func simulate() -> void:
 	link_results.clear()
 	detect_results.clear()
@@ -59,11 +66,30 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 
 	var dist = PhysicsEngine.calculate_distance(tx.global_position, rx.global_position)
 
-	var received_power = PhysicsEngine.calculate_received_power(
-		tx.power, tx.height, rx.height, tx.frequency, dist
+	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
+	var z_tx = terrain.get_unit_total_height(tx)
+	var z_rx = terrain.get_unit_total_height(rx)
+
+	# Is the unit out of max possible range?
+	# TODO: calculate max range for every unit on sim() and store it
+	var tx_max_range = PhysicsEngine.calculate_signal_range(tx.power, z_tx, z_rx, tx.frequency)
+	if dist > tx_max_range:
+		return LinkState.FAILED_OUT_OF_RANGE
+
+	var terrain_loss = PhysicsEngine.compute_terrain_loss(
+		tx.global_position,
+		rx.global_position,
+		z_tx,
+		z_rx,
+		terrain.height_grid,
+		terrain.map_origin,
+		terrain.map_scale
 	)
 
-	# Interference is evaluated at the receiver's location and height
+	var received_power = PhysicsEngine.calculate_received_power(
+		tx.power, z_tx, z_rx, tx.frequency, dist, terrain_loss
+	)
+
 	var interference = PhysicsEngine.calculate_interference(
 		rx.frequency, rx.height, rx.global_position, jammers
 	)

@@ -24,6 +24,7 @@ var sidebar_width: float = 0.0
 # unhighlight when selection changes. Source of truth lives on GameEvents.
 var _last_highlighted: Unit = null
 var unit_attributes_visible: bool = false
+var terrain_heatmap_enabled: bool = false
 
 @onready var background := $BackgroundTexture
 
@@ -186,6 +187,9 @@ func _on_unit_placed(unit: Unit) -> void:
 	if label:
 		label.visible = unit_attributes_visible
 
+	# Apply current visual settings (show/hide ranges)
+	_set_unit_show_range_visual(unit, show_signal_ranges)
+
 
 # --- Selection Logic (visual highlight only — state lives on GameEvents) ---
 
@@ -232,6 +236,22 @@ func toggle_signal_ranges(enabled: bool) -> void:
 	for child in get_children():
 		if child is Unit:
 			_set_unit_show_range_visual(child, enabled)
+
+
+func _set_unit_show_terrain_heatmap(unit: Node, enabled: bool) -> void:
+	if unit == null:
+		return
+	for child in unit.get_children():
+		if child is UnitVisual:
+			child.set_show_terrain_heatmap(enabled)
+			break
+
+
+func toggle_terrain_heatmap(enabled: bool) -> void:
+	terrain_heatmap_enabled = enabled
+	for child in get_children():
+		if child is Unit:
+			_set_unit_show_terrain_heatmap(child, enabled)
 
 
 func _get_unit_component(unit: Node) -> Node:
@@ -286,6 +306,7 @@ func _input(event: InputEvent) -> void:
 			_clamp_offset()
 			update_shader()
 
+	# Hover logic
 	elif event is InputEventMouseMotion:
 		if dragging or event.position.x < sidebar_width:
 			return

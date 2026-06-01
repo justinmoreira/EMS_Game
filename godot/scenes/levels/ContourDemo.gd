@@ -18,6 +18,8 @@ const VALLEY_MINOR_THRESH := 160.0  # m  →  small aqua label
 ## Pixel distance below which two labels are considered overlapping.
 const OVERLAP_MARGIN := 40.0  # px
 
+var map_scale: Vector2
+var map_origin: Vector2
 var grid_w: int = 150
 var grid_h: int = 150
 var cell_size: int = 8
@@ -36,9 +38,12 @@ func _ready() -> void:
 	# resize, and pushes initial shader params. Safe now that overlay/terrain
 	# coordinate math shares one source of truth (background rect) — the sway
 	# this used to cause was the aspect desync, now fixed.
+	add_to_group("terrain")
+
 	super._ready()
 
 	height_grid = _generate_terrain(grid_w, grid_h)
+	set_terrain_data(height_grid, map_container.global_position, map_container.size)
 
 	var tex := _create_height_texture(height_grid, grid_w, grid_h)
 	contour_rect.material.set_shader_parameter("height_map", tex)
@@ -303,3 +308,54 @@ func toggle_grid(enabled: bool) -> void:
 	for child in get_children():
 		if child is Label:
 			child.visible = enabled
+
+
+# Terrain helper wrappers
+# TODO: put these in separate Terrain.gd file?
+func world_pos_to_grid(world_pos: Vector2) -> Vector2:
+	"""Convert a world pixel position to grid indices (x, y), clamped to the grid.
+	Returns a Vector2 with integer components.
+	"""
+	if grid_w == 0 or grid_h == 0 or map_scale.x == 0:
+		return Vector2(0, 0)
+	var local = world_pos - map_origin
+	var xi: int = int(local.x / map_scale.x)
+	var yi: int = int(local.y / map_scale.y)
+	xi = clamp(xi, 0, grid_w - 1)
+	yi = clamp(yi, 0, grid_h - 1)
+	return Vector2(xi, yi)
+
+
+func get_ground_height_at_pos(world_pos: Vector2) -> float:
+	"""Return terrain elevation (meters) at the given world pixel position.
+	If terrain not initialized, returns 0.0.
+	"""
+	if grid_w == 0 or grid_h == 0 or map_scale.x == 0:
+		return 0.0
+	var idx = world_pos_to_grid(world_pos)
+	return float(height_grid[int(idx.x)][int(idx.y)])
+
+
+func get_unit_total_height(unit: Node) -> float:
+	"""Return ground height + unit antenna height for a unit node.
+	Assumes the unit node exposes `height` property and `global_position`.
+	"""
+	if unit == null:
+		return 0.0
+	var ground = get_ground_height_at_pos(unit.global_position)
+	var antenna_h = 0.0
+	if unit is Unit:
+		var val = unit.get("height")
+		antenna_h = float(val)
+	return ground + antenna_h
+
+
+func set_terrain_data(grid: Array, origin: Vector2, map_size: Vector2) -> void:
+	height_grid = grid
+	#grid_w = grid.size()
+	#grid_h = grid[0].size() if grid.size() > 0 else 0
+	map_origin = origin
+
+	# Calculate the exact pixel size of each cell
+	map_scale.x = map_size.x / float(grid_w)
+	map_scale.y = map_size.y / float(grid_h)

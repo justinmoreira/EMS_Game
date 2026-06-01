@@ -32,7 +32,7 @@ anchor_bottom = 1.0
 offset_left = 4.0
 offset_top = 4.0
 offset_right = 276.0
-offset_bottom = 346.0
+offset_bottom = 362.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -72,6 +72,11 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Bidirectional Link Lines"
 
+[node name="HeatmapToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=593618751]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Terrain Interference Heatmap"
+
 [node name="Separator2" type="HSeparator" parent="SettingsPopup/SettingsContainer" unique_id=1137264128]
 custom_minimum_size = Vector2(0, 10)
 layout_mode = 2
@@ -95,8 +100,11 @@ layout_mode = 2
 button_pressed = true
 text = "GRID"
 
-[node name="RangeToggle" type="CheckButton" parent="Panel/Margin/VBox"]
+[node name="Panel_Margin_VBox#RangeToggle" type="CheckButton" parent="." unique_id=1151513560]
 unique_name_in_owner = true
-layout_mode = 2
 button_pressed = true
 text = "RANGE"
+
+[node name="Panel_Margin_VBox#HeatmapToggle" type="CheckButton" parent="." unique_id=1141549058]
+unique_name_in_owner = true
+text = "TERRAIN HEATMAP"

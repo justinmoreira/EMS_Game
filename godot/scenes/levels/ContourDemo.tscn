@@ -8,6 +8,7 @@
 shader = ExtResource("3_si7pu")
 shader_parameter/zoom = 1.0
 shader_parameter/offset = Vector2(0, 0)
+shader_parameter/aspect_ratio = 1.0
 shader_parameter/color_low = Color(0, 0, 0, 1)
 shader_parameter/color_mid = Color(0, 0, 0, 1)
 shader_parameter/color_high = Color(0, 0, 0, 1)
@@ -25,10 +26,13 @@ shader_parameter/line_color = Color(0, 0, 0, 0.6)
 
 [sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_pb6d8"]
 
-[node name="ContourGen" unique_id=1441387089 instance=ExtResource("1_6xrlp")]
+[node name="ContourDemo" unique_id=1441387089 instance=ExtResource("1_6xrlp")]
 script = ExtResource("2_ju0un")
 
 [node name="BackgroundTexture" parent="." index="0" unique_id=2008967764]
 material = SubResource("ShaderMaterial_l1")
 texture = SubResource("PlaceholderTexture2D_pb6d8")
 expand_mode = 2
+
+[node name="Sidebar" parent="CanvasLayer/Control" parent_id_path=PackedInt32Array(860915758) index="0" unique_id=831222554]
+offset_right = 3.0
