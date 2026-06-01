@@ -30,8 +30,8 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_reposition()
-	
-	
+
+
 func _on_selection_changed(unit: Node) -> void:
 	if unit == null:
 		_selected_unit = null
