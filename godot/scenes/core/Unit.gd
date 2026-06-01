@@ -96,6 +96,30 @@ func _spawn_visual() -> void:
 	add_child(_unit_visual)
 
 
+func update_ranges() -> void:
+	if _unit_visual == null:
+		return
+	var is_transceiver = is_in_group("transceivers")
+	var power: float = get_value(&"power", 0.0)
+	var height: float = get_value(&"height", 0.0)
+	var frequency: float = get_value(&"frequency", 1000.0)
+
+	var max_range = PhysicsEngine.calculate_signal_range(power, height, height, frequency)
+	_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
+
+	if is_transceiver:
+		var bw_idx: int = get_value(&"transceiver_bandwidth", 0)
+		var bw_power: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
+		var bw_penalty: float = PhysicsEngine.bandwidth_penalty(bw_idx)
+		if bw_penalty > 0.0:
+			var strong_range = PhysicsEngine.calculate_signal_range(
+				power, height, height, frequency, PhysicsEngine.NOISE_FLOOR / bw_power
+			)
+			_unit_visual.set_ring("strong_range", min(strong_range, max_range), "STRONG SIGNAL")
+		else:
+			_unit_visual.remove_ring("strong_range")
+
+
 # ── Interaction (drag / click select) ────────────────────────────────
 
 
@@ -119,6 +143,8 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 	# Only the initial press starts a drag here. Release and motion live in
 	# _input so they keep working when the cursor leaves the shape mid-drag.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		# Preserve main #61's UX: clear stale link visuals on drag-press.
+		GameEvents.links_clear_requested.emit()
 		_is_being_dragged = true
 		_drag_start_pos = get_global_mouse_position()
 		_drag_distance = 0.0
@@ -136,6 +162,13 @@ func _input(event: InputEvent) -> void:
 	):
 		if _drag_distance < CLICK_DRAG_THRESHOLD_PX:
 			GameEvents.select(self)
+
+		# Preserve main #61's UX: re-sim on drag-release so links reflect
+		# the new geometry. Signal-based to match round-7's bus pattern.
+		if _drag_distance < CLICK_DRAG_THRESHOLD_PX:
+			GameEvents.select(self)
+		else:
+			GameEvents.simulation_requested.emit()
 		_is_being_dragged = false
 		get_tree().root.set_input_as_handled()
 		return

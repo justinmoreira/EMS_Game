@@ -4,6 +4,7 @@ extends Control
 # Unit attribute controls
 const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
 const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
+const SUGGESTIONS_PANEL_SCENE := preload("res://scenes/ui/SuggestionsDialog.tscn")
 
 # Camera / Viewport State
 var zoom := 1.0
@@ -11,6 +12,13 @@ var offset := Vector2.ZERO
 var dragging := false
 var last_mouse_pos := Vector2.ZERO
 
+# Selection State
+var currently_selected_unit: Node = null
+var currently_hovered_unit: Node = null
+var suggestions_panel: Control = null
+
+@export var base_hover_radius: float = 32.0
+@export var show_signal_ranges: bool = false
 # Sidebar layout — populated via signal, no global find_child reach.
 # Width is the live x-size of the sidebar; 0 if no sidebar in this scene.
 var sidebar_width: float = 0.0
@@ -50,14 +58,23 @@ func _on_window_resized() -> void:
 # --- Coordinate Space Math ---
 
 
+# Single source of truth: the rectangle the background shader actually renders
+# over. Overlays (units, labels) derive their screen positions from the SAME
+# rect, so they can never move at a different scale than the terrain.
+# `background` is a Control; .position/.size already account for the sidebar
+# offset_left set in _on_window_resized.
+func _map_origin() -> Vector2:
+	return background.position if background else Vector2(sidebar_width, 0)
+
+
 func get_map_size() -> Vector2:
-	return Vector2(size.x - sidebar_width, size.y)
+	return background.size if background else Vector2(size.x - sidebar_width, size.y)
 
 
 func screen_to_world_uv(screen_pos: Vector2) -> Vector2:
 	var map = get_map_size()
 	var aspect = map.x / map.y
-	var uv = (screen_pos - Vector2(sidebar_width, 0)) / map - Vector2(0.5, 0.5)
+	var uv = (screen_pos - _map_origin()) / map - Vector2(0.5, 0.5)
 	if aspect > 1.0:
 		uv.x *= aspect
 	else:
@@ -73,7 +90,7 @@ func world_uv_to_screen(world_uv: Vector2) -> Vector2:
 		uv.x /= aspect
 	else:
 		uv.y *= aspect
-	return (uv + Vector2(0.5, 0.5)) * map + Vector2(sidebar_width, 0)
+	return (uv + Vector2(0.5, 0.5)) * map + _map_origin()
 
 
 # --- Visual Updates ---
@@ -108,6 +125,11 @@ func _clamp_offset() -> void:
 	offset.y = clamp(offset.y, -margin, margin)
 
 
+func _get_hover_radius_pixels() -> float:
+	# TODO: Implement for selection too?
+	return base_hover_radius * (1.0 / zoom)
+
+
 # --- Drag and Drop Logic ---
 
 
@@ -115,6 +137,12 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 	if not (data is Dictionary and data.has("scene_path")):
 		return false
 	if at_position.x < sidebar_width:
+		return false
+
+	# The map is world_uv ∈ [0,1]; outside that is the shader's void border.
+	# Reject drops there so units can't be placed off the map.
+	var world_uv := screen_to_world_uv(at_position)
+	if world_uv.x < 0.0 or world_uv.x > 1.0 or world_uv.y < 0.0 or world_uv.y > 1.0:
 		return false
 	return true
 
@@ -125,6 +153,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 		return
 
 	var unit := scene.instantiate()
+
 	if unit == null:
 		return
 
@@ -132,6 +161,9 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	unit.set_meta("world_uv", screen_to_world_uv(at_position))
 	unit.position = at_position
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
+
+	# Mark this unit as not saved to the scene file (instantiated at runtime).
+	unit.owner = null
 
 	# Apply pending attributes BEFORE add_child so the unit's _ready sees the
 	# user-typed unit_name and skips its UnitNameManager.get_next_name call.
@@ -142,6 +174,13 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 		unit.set(attr_name, override[attr_name])
 
 	add_child(unit)
+
+	# Preserve main #61's UX: re-sim after placement so links reflect new geometry.
+	SimulationManager.simulate()
+
+	# Apply current visual settings (show/hide ranges)
+	_set_unit_show_range_visual(unit, show_signal_ranges)
+
 	_on_unit_placed(unit)
 	# Newly-placed unit is treated as selected so its panel opens.
 	GameEvents.select(unit)
@@ -173,6 +212,43 @@ func _set_unit_selected_visual(unit: Unit, selected: bool) -> void:
 
 # --- Sidebar button handlers ---
 
+
+func _set_unit_hover_visual(unit: Node, hovered: bool) -> void:
+	if unit == null:
+		return
+	for child in unit.get_children():
+		if child is UnitVisual:
+			child.set_hovered(hovered)
+			break
+
+
+func _set_unit_show_range_visual(unit: Node, enabled: bool) -> void:
+	if unit == null:
+		return
+	for child in unit.get_children():
+		if child is UnitVisual:
+			child.set_show_range(enabled)
+			break
+
+
+func toggle_signal_ranges(enabled: bool) -> void:
+	# Toggle display of signal ranges for all unit visuals
+	show_signal_ranges = enabled
+	for child in get_children():
+		if child is Unit:
+			_set_unit_show_range_visual(child, enabled)
+
+
+func toggle_suggestions(enabled: bool) -> void:
+	if enabled:
+		if suggestions_panel == null:
+			suggestions_panel = SUGGESTIONS_PANEL_SCENE.instantiate()
+			add_child(suggestions_panel)
+	else:
+		if suggestions_panel:
+			suggestions_panel.queue_free()
+			suggestions_panel = null
+			
 
 func _on_reset_requested() -> void:
 	# LinkRenderer also subscribes to reset_requested and clears its own visuals.
@@ -216,6 +292,27 @@ func _input(event: InputEvent) -> void:
 			_clamp_offset()
 			update_shader()
 
+	elif event is InputEventMouseMotion:
+		if dragging or event.position.x < sidebar_width:
+			return
+
+		var mouse_pos = get_global_mouse_position()
+		var new_hover: Node = null
+		for child in get_children():
+			if child is Unit:
+				var distance = child.global_position.distance_to(mouse_pos)
+				if distance < _get_hover_radius_pixels():  # hover radius (pixels)
+					new_hover = child
+					break
+
+		if new_hover != currently_hovered_unit:
+			if currently_hovered_unit:
+				_set_unit_hover_visual(currently_hovered_unit, false)
+			currently_hovered_unit = new_hover
+			if currently_hovered_unit:
+				_set_unit_hover_visual(currently_hovered_unit, true)
+	return
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -244,12 +341,22 @@ func _unhandled_input(event: InputEvent) -> void:
 					):
 						clicked_unit = true
 						break
+
 				if not clicked_unit:
 					GameEvents.clear_selection()
 					get_tree().root.set_input_as_handled()
+				# Clicking on a unit hands off to the unit's own drag handler —
+				# don't engage map pan or the two thrash each other.
+
+				if clicked_unit:
+					return
+
+				GameEvents.clear_selection()
+				get_tree().root.set_input_as_handled()
 
 			dragging = true
 			last_mouse_pos = event.position
+
 		else:
 			dragging = false
 
@@ -260,6 +367,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		_clamp_offset()
 		last_mouse_pos = event.position
 		update_shader()
+
+
+func toggle_unit_details(enabled: bool) -> void:
+	unit_attributes_visible = enabled
+	_apply_unit_attribute_visibility()
 
 
 #show unit attribute helper function

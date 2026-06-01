@@ -41,6 +41,12 @@ signal reset_requested
 @warning_ignore("unused_signal")
 signal delete_requested(unit: Node)
 
+# Drag-press clears stale link visuals before the new drag-release sim.
+# LinkRenderer wires this to clear_all so Unit.gd stays decoupled from
+# the SimulationManager singleton.
+@warning_ignore("unused_signal")
+signal links_clear_requested
+
 # Sidebar publishes its width on resize so BaseLevel can update layout
 # without a global find_child reach.
 @warning_ignore("unused_signal")

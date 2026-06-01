@@ -1,0 +1,272 @@
+---
+import Base from "@/layouts/Base.astro";
+import { BASE_URL } from "@/utils";
+
+const modes = [
+  {
+    id: "tutorial",
+    name: "Tutorial",
+    icon: "book",
+    href: `${BASE_URL}/placeholder?mode=tutorial`,
+    description:
+      "Learn the basics of EMS gameplay, unit placement, frequency matching, and signal behavior.",
+    badge: "Recommended",
+  },
+  {
+    id: "sandbox",
+    name: "Sandbox",
+    icon: "cube",
+    href: `${BASE_URL}/play`,
+    description:
+      "Experiment freely with transceivers, sensors, jammers, and terrain without mission restrictions.",
+    badge: "Playable",
+  },
+  {
+    id: "silent-link",
+    name: "Silent Link",
+    icon: "signal",
+    href: `${BASE_URL}/placeholder?mode=silent-link`,
+    description:
+      "Build communication links while keeping emissions low and avoiding detection.",
+    badge: "Coming Soon",
+  },
+  {
+    id: "enemy-hunter",
+    name: "Enemy Hunter",
+    icon: "target",
+    href: `${BASE_URL}/placeholder?mode=enemy-hunter`,
+    description:
+      "Use sensors and spectrum analysis to locate enemy transmitters across the map.",
+    badge: "Coming Soon",
+  },
+];
+---
+
+<Base title="GEMS">
+  <div id="vanta-bg" class="fixed inset-0 -z-10"></div>
+
+  <main class="min-h-[calc(100vh-3rem)] px-6 py-10 text-white">
+    <section
+      class="mx-auto flex min-h-[calc(100vh-8rem)] max-w-5xl flex-col items-center justify-center"
+    >
+      <div
+        class="mb-8 w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-black/45 shadow-2xl backdrop-blur-md"
+      >
+        <div
+          class="grid grid-cols-2 divide-x divide-white/10 md:grid-cols-4"
+          role="tablist"
+          aria-label="Singleplayer game modes"
+        >
+          {
+            modes.map((mode) => (
+              <button
+                type="button"
+                class={`mode-tab group relative flex items-center justify-center gap-3 px-5 py-5 text-sm font-semibold transition-colors ${
+                  mode.id === "tutorial"
+                    ? "selected text-emerald-400"
+                    : "text-neutral-400 hover:text-emerald-300"
+                }`}
+                data-mode={mode.id}
+                data-href={mode.href}
+                data-description={mode.description}
+                data-badge={mode.badge}
+                aria-selected={mode.id === "tutorial" ? "true" : "false"}
+                role="tab"
+              >
+                <span class="mode-icon text-xl" data-icon={mode.icon} />
+                <span>{mode.name}</span>
+                <span
+                  class={`selection-line absolute bottom-0 left-4 right-4 h-0.75 rounded-full bg-emerald-400 transition-opacity ${
+                    mode.id === "tutorial" ? "opacity-100" : "opacity-0"
+                  }`}
+                />
+              </button>
+            ))
+          }
+        </div>
+      </div>
+
+      <div
+        class="mb-16 flex w-full max-w-3xl flex-col gap-5 rounded-2xl border border-white/10 bg-black/45 p-6 shadow-2xl backdrop-blur-md md:flex-row md:items-center md:justify-between"
+      >
+        <div class="flex gap-5">
+          <div
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-emerald-400 text-emerald-400"
+          >
+            i
+          </div>
+
+          <div>
+            <h2 class="font-semibold text-white">
+              Choose your singleplayer game mode
+            </h2>
+
+            <p
+              id="mode-description"
+              class="mt-2 max-w-md text-sm leading-6 text-neutral-300"
+            >
+              Learn the basics of EMS gameplay, unit placement, frequency
+              matching, and signal behavior.
+            </p>
+          </div>
+        </div>
+
+        <div
+          class="rounded-xl border border-white/10 bg-black/40 px-6 py-4 text-sm text-neutral-300"
+        >
+          <p
+            id="mode-badge"
+            class="font-semibold uppercase tracking-wide text-emerald-400"
+          >
+            Recommended
+          </p>
+
+          <p class="mt-2">Selected game mode</p>
+        </div>
+      </div>
+
+      <div class="text-center">
+        <h1
+          class="text-7xl font-black tracking-tighter drop-shadow-lg md:text-8xl"
+        >
+          GEMS
+        </h1>
+
+        <p class="mt-4 text-xl tracking-wide text-neutral-400">
+          Gamifying Electro-Magnetic Spectrum
+        </p>
+
+        <a
+          id="play-now"
+          href={`${BASE_URL}/placeholder?mode=tutorial`}
+          class="mt-10 inline-flex min-w-56 items-center justify-center rounded-xl bg-emerald-400 px-12 py-4 text-xl font-bold text-black shadow-lg shadow-emerald-950/50 transition-colors hover:bg-emerald-300"
+        >
+          Play Now
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <script
+    is:inline
+    src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"
+    crossorigin="anonymous"></script>
+
+  <script
+    is:inline
+    src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"
+    crossorigin="anonymous"></script>
+
+  <script is:inline>
+    VANTA.NET({
+      el: "#vanta-bg",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.0,
+      minWidth: 200.0,
+      scale: 1.0,
+      scaleMobile: 1.0,
+      color: 0x58ff3f,
+      backgroundColor: 0x0a0a0a,
+      points: 8.0,
+      maxDistance: 20.0,
+      spacing: 18.0,
+    });
+  </script>
+
+  <script is:inline>
+    const icons = {
+      book: `
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z" />
+        </svg>
+      `,
+      cube: `
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="m21 16-9 5-9-5" />
+          <path d="m21 8-9 5-9-5 9-5 9 5z" />
+          <path d="M3 8v8" />
+          <path d="M21 8v8" />
+          <path d="M12 13v8" />
+        </svg>
+      `,
+      signal: `
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M6.5 17a8 8 0 0 1 0-10" />
+          <path d="M10 14a3.5 3.5 0 0 1 0-4" />
+          <path d="M17.5 17a8 8 0 0 0 0-10" />
+          <path d="M14 14a3.5 3.5 0 0 0 0-4" />
+          <path d="M12 12h.01" />
+        </svg>
+      `,
+      target: `
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <circle cx="12" cy="12" r="8" />
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v3" />
+          <path d="M12 19v3" />
+          <path d="M2 12h3" />
+          <path d="M19 12h3" />
+        </svg>
+      `,
+    };
+
+    document.querySelectorAll(".mode-icon").forEach((icon) => {
+      const iconName = icon.getAttribute("data-icon");
+      icon.innerHTML = icons[iconName] || "";
+    });
+
+    const modeTabs = document.querySelectorAll(".mode-tab");
+    const playNowButton = document.getElementById("play-now");
+    const modeDescription = document.getElementById("mode-description");
+    const modeBadge = document.getElementById("mode-badge");
+
+    function selectMode(selectedTab) {
+      modeTabs.forEach((tab) => {
+        const isSelected = tab === selectedTab;
+
+        tab.setAttribute("aria-selected", String(isSelected));
+        tab.classList.toggle("selected", isSelected);
+        tab.classList.toggle("text-emerald-400", isSelected);
+        tab.classList.toggle("text-neutral-400", !isSelected);
+
+        const line = tab.querySelector(".selection-line");
+
+        if (line) {
+          line.classList.toggle("opacity-100", isSelected);
+          line.classList.toggle("opacity-0", !isSelected);
+        }
+      });
+
+      const href = selectedTab.getAttribute("data-href");
+      const description = selectedTab.getAttribute("data-description");
+      const badge = selectedTab.getAttribute("data-badge");
+
+      if (href && playNowButton) {
+        playNowButton.setAttribute("href", href);
+      }
+
+      if (description && modeDescription) {
+        modeDescription.textContent = description;
+      }
+
+      if (badge && modeBadge) {
+        modeBadge.textContent = badge;
+      }
+    }
+
+    modeTabs.forEach((tab) => {
+      tab.addEventListener("click", () => selectMode(tab));
+    });
+  </script>
+</Base>

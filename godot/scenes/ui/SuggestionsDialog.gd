@@ -18,6 +18,7 @@ const STATE_LABELS := {
 @onready var title_label: Label = $VBox/TitleLabel
 @onready var content_label: Label = $VBox/ContentLabel
 
+var suggestions_toggled: bool = false
 var _selected_unit: Unit = null
 
 

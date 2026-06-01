@@ -87,6 +87,10 @@ TOML
               printf '\n# Silence direnv status messages (added by EMS_Game)\nexport DIRENV_LOG_FORMAT=\n' >> "$RC_FILE"
               export DIRENV_LOG_FORMAT=
             fi
+
+            if ! grep -q 'just --completions bash' "$RC_FILE" 2>/dev/null; then
+              printf '\n# just tab completion (added by EMS_Game)\ncommand -v just >/dev/null && source <(just --completions bash)\n' >> "$RC_FILE"
+            fi
           '';
         };
       }
