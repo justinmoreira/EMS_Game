@@ -15,7 +15,7 @@ const BANDWIDTH_POWER := [1.0, 0.5, 0.3]
 const BANDWIDTH_MHZ := [1.0, 10.0, 50.0]
 
 # Increase or decrease to adjust gameplay success
-const GAME_CALCULATION_RATIO = 3.0
+const GAME_CALCULATION_RATIO = 1.2
 
 
 static func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
@@ -23,7 +23,7 @@ static func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
 
 
 static func calculate_height_factor(height_tx: float, height_rx: float) -> float:
-	return 1.0 + (height_tx + height_rx) / 20.0
+	return 1.0 + ((height_tx + height_rx) / (2 * 500.0))
 
 
 static func calculate_distance_loss(dis: float) -> float:

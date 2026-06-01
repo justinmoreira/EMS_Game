@@ -75,7 +75,7 @@ text = "Bidirectional Link Lines"
 [node name="HeatmapToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=593618751]
 unique_name_in_owner = true
 layout_mode = 2
-text = "HeatmapToggle"
+text = "Terrain Interference Heatmap"
 
 [node name="Separator2" type="HSeparator" parent="SettingsPopup/SettingsContainer" unique_id=1137264128]
 custom_minimum_size = Vector2(0, 10)
