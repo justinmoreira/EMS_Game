@@ -1,10 +1,10 @@
 extends PanelContainer
 
 const SUGGESTIONS := {
-	SimulationManager.LinkState.FAILED_OUT_OF_RANGE: "Move units closer or add a relay.",
+	SimulationManager.LinkState.FAILED_OUT_OF_RANGE: "Move units closer.",
 	SimulationManager.LinkState.FAILED_JAMMED: "Change frequency or reposition away from jammer.",
 	SimulationManager.LinkState.FREQUENCY_DIFF: "Align both units to the same frequency band.",
-	SimulationManager.LinkState.BANDWIDTH_PENALTY: "Reduce concurrent links or upgrade bandwidth.",
+	SimulationManager.LinkState.BANDWIDTH_PENALTY: "Upgrade bandwidth.",
 }
 
 const STATE_LABELS := {
@@ -40,8 +40,8 @@ func _on_selection_changed(unit: Node) -> void:
 	_selected_unit = unit
 	_rebuild()
 	show()
-
-
+		
+		
 func _refresh(_link_results = null, _detect = null) -> void:
 	if _selected_unit:
 		_rebuild()

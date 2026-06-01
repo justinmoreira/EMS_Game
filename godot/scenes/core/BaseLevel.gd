@@ -19,6 +19,7 @@ var suggestions_panel: Control = null
 
 @export var base_hover_radius: float = 32.0
 @export var show_signal_ranges: bool = false
+@export var suggestions_enabled: bool = false
 # Sidebar layout — populated via signal, no global find_child reach.
 # Width is the live x-size of the sidebar; 0 if no sidebar in this scene.
 var sidebar_width: float = 0.0
@@ -41,6 +42,8 @@ func _ready():
 	GameEvents.delete_requested.connect(_on_delete_requested)
 	GameEvents.sidebar_resized.connect(_on_sidebar_resized)
 	_on_window_resized()
+	
+	toggle_suggestions(suggestions_enabled)
 
 
 func _on_sidebar_resized(width: float) -> void:
@@ -186,10 +189,12 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	GameEvents.select(unit)
 
 
-func _on_unit_placed(unit: Unit) -> void:
+func _on_unit_placed(unit: Unit) -> void:	
+	currently_selected_unit = unit
 	var label = _get_or_create_attribute_label(unit)
 	if label:
 		label.visible = unit_attributes_visible
+	toggle_suggestions(suggestions_enabled)
 
 
 # --- Selection Logic (visual highlight only — state lives on GameEvents) ---
@@ -242,16 +247,17 @@ func toggle_signal_ranges(enabled: bool) -> void:
 
 
 func toggle_suggestions(enabled: bool) -> void:
+	suggestions_enabled = enabled
 	if enabled:
 		if suggestions_panel == null:
 			suggestions_panel = SUGGESTIONS_PANEL_SCENE.instantiate()
-			add_child(suggestions_panel)
+			add_child.call_deferred(suggestions_panel)
 	else:
 		if suggestions_panel:
 			suggestions_panel.queue_free()
 			suggestions_panel = null
 
-	_refresh_suggestions_ui()
+	call_deferred("_refresh_suggestions_ui")
 
 
 func _refresh_suggestions_ui() -> void:
