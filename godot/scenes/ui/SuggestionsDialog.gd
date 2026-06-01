@@ -40,8 +40,8 @@ func _on_selection_changed(unit: Node) -> void:
 	_selected_unit = unit
 	_rebuild()
 	show()
-		
-		
+
+
 func _refresh(_link_results = null, _detect = null) -> void:
 	if _selected_unit:
 		_rebuild()

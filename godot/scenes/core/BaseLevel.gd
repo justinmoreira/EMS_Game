@@ -42,7 +42,7 @@ func _ready():
 	GameEvents.delete_requested.connect(_on_delete_requested)
 	GameEvents.sidebar_resized.connect(_on_sidebar_resized)
 	_on_window_resized()
-	
+
 	toggle_suggestions(suggestions_enabled)
 
 
@@ -189,7 +189,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	GameEvents.select(unit)
 
 
-func _on_unit_placed(unit: Unit) -> void:	
+func _on_unit_placed(unit: Unit) -> void:
 	currently_selected_unit = unit
 	var label = _get_or_create_attribute_label(unit)
 	if label:
