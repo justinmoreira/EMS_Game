@@ -199,7 +199,7 @@ func _on_selection_changed(unit: Node) -> void:
 	# Single-shot handler covers both new selection and re-selection. Since
 	# `selected_unit` is the source of truth, just diff with our last paint.
 	currently_selected_unit = unit
-	
+
 	if _last_highlighted and _last_highlighted != unit:
 		_set_unit_selected_visual(_last_highlighted, false)
 	_last_highlighted = unit if unit is Unit else null
@@ -250,7 +250,7 @@ func toggle_suggestions(enabled: bool) -> void:
 		if suggestions_panel:
 			suggestions_panel.queue_free()
 			suggestions_panel = null
-	
+
 	_refresh_suggestions_ui()
 
 
@@ -262,8 +262,8 @@ func _refresh_suggestions_ui() -> void:
 		return
 
 	suggestions_panel._on_selection_changed(currently_selected_unit)
-		
-		
+
+
 func _on_reset_requested() -> void:
 	# LinkRenderer also subscribes to reset_requested and clears its own visuals.
 	UnitNameManager.reset()
