@@ -28,6 +28,10 @@ func _ready() -> void:
 	hide()
 
 
+func _process(_delta: float) -> void:
+	_reposition()
+	
+	
 func _on_selection_changed(unit: Node) -> void:
 	if unit == null:
 		_selected_unit = null
@@ -35,7 +39,6 @@ func _on_selection_changed(unit: Node) -> void:
 		return
 	_selected_unit = unit
 	_rebuild()
-	_reposition()
 	show()
 
 
@@ -63,7 +66,7 @@ func _rebuild() -> void:
 		var status: String = STATE_LABELS.get(state, "Unknown")
 		var line := "→ %s: %s" % [name, status]
 		if SUGGESTIONS.has(state):
-			line += "\n💡 " + SUGGESTIONS[state]
+			line += "\n" + SUGGESTIONS[state]
 		lines.append(line)
 
 	content_label.text = "\n\n".join(lines)
