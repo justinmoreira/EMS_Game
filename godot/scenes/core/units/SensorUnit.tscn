@@ -9,13 +9,19 @@
 radius = 32.0
 
 [node name="EMSUnit - Sensor" type="Area2D" unique_id=864604190]
+position = Vector2(636.66327, 302.2799)
 script = ExtResource("1_dem8i")
+metadata/world_uv = Vector2(0.20061412, 0.2798888)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1499376585]
 shape = SubResource("CircleShape2D_o81bo")
 
 [node name="Sensor" type="Node2D" parent="." unique_id=2031422171 instance=ExtResource("2_xbxfc")]
 script = ExtResource("3_7nrp4")
+sensitivity = 1
+sensor_bandwidth = 2
+tuning_frequency = 1308
+unit_name = "Sensor 1"
 
 [node name="Visual" type="Node2D" parent="." unique_id=1094016982]
 script = ExtResource("3_tm6hg")

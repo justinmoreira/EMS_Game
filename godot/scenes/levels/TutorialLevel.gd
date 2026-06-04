@@ -1,17 +1,19 @@
 extends "res://scenes/levels/ContourDemo.gd"
 
 const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
+const TUTORIAL_COMPLETION_POPUP := preload("res://scenes/ui/TutorialCompletionPopup.tscn")
 
 const TUTORIAL_TERRAIN_SEED := 12345
 const TUTORIAL_FREQUENCY := 1000.0
 const TUTORIAL_SENSOR_SENSITIVITY := 1.0
-
-const SANDBOX_SCENE_PATH := "res://scenes/levels/ContourDemo.tscn"
-const HOME_URL := "/"
+const FREQUENCY_TOLERANCE := 5.0
+const PLACEMENT_TOLERANCE := 75.0
+const MOVE_TARGET_TOLERANCE := 50.0
 
 const FIRST_TRANSCEIVER_POS := Vector2(500, 260)
+const FIRST_TRANSCEIVER_GREEN_POS := Vector2(650, 260)
 const SECOND_TRANSCEIVER_POS := Vector2(750, 260)
-const SENSOR_POS := Vector2(500, 290)
+const SENSOR_POS := Vector2(630, 290)
 const JAMMER_POS := Vector2(690, 180)
 
 enum TutorialStep {
@@ -22,7 +24,7 @@ enum TutorialStep {
 	PLACE_SECOND_TRANSCEIVER,
 	EXPLAIN_LINK,
 	EXPLAIN_BANDWIDTH_PENALTY,
-	CHANGE_TRANSCEIVER_BANDWIDTHS_NARROW,
+	MOVE_FIRST_TRANSCEIVER_CLOSER,
 	EXPLAIN_SUCCESSFUL_LINK,
 	SELECT_TRANSCEIVER,
 	EXPLAIN_FREQUENCY,
@@ -55,22 +57,25 @@ var _second_transceiver: Node = null
 var _sensor: Node = null
 var _jammer: Node = null
 var _selected_tutorial_unit: Node = null
+var _pending_placement_unit: Node = null
 
 var _original_power := 10.0
 var _original_height := 10.0
 var _original_sensor_tuning := TUTORIAL_FREQUENCY
-var _original_jammer_frequency := TUTORIAL_FREQUENCY
 
-var _first_transceiver_bandwidth_narrow := false
-var _second_transceiver_bandwidth_narrow := false
+var _frequency_went_outside_range := false
 
 var _placement_marker: Control = null
 var _completion_popup: Control = null
 
-var _tutorial_frequency_locked := false
-var _sensor_sensitivity_locked := false
-var _transceiver_positions_locked := false
-var _jammer_frequency_locked := false
+# Stores every tutorial hint so the player can review earlier popups
+# without changing or undoing the current tutorial step.
+var _popup_history: Array[Dictionary] = []
+var _popup_history_index := -1
+
+var _lock_transceiver_frequency := false
+var _lock_sensor_sensitivity := false
+var _lock_jammer_frequency := false
 
 
 func _ready() -> void:
@@ -89,35 +94,35 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if _transceiver_positions_locked:
-		_keep_transceivers_locked_in_place()
+	_check_pending_placement()
+	_check_transceiver_move_target()
 
-	if _tutorial_frequency_locked:
-		_keep_transceiver_frequencies_locked()
+	if _lock_transceiver_frequency:
+		_lock_transceiver_frequencies()
 
-	if _sensor_sensitivity_locked:
-		_keep_sensor_sensitivity_locked()
+	if _lock_sensor_sensitivity:
+		_set_number_on_unit(
+			_sensor, ["sensitivity", "detection_sensitivity"], TUTORIAL_SENSOR_SENSITIVITY
+		)
 
-	if _jammer_frequency_locked:
-		_keep_jammer_frequency_locked()
+	if _lock_jammer_frequency:
+		_set_number_on_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
 
 
-# Overrides ContourDemo.gd terrain generation so Tutorial Mode uses the same terrain every run.
 func _generate_terrain(w: int, h: int) -> Array:
 	var noise := FastNoiseLite.new()
 	noise.seed = TUTORIAL_TERRAIN_SEED
 	noise.frequency = 0.025
 	noise.fractal_octaves = 3
 
-	var g: Array = []
+	var grid: Array = []
 	for x in range(w):
-		g.append([])
+		grid.append([])
 		for y in range(h):
 			var n := noise.get_noise_2d(float(x), float(y))
-			var h_m := (n + 1.0) * 0.5 * 500.0
-			g[x].append(h_m)
+			grid[x].append((n + 1.0) * 0.5 * 500.0)
 
-	return g
+	return grid
 
 
 func _enter_step(step: TutorialStep) -> void:
@@ -125,394 +130,286 @@ func _enter_step(step: TutorialStep) -> void:
 
 	match step:
 		TutorialStep.WELCOME:
-			_clear_placement_marker()
-			_unlock_sidebar()
-			_lock_attributes([])
-			_show_popup(
-				(
-					"Welcome to Tutorial Mode.\n\nThis mode will teach you the basics of Gamify EMS."
-					+ "You will learn how to place units, edit their attributes, create communication"
-					+ "links, detect signals,"
-					+ "and understand how frequency, power, height, and bandwidth affect the simulation."
-				),
+			_setup()
+			_say(
+				[
+					"Welcome to Tutorial Mode.\n\n",
+					"This mode teaches the basics of Gamify EMS. ",
+					"You will place units, edit attributes, create links, ",
+					"detect signals, and see how jammers affect communication."
+				],
 				TutorialStep.INTRO_MAP
 			)
 
 		TutorialStep.INTRO_MAP:
-			_clear_placement_marker()
-			_unlock_sidebar()
-			_lock_attributes([])
-			_show_popup(
-				(
-					"This is the simulation map.\n\n"
-					+ "Units can be placed on the map to represent communication equipment,"
-					+ "sensors, and jammers. The position of each unit matters"
-					+ "because distance affects signal strength."
-				),
+			_setup()
+			_say(
+				[
+					"This is the simulation map.\n\n",
+					"Units can be placed on the map to represent ",
+					"communication equipment, sensors, and jammers. ",
+					"Position matters because distance affects signal strength."
+				],
 				TutorialStep.PLACE_FIRST_TRANSCEIVER
 			)
 
 		TutorialStep.PLACE_FIRST_TRANSCEIVER:
-			_lock_sidebar_to([Sidebar.EntityType.TRANSCEIVER])
-			_lock_attributes([])
-			_show_placement_marker(FIRST_TRANSCEIVER_POS, "Place\nTransceiver 1")
-			_show_popup("First, place a Transceiver on the highlighted target area.")
+			_setup(
+				[Sidebar.EntityType.TRANSCEIVER], [], FIRST_TRANSCEIVER_POS, "Place\nTransceiver 1"
+			)
+			_say(["Place a Transceiver inside the highlighted area."])
 
 		TutorialStep.FIRST_TRANSCEIVER_PLACED:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes([])
-			_show_popup(
-				(
-					"Good. You placed your first Transceiver.\n\nThis unit has attributes such as frequency,"
-					+ "power, bandwidth, and antenna height. "
-					+ "These values affect how well the unit can communicate with other units."
-				),
+			_setup()
+			_say(
+				[
+					"Good. You placed your first Transceiver.\n\n",
+					"Transceivers have frequency, power, bandwidth, ",
+					"and height settings. These values affect communication."
+				],
 				TutorialStep.PLACE_SECOND_TRANSCEIVER
 			)
 
 		TutorialStep.PLACE_SECOND_TRANSCEIVER:
-			_lock_sidebar_to([Sidebar.EntityType.TRANSCEIVER])
-			_lock_attributes([])
-			_show_placement_marker(SECOND_TRANSCEIVER_POS, "Place\nTransceiver 2")
-			_show_popup("Now place a second Transceiver on the highlighted target area.")
+			_setup(
+				[Sidebar.EntityType.TRANSCEIVER], [], SECOND_TRANSCEIVER_POS, "Place\nTransceiver 2"
+			)
+			_say(["Now place a second Transceiver inside the highlighted area."])
 
 		TutorialStep.EXPLAIN_LINK:
-			_clear_placement_marker()
-			_unlock_sidebar()
-			_lock_attributes([])
+			_setup()
 			_run_simulation_if_possible()
-			_show_popup(
-				(
-					"The two Transceivers are now trying to communicate.\n\n"
-					+ "A green line means the connection is successful."
-					+ "\nAn orange line means the units are out of range or the signal is too weak."
-					+ "\nA red or distorted line means the connection may be jammed."
-					+ "\nA purple line means there is a bandwidth penalty."
-					+ "\nA blue line means the Transceivers are using different frequency ranges."
-				),
+			_say(
+				[
+					"The two Transceivers are trying to communicate.\n\n",
+					"Green means the connection is successful.\n",
+					"Orange means the signal is too weak or out of range.\n",
+					"Red means the connection may be jammed.\n",
+					"Purple means there is a bandwidth penalty.\n",
+					"Blue means the units are using different frequency ranges."
+				],
 				TutorialStep.EXPLAIN_BANDWIDTH_PENALTY
 			)
 
 		TutorialStep.EXPLAIN_BANDWIDTH_PENALTY:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes([])
+			_setup()
 			_run_simulation_if_possible()
-			_show_popup(
-				(
-					"The purple line means there is a bandwidth penalty."
-					+ "\n\nIn EMS, bandwidth is the range of frequencies a signal"
-					+ "uses around its main frequency."
-					+ "A wider bandwidth can carry more information, but it"
-					+ "can also use more spectrum space, create more noise,"
-					+ "and make the signal less clean.\n\nIn this tutorial,"
-					+ "the purple line means the Transceivers are close enough to communicate,"
-					+ "but their bandwidth setting is hurting the link quality."
-				),
-				TutorialStep.CHANGE_TRANSCEIVER_BANDWIDTHS_NARROW
+			_say(
+				[
+					"The purple line shows a bandwidth penalty.\n\n",
+					"Bandwidth is the range of frequencies around the ",
+					"main frequency. A wider bandwidth can carry more ",
+					"information, but it can also make the signal less clean.",
+					"\n\nAcceptable frequency differences in this simulation:",
+					"\nNarrow | 1 MHz | ±0.5 MHz",
+					"\nMedium | 10 MHz | ±5 MHz",
+					"\nWide | 50 MHz | ±25 MHz"
+				],
+				TutorialStep.MOVE_FIRST_TRANSCEIVER_CLOSER
 			)
 
-		TutorialStep.CHANGE_TRANSCEIVER_BANDWIDTHS_NARROW:
-			_lock_sidebar_to([])
-			_lock_attributes(["bandwidth"])
-			_show_popup(
-				(
-					"Now change the bandwidth of both Transceivers to Narrow.\n\nThis reduces the bandwidth"
-					+ "penalty and should allow the Transceivers to form a clean connection."
-				)
+		TutorialStep.MOVE_FIRST_TRANSCEIVER_CLOSER:
+			_setup([], [], FIRST_TRANSCEIVER_GREEN_POS, "Move\nTransceiver 1")
+			_say(
+				[
+					"Move Transceiver 1 into the new highlighted area.\n\n",
+					"Moving the Transceiver closer should improve the signal ",
+					"and create a green connection line."
+				]
 			)
 
 		TutorialStep.EXPLAIN_SUCCESSFUL_LINK:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes([])
+			_setup()
 			_run_simulation_if_possible()
-			_show_popup(
-				(
-					"Good. The green line means the connection was successful.\n\nThis means the two"
-					+ "Transceivers are close enough, their settings are compatible,"
-					+ "and the signal is strong enough to communicate."
-				),
+			_say(
+				[
+					"Good. The green line means the connection worked.\n\n",
+					"The units are now close enough, their settings match, ",
+					"and the signal is strong enough to communicate."
+				],
 				TutorialStep.SELECT_TRANSCEIVER
 			)
 
 		TutorialStep.SELECT_TRANSCEIVER:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes([])
-			_show_popup(
-				(
-					"Click on one of the Transceivers to view its attributes."
-					+ "\n\nThe attribute panel lets you edit important values such as "
-					+ "frequency, power, bandwidth, and antenna height."
-				),
+			_setup()
+			_say(
+				[
+					"Click one of the Transceivers to view its attributes.\n\n",
+					"The attribute panel lets you edit frequency, power, ",
+					"bandwidth, and antenna height."
+				],
 				TutorialStep.EXPLAIN_FREQUENCY
 			)
 
 		TutorialStep.EXPLAIN_FREQUENCY:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-
-			if _selected_tutorial_unit == null:
-				if _second_transceiver != null:
-					_selected_tutorial_unit = _second_transceiver
-				elif _first_transceiver != null:
-					_selected_tutorial_unit = _first_transceiver
-
-			_tutorial_frequency_locked = false
-			_lock_attributes(["frequency"])
-			_lock_all_transceiver_frequencies_to_tutorial_value()
+			_setup([], ["frequency"])
+			_pick_default_transceiver()
+			_frequency_went_outside_range = false
+			_lock_transceiver_frequency = false
+			_lock_transceiver_frequencies()
 			_run_simulation_if_possible()
-
-			_show_popup(
-				(
-					"Frequency controls what channel the unit is using."
-					+ "\n\nFor two Transceivers to communicate,"
-					+ "their frequencies must be compatible. If one unit is "
-					+ "using a very different frequency, the link may fail."
-				),
+			_say(
+				[
+					"Frequency controls what channel the unit uses.\n\n",
+					"The Transceivers currently use Medium bandwidth. ",
+					"In this simulation, Medium bandwidth allows a ",
+					"frequency difference of plus or minus 5."
+				],
 				TutorialStep.CHANGE_FREQUENCY_AWAY
 			)
 
 		TutorialStep.CHANGE_FREQUENCY_AWAY:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["frequency"])
-			_show_popup(
-				(
-					"Change the frequency of one Transceiver so it no longer matches "
-					+ "the other one.\n\nWatch how the connection line changes."
-				)
+			_setup([], ["frequency"])
+			_say(
+				[
+					"Move one Transceiver frequency outside the matching ",
+					"range.\n\n",
+					"Set it below 995 or above 1005. The connection should ",
+					"turn blue because the frequency ranges no longer match."
+				]
 			)
 
 		TutorialStep.CHANGE_FREQUENCY_BACK:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["frequency"])
-			_show_popup(
-				(
-					"Now change the frequency back.\n\nFor consistency,"
-					+ "the tutorial will automatically lock both "
-					+ "Transceivers back to 1000 Hz after you edit it."
-				)
+			_setup([], ["frequency"])
+			_say(
+				[
+					"Now move the frequency back inside the matching range.\n\n",
+					"Set it between 995 and 1005 to restore the connection."
+				]
 			)
 
 		TutorialStep.EXPLAIN_POWER:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["power"])
+			_setup([], ["power"])
 			_original_power = _read_number_from_unit(_selected_tutorial_unit, ["power"], 10.0)
-			_show_popup(
-				(
-					"Power affects how strong a signal is.\n\nHigher power can help a signal travel farther,"
-					+ "but it may also make the unit easier to detect. Lower power may reduce detection risk,"
-					+ "but it can make communication harder over long distances."
-				),
+			_say(
+				[
+					"Power affects signal strength.\n\n",
+					"Higher power can help a signal travel farther, ",
+					"but it may also make the unit easier to detect."
+				],
 				TutorialStep.LOWER_POWER
 			)
 
 		TutorialStep.LOWER_POWER:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["power"])
-			_show_popup(
-				(
-					"Lower the Transceiver power and watch what happens to the link."
-					+ "\n\nIf the signal becomes too weak, the connection may fail."
-				)
-			)
+			_setup([], ["power"])
+			_say(["Lower the Transceiver power and watch the link change."])
 
 		TutorialStep.RAISE_POWER:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["power"])
-			_show_popup(
-				(
-					"Good. Now raise the power again to help restore the link."
-					+ "\n\nThis shows the tradeoff between signal strength and visibility."
-				)
-			)
+			_setup([], ["power"])
+			_say(["Now raise the power again to help restore the link."])
 
 		TutorialStep.EXPLAIN_HEIGHT:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["height"])
+			_setup([], ["height"])
 			_original_height = _read_number_from_unit(_selected_tutorial_unit, ["height"], 10.0)
-			_show_popup(
-				(
-					"Antenna height can also affect communication."
-					+ "\n\nA taller antenna can improve signal performance "
-					+ "because it gives the unit a better transmission path."
-				),
+			_say(
+				[
+					"Antenna height can also affect communication.\n\n",
+					"A taller antenna can improve signal performance ",
+					"by giving the unit a better transmission path."
+				],
 				TutorialStep.INCREASE_HEIGHT
 			)
 
 		TutorialStep.INCREASE_HEIGHT:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["height"])
-			_show_popup(
-				(
-					"Increase the antenna height of one Transceiver and observe the result."
-					+ "\n\nIn later modes, terrain and distance may make height even more important."
-				)
-			)
+			_setup([], ["height"])
+			_say(["Increase the antenna height of one Transceiver."])
 
 		TutorialStep.INTRO_SENSOR:
-			_clear_placement_marker()
-			_lock_sidebar_to([Sidebar.EntityType.SENSOR])
-			_lock_attributes([])
-			_show_popup(
-				(
-					"Sensors are used to detect signals."
-					+ "\n\nA Sensor does not create a communication link like a Transceiver."
-					+ "Instead, it listens for nearby transmissions."
-					+ "\n\nPlace a Sensor near one of the Transceivers."
-				),
+			_setup([Sidebar.EntityType.SENSOR])
+			_say(
+				[
+					"Sensors are used to detect signals.\n\n",
+					"A Sensor does not create a communication link. ",
+					"It listens for nearby transmissions."
+				],
 				TutorialStep.PLACE_SENSOR
 			)
 
 		TutorialStep.PLACE_SENSOR:
-			_lock_sidebar_to([Sidebar.EntityType.SENSOR])
-			_lock_attributes([])
-			_show_placement_marker(SENSOR_POS, "Place\nSensor")
-			_show_popup("Drag a Sensor onto the highlighted target area near the Transceivers.")
+			_setup([Sidebar.EntityType.SENSOR], [], SENSOR_POS, "Place\nSensor")
+			_say(["Place a Sensor inside the highlighted area."])
 
 		TutorialStep.EXPLAIN_SENSOR_SENSITIVITY:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["sensitivity", "detection_sensitivity"])
-			_show_popup(
-				(
-					"Now let's look at Sensor sensitivity."
-					+ "\n\nSensitivity controls how easily a Sensor can detect a signal. "
-					+ "Higher sensitivity can detect weaker signals,"
-					+ "while lower sensitivity makes the Sensor less responsive."
-					+ "\n\nSet the Sensor sensitivity to 1. For consistency, "
-					+ "the tutorial will lock it to 1 after you edit it."
-				),
+			_setup([], ["sensitivity", "detection_sensitivity"])
+			_say(
+				[
+					"Sensitivity controls how easily a Sensor detects signals.",
+					"\n\nSet the Sensor sensitivity to 1. The tutorial will ",
+					"lock it there for consistency."
+				],
 				TutorialStep.LOWER_SENSOR_SENSITIVITY
 			)
 
 		TutorialStep.LOWER_SENSOR_SENSITIVITY:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["sensitivity", "detection_sensitivity"])
-			_show_popup(
-				(
-					"Set the Sensor sensitivity to 1."
-					+ "\n\nThe tutorial will lock the sensitivity to 1 and then continue."
-				)
-			)
+			_setup([], ["sensitivity", "detection_sensitivity"])
+			_say(["Set the Sensor sensitivity to 1."])
 
 		TutorialStep.EXPLAIN_SENSOR_TUNING:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["tuning_frequency"])
+			_setup([], ["tuning_frequency"])
 			_original_sensor_tuning = _read_number_from_unit(
 				_sensor, ["tuning_frequency"], TUTORIAL_FREQUENCY
 			)
-			_show_popup(
-				(
-					"A Sensor has a tuning frequency and bandwidth."
-					+ "\n\nTuning frequency is the frequency the Sensor is listening for."
-					+ "Bandwidth controls how wide of a frequency range the Sensor can detect."
-				),
+			_say(
+				[
+					"A Sensor has tuning frequency and bandwidth.\n\n",
+					"Tuning frequency is what the Sensor listens for. ",
+					"Bandwidth controls how wide the listening range is."
+				],
 				TutorialStep.CHANGE_SENSOR_TUNING_AWAY
 			)
 
 		TutorialStep.CHANGE_SENSOR_TUNING_AWAY:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["tuning_frequency"])
-			_show_popup(
-				(
-					"Change the Sensor tuning frequency so it no longer matches the Transceiver."
-					+ "\n\nWatch how the detection status changes."
-				)
-			)
+			_setup([], ["tuning_frequency"])
+			_say(["Move the Sensor tuning frequency away from 1000."])
 
 		TutorialStep.EXPLAIN_BANDWIDTH:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["bandwidth"])
-			_show_popup(
-				(
-					"Bandwidth controls how flexible the Sensor is when listening for signals."
-					+ "\n\nA narrow bandwidth is more precise but may miss signals that "
-					+ "are slightly different. A wider bandwidth can detect more frequencies."
-				),
+			_setup([], ["bandwidth"])
+			_say(
+				[
+					"Bandwidth controls how flexible detection is.\n\n",
+					"A wider bandwidth can detect a wider frequency range."
+				],
 				TutorialStep.INCREASE_BANDWIDTH
 			)
 
 		TutorialStep.INCREASE_BANDWIDTH:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["bandwidth"])
-			_show_popup(
-				(
-					"Try increasing the Sensor bandwidth."
-					+ "\n\nA wider bandwidth may allow the Sensor to detect "
-					+ "signals even when the tuning frequency is not exactly the same."
-				)
-			)
+			_setup([], ["bandwidth"])
+			_say(["Increase the Sensor bandwidth."])
 
 		TutorialStep.INTRO_JAMMER:
-			_clear_placement_marker()
-			_lock_sidebar_to([Sidebar.EntityType.JAMMER])
-			_lock_attributes([])
-			_show_popup(
-				(
-					"Jammers are used to interfere with communication."
-					+ "\n\nA Jammer can weaken or break a communication link "
-					+ "if it overlaps with the frequency being used by the Transceivers."
-				),
+			_setup([Sidebar.EntityType.JAMMER])
+			_say(
+				[
+					"Jammers interfere with communication.\n\n",
+					"A Jammer can weaken or break a link if its frequency ",
+					"overlaps with the Transceivers."
+				],
 				TutorialStep.PLACE_JAMMER
 			)
 
 		TutorialStep.PLACE_JAMMER:
-			_lock_sidebar_to([Sidebar.EntityType.JAMMER])
-			_lock_attributes([])
-			_show_placement_marker(JAMMER_POS, "Place\nJammer")
-			_show_popup(
-				(
-					"Place the Jammer on the highlighted target area."
-					+ "\n\nThis location is close enough to demonstrate interference clearly."
-				)
-			)
+			_setup([Sidebar.EntityType.JAMMER], [], JAMMER_POS, "Place\nJammer")
+			_say(["Place the Jammer inside the highlighted area."])
 
 		TutorialStep.CHANGE_JAMMER_FREQUENCY_AWAY:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["frequency"])
-			_jammer_frequency_locked = false
-			_original_jammer_frequency = TUTORIAL_FREQUENCY
+			_setup([], ["frequency"])
+			_lock_jammer_frequency = false
 			_set_number_on_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
 			_run_simulation_if_possible()
-			_show_popup(
-				(
-					"A Jammer is most effective when its frequency overlaps "
-					+ "with the target communication frequency."
-					+ "\n\nChange the Jammer frequency away from 1000 Hz and observe that the link recovers."
-				)
+			_say(
+				[
+					"A Jammer works best when its frequency overlaps ",
+					"the target.\n\n",
+					"Move the Jammer frequency away from 1000."
+				]
 			)
 
 		TutorialStep.CHANGE_JAMMER_FREQUENCY_BACK:
-			_clear_placement_marker()
-			_lock_sidebar_to([])
-			_lock_attributes(["frequency"])
-			_show_popup(
-				(
-					"Now change the Jammer frequency back."
-					+ "\n\nFor consistency, the tutorial will lock the Jammer back to 1000 Hz after you edit it."
-				)
-			)
+			_setup([], ["frequency"])
+			_say(["Now move the Jammer frequency back to 1000."])
 
 		TutorialStep.COMPLETE:
-			_clear_placement_marker()
-			_unlock_sidebar()
-			_lock_attributes([])
+			_setup()
 			_show_completion_popup()
 
 
@@ -520,30 +417,106 @@ func _on_tutorial_unit_placed(unit: Node) -> void:
 	match _tutorial_step:
 		TutorialStep.PLACE_FIRST_TRANSCEIVER:
 			if _is_transceiver(unit):
-				_snap_unit_to_target(unit, FIRST_TRANSCEIVER_POS)
-				_first_transceiver = unit
-				_enter_step(TutorialStep.FIRST_TRANSCEIVER_PLACED)
+				_handle_placement(unit, FIRST_TRANSCEIVER_POS, "Transceiver 1")
 
 		TutorialStep.PLACE_SECOND_TRANSCEIVER:
 			if _is_transceiver(unit):
-				_snap_unit_to_target(unit, SECOND_TRANSCEIVER_POS)
-				_second_transceiver = unit
-				_run_simulation_if_possible()
-				_enter_step(TutorialStep.EXPLAIN_LINK)
+				_handle_placement(unit, SECOND_TRANSCEIVER_POS, "Transceiver 2")
 
 		TutorialStep.PLACE_SENSOR:
 			if _is_sensor(unit):
-				_snap_unit_to_target(unit, SENSOR_POS)
-				_sensor = unit
-				_run_simulation_if_possible()
-				_enter_step(TutorialStep.EXPLAIN_SENSOR_SENSITIVITY)
+				_handle_placement(unit, SENSOR_POS, "Sensor")
 
 		TutorialStep.PLACE_JAMMER:
 			if _is_jammer(unit):
-				_snap_unit_to_target(unit, JAMMER_POS)
-				_jammer = unit
-				_run_simulation_if_possible()
-				_enter_step(TutorialStep.CHANGE_JAMMER_FREQUENCY_AWAY)
+				_handle_placement(unit, JAMMER_POS, "Jammer")
+
+		_:
+			pass
+
+
+func _handle_placement(unit: Node, target_position: Vector2, label_text: String) -> void:
+	if _is_near_target(unit, target_position):
+		_accept_placement(unit)
+		return
+
+	_pending_placement_unit = unit
+	_show_wrong_placement_popup(label_text)
+
+
+func _check_pending_placement() -> void:
+	if intro_popup_open:
+		return
+
+	if _pending_placement_unit == null:
+		return
+
+	if not is_instance_valid(_pending_placement_unit):
+		_pending_placement_unit = null
+		return
+
+	match _tutorial_step:
+		TutorialStep.PLACE_FIRST_TRANSCEIVER:
+			if _is_near_target(_pending_placement_unit, FIRST_TRANSCEIVER_POS):
+				_accept_placement(_pending_placement_unit)
+
+		TutorialStep.PLACE_SECOND_TRANSCEIVER:
+			if _is_near_target(_pending_placement_unit, SECOND_TRANSCEIVER_POS):
+				_accept_placement(_pending_placement_unit)
+
+		TutorialStep.PLACE_SENSOR:
+			if _is_near_target(_pending_placement_unit, SENSOR_POS):
+				_accept_placement(_pending_placement_unit)
+
+		TutorialStep.PLACE_JAMMER:
+			if _is_near_target(_pending_placement_unit, JAMMER_POS):
+				_accept_placement(_pending_placement_unit)
+
+		_:
+			_pending_placement_unit = null
+
+
+func _check_transceiver_move_target() -> void:
+	if intro_popup_open:
+		return
+
+	if _tutorial_step != TutorialStep.MOVE_FIRST_TRANSCEIVER_CLOSER:
+		return
+
+	if _first_transceiver == null:
+		return
+
+	if not is_instance_valid(_first_transceiver):
+		return
+
+	if _is_near_target(_first_transceiver, FIRST_TRANSCEIVER_GREEN_POS, MOVE_TARGET_TOLERANCE):
+		_run_simulation_if_possible()
+		_enter_step(TutorialStep.EXPLAIN_SUCCESSFUL_LINK)
+
+
+func _accept_placement(unit: Node) -> void:
+	_pending_placement_unit = null
+
+	match _tutorial_step:
+		TutorialStep.PLACE_FIRST_TRANSCEIVER:
+			_first_transceiver = unit
+			_run_simulation_if_possible()
+			_enter_step(TutorialStep.FIRST_TRANSCEIVER_PLACED)
+
+		TutorialStep.PLACE_SECOND_TRANSCEIVER:
+			_second_transceiver = unit
+			_run_simulation_if_possible()
+			_enter_step(TutorialStep.EXPLAIN_LINK)
+
+		TutorialStep.PLACE_SENSOR:
+			_sensor = unit
+			_run_simulation_if_possible()
+			_enter_step(TutorialStep.EXPLAIN_SENSOR_SENSITIVITY)
+
+		TutorialStep.PLACE_JAMMER:
+			_jammer = unit
+			_run_simulation_if_possible()
+			_enter_step(TutorialStep.CHANGE_JAMMER_FREQUENCY_AWAY)
 
 		_:
 			pass
@@ -566,56 +539,39 @@ func _on_tutorial_attribute_changed(unit: Node, attribute_name: String, new_valu
 	match _tutorial_step:
 		TutorialStep.LOWER_SENSOR_SENSITIVITY:
 			if attr.contains("sensitivity"):
-				_sensor_sensitivity_locked = true
-				_keep_sensor_sensitivity_locked()
+				_lock_sensor_sensitivity = true
 				_run_simulation_if_possible()
-				_show_popup(
-					(
-						"Good. The Sensor sensitivity is now locked to 1."
-						+ "\n\nThis keeps the tutorial result consistent every time."
-					),
+				_say(
+					["Good. The Sensor sensitivity is now locked to 1."],
 					TutorialStep.EXPLAIN_SENSOR_TUNING
 				)
 
-		TutorialStep.CHANGE_TRANSCEIVER_BANDWIDTHS_NARROW:
-			if attr.contains("bandwidth"):
-				if _unit_is_or_belongs_to(unit, _first_transceiver):
-					_first_transceiver_bandwidth_narrow = true
-				elif _unit_is_or_belongs_to(unit, _second_transceiver):
-					_second_transceiver_bandwidth_narrow = true
-
-				_run_simulation_if_possible()
-
-				if _first_transceiver_bandwidth_narrow and _second_transceiver_bandwidth_narrow:
-					_enter_step(TutorialStep.EXPLAIN_SUCCESSFUL_LINK)
-
 		TutorialStep.CHANGE_FREQUENCY_AWAY:
-			if attr.contains("freq") and abs(value - TUTORIAL_FREQUENCY) >= 50.0:
-				_tutorial_frequency_locked = false
+			if attr.contains("freq") and _outside_match_range(value):
+				_frequency_went_outside_range = true
 				_run_simulation_if_possible()
-				_show_popup(
-					(
-						"Notice that the line changed to blue."
-						+ "\n\nThe blue line means the Transceivers are using different frequencies."
-						+ "In EMS, two radios usually need to operate on the "
-						+ "same or compatible frequency range to communicate."
-						+ "If the frequency is too different, the signal will not be received correctly."
-					),
+				_say(
+					[
+						"Good. The connection is blue because the ",
+						"frequency is outside the matching range.\n\n",
+						"Now move it back between 995 and 1005."
+					],
 					TutorialStep.CHANGE_FREQUENCY_BACK
 				)
 
 		TutorialStep.CHANGE_FREQUENCY_BACK:
-			if attr.contains("freq"):
-				_tutorial_frequency_locked = true
-				_keep_transceiver_frequencies_locked()
-				_run_simulation_if_possible()
-				_show_popup(
-					(
-						"Good. The tutorial locked both Transceivers back to "
-						+ "1000 Hz so the connection is consistent again."
-					),
-					TutorialStep.EXPLAIN_POWER
-				)
+			if attr.contains("freq") and _inside_match_range(value):
+				if _frequency_went_outside_range:
+					_lock_transceiver_frequency = true
+					_lock_transceiver_frequencies()
+					_run_simulation_if_possible()
+					_say(
+						[
+							"Good. The Transceivers are back inside the ",
+							"matching frequency range."
+						],
+						TutorialStep.EXPLAIN_POWER
+					)
 
 		TutorialStep.LOWER_POWER:
 			if attr.contains("power") and value < _original_power:
@@ -625,80 +581,150 @@ func _on_tutorial_attribute_changed(unit: Node, attribute_name: String, new_valu
 		TutorialStep.RAISE_POWER:
 			if attr.contains("power") and value >= _original_power:
 				_run_simulation_if_possible()
-				_show_popup(
-					"Good. Increasing the power helped restore the link.",
-					TutorialStep.EXPLAIN_HEIGHT
+				_say(
+					["Good. Increasing power helped restore the link."], TutorialStep.EXPLAIN_HEIGHT
 				)
 
 		TutorialStep.INCREASE_HEIGHT:
 			if attr.contains("height") and value > _original_height:
 				_run_simulation_if_possible()
-				_show_popup(
-					"Increasing height can improve communication range.", TutorialStep.INTRO_SENSOR
+				_say(
+					["Good. Increasing height can improve communication."],
+					TutorialStep.INTRO_SENSOR
 				)
 
 		TutorialStep.CHANGE_SENSOR_TUNING_AWAY:
-			if attr.contains("freq") and abs(value - _original_sensor_tuning) >= 50.0:
-				_run_simulation_if_possible()
-				_show_popup(
-					(
-						"The Sensor can no longer detect the signal."
-						+ "\n\nThis shows how frequency and bandwidth affect detection."
-					),
-					TutorialStep.EXPLAIN_BANDWIDTH
-				)
+			if attr.contains("freq"):
+				if abs(value - _original_sensor_tuning) >= FREQUENCY_TOLERANCE:
+					_run_simulation_if_possible()
+					_say(
+						[
+							"The Sensor can no longer detect the signal.\n\n",
+							"This shows how frequency affects detection."
+						],
+						TutorialStep.EXPLAIN_BANDWIDTH
+					)
 
 		TutorialStep.INCREASE_BANDWIDTH:
 			if attr.contains("bandwidth"):
 				_run_simulation_if_possible()
-				_show_popup(
-					"Good. A wider bandwidth can make detection more flexible.",
+				_say(
+					["Good. A wider bandwidth makes detection more flexible."],
 					TutorialStep.INTRO_JAMMER
 				)
 
 		TutorialStep.CHANGE_JAMMER_FREQUENCY_AWAY:
-			if attr.contains("freq") and abs(value - TUTORIAL_FREQUENCY) >= 50.0:
-				_jammer_frequency_locked = false
+			if attr.contains("freq") and _outside_match_range(value):
 				_run_simulation_if_possible()
-				_show_popup(
-					(
-						"The link recovered because the Jammer is no longer targeting the correct frequency."
-						+ "\n\nNow we will change the Jammer back to 1000 Hz."
-					),
+				_say(
+					[
+						"The link recovered because the Jammer is no longer ",
+						"targeting the correct frequency."
+					],
 					TutorialStep.CHANGE_JAMMER_FREQUENCY_BACK
 				)
 
 		TutorialStep.CHANGE_JAMMER_FREQUENCY_BACK:
 			if attr.contains("freq"):
-				_jammer_frequency_locked = true
-				_keep_jammer_frequency_locked()
+				_lock_jammer_frequency = true
+				_set_number_on_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
 				_run_simulation_if_possible()
-				_show_popup(
-					"Good. The Jammer frequency is now locked back to 1000 Hz.",
-					TutorialStep.COMPLETE
-				)
+				_say(["Good. The Jammer is locked back to 1000."], TutorialStep.COMPLETE)
 
 		_:
 			pass
+
+
+func _setup(
+	sidebar_types: Array = [],
+	attributes: Array = [],
+	marker_pos: Variant = null,
+	marker_label: String = ""
+) -> void:
+	if sidebar_types.is_empty():
+		_unlock_sidebar()
+	else:
+		_lock_sidebar_to(sidebar_types)
+
+	_lock_attributes(attributes)
+
+	if marker_pos is Vector2:
+		_show_placement_marker(marker_pos, marker_label)
+	else:
+		_clear_placement_marker()
+
+
+func _say(parts: Array, next_step: int = -1) -> void:
+	_show_popup(_join_text(parts), next_step)
+
+
+func _join_text(parts: Array) -> String:
+	var text := ""
+	for part in parts:
+		text += str(part)
+	return text
 
 
 func _show_popup(text: String, next_step: int = -1) -> void:
 	if intro_popup_open:
 		return
 
+	_popup_history.append({"text": text, "next_step": next_step})
+	_popup_history_index = _popup_history.size() - 1
+
+	_display_popup_history_entry()
+
+
+func _display_popup_history_entry() -> void:
+	if _popup_history_index < 0:
+		return
+
+	if _popup_history_index >= _popup_history.size():
+		return
+
+	var entry: Dictionary = _popup_history[_popup_history_index]
 	var popup := TUTORIAL_HINT_POPUP.instantiate()
-	popup.set("hint_text", text)
+
+	popup.set("hint_text", str(entry.get("text", "")))
+	popup.set("show_previous", _popup_history_index > 0)
+	popup.set("show_next", true)
 
 	intro_popup_open = true
 	$CanvasLayer.add_child(popup)
 
+	if popup.has_signal("previous_requested"):
+		popup.previous_requested.connect(_on_popup_previous_requested)
+
 	if popup.has_signal("continued"):
-		popup.continued.connect(
-			func():
-				intro_popup_open = false
-				if next_step != -1:
-					_enter_step(next_step)
-		)
+		popup.continued.connect(_on_popup_next_requested)
+
+
+func _on_popup_previous_requested() -> void:
+	intro_popup_open = false
+
+	if _popup_history_index <= 0:
+		return
+
+	_popup_history_index -= 1
+	call_deferred("_display_popup_history_entry")
+
+
+func _on_popup_next_requested() -> void:
+	intro_popup_open = false
+
+	# When reviewing an older popup, Next moves forward through history.
+	if _popup_history_index < _popup_history.size() - 1:
+		_popup_history_index += 1
+		call_deferred("_display_popup_history_entry")
+		return
+
+	# On the newest popup, Next either advances the tutorial or closes the
+	# instruction so the player can complete the required action.
+	var entry: Dictionary = _popup_history[_popup_history_index]
+	var next_step := int(entry.get("next_step", -1))
+
+	if next_step != -1:
+		call_deferred("_enter_step", next_step)
 
 
 func _show_completion_popup() -> void:
@@ -706,90 +732,8 @@ func _show_completion_popup() -> void:
 		return
 
 	intro_popup_open = true
-
-	var overlay := Control.new()
-	overlay.name = "TutorialCompletionPopup"
-	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-
-	var dim := ColorRect.new()
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0, 0, 0, 0.55)
-	overlay.add_child(dim)
-
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	overlay.add_child(center)
-
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(560, 260)
-	center.add_child(panel)
-
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.09, 0.11, 0.96)
-	style.border_color = Color(0.0, 0.85, 0.55, 1.0)
-	style.set_border_width_all(2)
-	style.corner_radius_top_left = 18
-	style.corner_radius_top_right = 18
-	style.corner_radius_bottom_left = 18
-	style.corner_radius_bottom_right = 18
-	panel.add_theme_stylebox_override("panel", style)
-
-	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 18)
-	content.custom_minimum_size = Vector2(500, 220)
-	panel.add_child(content)
-
-	var title := Label.new()
-	title.text = "Tutorial Complete"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 26)
-	title.add_theme_color_override("font_color", Color(0.0, 1.0, 0.65, 1.0))
-	content.add_child(title)
-
-	var message := Label.new()
-	message.text = (
-		"You completed Tutorial Mode. You learned how to place units, "
-		+ "adjust attributes, create a link, use a Sensor, and understand"
-		+ "how a Jammer affects communication."
-		+ "\n\nWhat would you like to do next?"
-	)
-	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	message.add_theme_font_size_override("font_size", 16)
-	message.add_theme_color_override("font_color", Color.WHITE)
-	content.add_child(message)
-
-	var buttons := HBoxContainer.new()
-	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
-	buttons.add_theme_constant_override("separation", 18)
-	content.add_child(buttons)
-
-	var home_button := Button.new()
-	home_button.text = "Return to Home Page"
-	home_button.custom_minimum_size = Vector2(190, 46)
-	home_button.pressed.connect(_go_to_home_page)
-	buttons.add_child(home_button)
-
-	var sandbox_button := Button.new()
-	sandbox_button.text = "Go to Sandbox Mode"
-	sandbox_button.custom_minimum_size = Vector2(190, 46)
-	sandbox_button.pressed.connect(_go_to_sandbox_mode)
-	buttons.add_child(sandbox_button)
-
-	$CanvasLayer.add_child(overlay)
-	_completion_popup = overlay
-
-
-func _go_to_home_page() -> void:
-	if OS.has_feature("web"):
-		JavaScriptBridge.eval("window.location.href = '%s';" % HOME_URL)
-	else:
-		print("Return to Home Page is only available in the web build.")
-
-
-func _go_to_sandbox_mode() -> void:
-	get_tree().change_scene_to_file(SANDBOX_SCENE_PATH)
+	_completion_popup = TUTORIAL_COMPLETION_POPUP.instantiate()
+	$CanvasLayer.add_child(_completion_popup)
 
 
 func _show_placement_marker(local_pos: Vector2, label_text: String) -> void:
@@ -805,10 +749,6 @@ func _show_placement_marker(local_pos: Vector2, label_text: String) -> void:
 	style.bg_color = Color(1.0, 0.85, 0.1, 0.25)
 	style.border_color = Color(1.0, 0.85, 0.1, 1.0)
 	style.set_border_width_all(3)
-	style.corner_radius_top_left = 12
-	style.corner_radius_top_right = 12
-	style.corner_radius_bottom_left = 12
-	style.corner_radius_bottom_right = 12
 	marker.add_theme_stylebox_override("panel", style)
 
 	var label := Label.new()
@@ -818,10 +758,9 @@ func _show_placement_marker(local_pos: Vector2, label_text: String) -> void:
 	label.add_theme_color_override("font_color", Color.WHITE)
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 3)
-
 	marker.add_child(label)
-	map_container.add_child(marker)
 
+	map_container.add_child(marker)
 	marker.position = local_pos - marker.custom_minimum_size * 0.5
 	_placement_marker = marker
 
@@ -833,16 +772,65 @@ func _clear_placement_marker() -> void:
 	_placement_marker = null
 
 
-func _snap_unit_to_target(unit: Node, local_pos: Vector2) -> void:
-	if unit == null:
+func _show_wrong_placement_popup(label_text: String) -> void:
+	_say(
+		[
+			"That unit is not close enough to the highlighted area.\n\n",
+			"Move it closer to the marker labeled ",
+			label_text,
+			", then try again."
+		]
+	)
+
+
+func _is_near_target(
+	unit: Node, local_pos: Vector2, tolerance: float = PLACEMENT_TOLERANCE
+) -> bool:
+	if unit == null or not is_instance_valid(unit):
+		return false
+
+	var target = map_container.global_position + local_pos
+	var unit_pos := _get_unit_position(unit)
+
+	return unit_pos.distance_to(target) <= tolerance
+
+
+func _get_unit_position(unit: Node) -> Vector2:
+	if unit is Node2D:
+		return unit.global_position
+
+	if unit is Control:
+		return unit.global_position
+
+	var raw_position = unit.get("global_position")
+	if raw_position is Vector2:
+		return raw_position
+
+	return Vector2(-999999.0, -999999.0)
+
+
+func _pick_default_transceiver() -> void:
+	if _selected_tutorial_unit != null:
 		return
 
-	_force_unit_position(unit, local_pos)
+	if _second_transceiver != null:
+		_selected_tutorial_unit = _second_transceiver
+	elif _first_transceiver != null:
+		_selected_tutorial_unit = _first_transceiver
 
-	if _is_transceiver(unit):
-		_transceiver_positions_locked = true
 
-	_run_simulation_if_possible()
+func _outside_match_range(value: float) -> bool:
+	return abs(value - TUTORIAL_FREQUENCY) > FREQUENCY_TOLERANCE
+
+
+func _inside_match_range(value: float) -> bool:
+	return abs(value - TUTORIAL_FREQUENCY) <= FREQUENCY_TOLERANCE
+
+
+func _lock_transceiver_frequencies() -> void:
+	_set_number_on_unit(_first_transceiver, ["frequency"], TUTORIAL_FREQUENCY)
+	_set_number_on_unit(_second_transceiver, ["frequency"], TUTORIAL_FREQUENCY)
+	_set_number_on_unit(_selected_tutorial_unit, ["frequency"], TUTORIAL_FREQUENCY)
 
 
 func _lock_sidebar_to(types: Array) -> void:
@@ -874,18 +862,18 @@ func _is_jammer(unit: Node) -> bool:
 	return _unit_matches(unit, "jammer", "jammers")
 
 
-func _unit_matches(unit: Node, component_name: String, group_name: String) -> bool:
+func _unit_matches(unit: Node, name_text: String, group_name: String) -> bool:
 	if unit == null:
 		return false
 
 	if unit.is_in_group(group_name):
 		return true
 
-	if unit.name.to_lower().contains(component_name):
+	if unit.name.to_lower().contains(name_text):
 		return true
 
 	for child in unit.get_children():
-		if child.name.to_lower().contains(component_name):
+		if child.name.to_lower().contains(name_text):
 			return true
 
 	return false
@@ -923,22 +911,6 @@ func _variant_to_float(value: Variant, fallback: float) -> float:
 	return fallback
 
 
-func _unit_is_or_belongs_to(unit: Node, target: Node) -> bool:
-	if unit == null or target == null:
-		return false
-
-	if unit == target:
-		return true
-
-	if target.is_ancestor_of(unit):
-		return true
-
-	if unit.is_ancestor_of(target):
-		return true
-
-	return false
-
-
 func _set_number_on_unit(unit: Node, possible_names: Array, new_value: float) -> void:
 	if unit == null:
 		return
@@ -953,48 +925,3 @@ func _set_number_on_unit(unit: Node, possible_names: Array, new_value: float) ->
 			if child.get(property_name) != null:
 				child.set(property_name, new_value)
 				return
-
-
-func _lock_all_transceiver_frequencies_to_tutorial_value() -> void:
-	_set_number_on_unit(_first_transceiver, ["frequency"], TUTORIAL_FREQUENCY)
-	_set_number_on_unit(_second_transceiver, ["frequency"], TUTORIAL_FREQUENCY)
-	_set_number_on_unit(_selected_tutorial_unit, ["frequency"], TUTORIAL_FREQUENCY)
-
-
-func _keep_transceiver_frequencies_locked() -> void:
-	if _tutorial_step == TutorialStep.CHANGE_FREQUENCY_AWAY:
-		return
-
-	_lock_all_transceiver_frequencies_to_tutorial_value()
-
-
-func _keep_jammer_frequency_locked() -> void:
-	if _tutorial_step == TutorialStep.CHANGE_JAMMER_FREQUENCY_AWAY:
-		return
-
-	_set_number_on_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
-
-
-func _keep_sensor_sensitivity_locked() -> void:
-	_set_number_on_unit(
-		_sensor, ["sensitivity", "detection_sensitivity"], TUTORIAL_SENSOR_SENSITIVITY
-	)
-
-
-func _keep_transceivers_locked_in_place() -> void:
-	_force_unit_position(_first_transceiver, FIRST_TRANSCEIVER_POS)
-	_force_unit_position(_second_transceiver, SECOND_TRANSCEIVER_POS)
-
-
-func _force_unit_position(unit: Node, local_pos: Vector2) -> void:
-	if unit == null or not is_instance_valid(unit):
-		return
-
-	var global_target = map_container.global_position + local_pos
-
-	if unit is Node2D:
-		unit.global_position = global_target
-	elif unit is Control:
-		unit.global_position = global_target
-	else:
-		unit.set("global_position", global_target)
