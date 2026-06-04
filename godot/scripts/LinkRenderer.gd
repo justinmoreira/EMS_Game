@@ -22,6 +22,7 @@ var links_visible: bool = true
 
 var focus_mode: bool = false
 var _focused_unit: Unit = null
+var _hovered_unit: Unit = null
 
 
 func _ready() -> void:
@@ -198,6 +199,11 @@ func set_focused_unit(unit: Unit) -> void:
 	_refresh_all_visibility()
 
 
+func set_hovered_unit(unit: Unit) -> void:
+	_hovered_unit = unit
+	_refresh_all_visibility()
+
+
 func _refresh_all_visibility() -> void:
 	for key in active_links:
 		_apply_visibility_for_key(key)
@@ -207,18 +213,29 @@ func _refresh_all_visibility() -> void:
 func _apply_visibility_for_key(key: String) -> void:
 	var data = active_links[key]
 	var should_show: bool
+	var is_hover_preview := false
 
 	if not links_visible:
 		should_show = false
 	elif focus_mode:
-		should_show = (
+		var selected = (
 			is_instance_valid(_focused_unit)
 			and (data.source == _focused_unit or data.target == _focused_unit)
 		)
+		var hovered = (
+			is_instance_valid(_hovered_unit)
+			and (data.source == _hovered_unit or data.target == _hovered_unit)
+		)
+		should_show = selected or hovered
+		is_hover_preview = hovered and not selected
 	else:
 		should_show = true
-
+	
+	var alpha := 0.35 if is_hover_preview else 1.0
+	
 	if is_instance_valid(data.line):
 		data.line.visible = should_show
+		data.line.modulate.a = alpha
 	if is_instance_valid(data.arrow):
 		data.arrow.visible = should_show
+		data.arrow.modulate.a = alpha

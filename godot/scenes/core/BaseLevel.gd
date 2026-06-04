@@ -309,6 +309,7 @@ func _input(event: InputEvent) -> void:
 			currently_hovered_unit = new_hover
 			if currently_hovered_unit:
 				_set_unit_hover_visual(currently_hovered_unit, true)
+			LinkRenderer.set_hovered_unit(currently_hovered_unit)
 	return
 
 
