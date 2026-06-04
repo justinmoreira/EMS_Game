@@ -532,7 +532,9 @@ func _on_tutorial_unit_selected(unit: Node) -> void:
 		_enter_step(TutorialStep.EXPLAIN_FREQUENCY)
 
 
-func _on_tutorial_attribute_changed(unit: Node, attribute_name: String, new_value: Variant) -> void:
+func _on_tutorial_attribute_changed(
+	_unit: Node, attribute_name: String, new_value: Variant
+) -> void:
 	var attr := attribute_name.to_lower()
 	var value := _variant_to_float(new_value, 0.0)
 
