@@ -96,6 +96,30 @@ func _spawn_visual() -> void:
 	add_child(_unit_visual)
 
 
+func update_ranges() -> void:
+	if _unit_visual == null:
+		return
+	var is_transceiver = is_in_group("transceivers")
+	var power: float = get_value(&"power", 0.0)
+	var height: float = get_value(&"height", 0.0)
+	var frequency: float = get_value(&"frequency", 1000.0)
+
+	var max_range = PhysicsEngine.calculate_signal_range(power, height, height, frequency)
+	_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
+
+	if is_transceiver:
+		var bw_idx: int = get_value(&"transceiver_bandwidth", 0)
+		var bw_power: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
+		var bw_penalty: float = PhysicsEngine.bandwidth_penalty(bw_idx)
+		if bw_penalty > 0.0:
+			var strong_range = PhysicsEngine.calculate_signal_range(
+				power, height, height, frequency, PhysicsEngine.NOISE_FLOOR / bw_power
+			)
+			_unit_visual.set_ring("strong_range", min(strong_range, max_range), "STRONG SIGNAL")
+		else:
+			_unit_visual.remove_ring("strong_range")
+
+
 # ── Interaction (drag / click select) ────────────────────────────────
 
 
