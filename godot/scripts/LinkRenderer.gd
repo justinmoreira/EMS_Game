@@ -20,6 +20,10 @@ const C_BANDWIDTH_PENALTY := Color.MAGENTA
 var active_links: Dictionary = {}
 var links_visible: bool = true
 
+var focus_mode: bool = false
+var _focused_unit: Unit = null
+var _hovered_unit: Unit = null
+
 
 func _ready() -> void:
 	GameEvents.simulation_complete.connect(_on_simulation_complete)
@@ -38,13 +42,6 @@ func _process(delta: float) -> void:
 		var data = active_links[key]
 		if is_instance_valid(data.get("line")):
 			data.line.advance_dash(delta)
-
-
-func _input(event):
-	if event is InputEventKey and event.pressed and event.keycode == KEY_T:
-		links_visible = !links_visible
-		for k in active_links:
-			_apply_visibility_for_key(k)
 
 
 func _on_simulation_complete(link_results: Array, _detect_results: Array) -> void:
@@ -197,9 +194,48 @@ func _free_link_nodes(data: Dictionary) -> void:
 		data.arrow.queue_free()
 
 
+func set_focused_unit(unit: Unit) -> void:
+	_focused_unit = unit
+	_refresh_all_visibility()
+
+
+func set_hovered_unit(unit: Unit) -> void:
+	_hovered_unit = unit
+	_refresh_all_visibility()
+
+
+func _refresh_all_visibility() -> void:
+	for key in active_links:
+		_apply_visibility_for_key(key)
+
+
+# Replace the existing _apply_visibility_for_key entirely
 func _apply_visibility_for_key(key: String) -> void:
 	var data = active_links[key]
+	var should_show: bool
+	var is_hover_preview := false
+
+	if not links_visible:
+		should_show = false
+	elif focus_mode:
+		var selected = (
+			is_instance_valid(_focused_unit)
+			and (data.source == _focused_unit or data.target == _focused_unit)
+		)
+		var hovered = (
+			is_instance_valid(_hovered_unit)
+			and (data.source == _hovered_unit or data.target == _hovered_unit)
+		)
+		should_show = selected or hovered
+		is_hover_preview = hovered and not selected
+	else:
+		should_show = true
+
+	var alpha := 0.35 if is_hover_preview else 1.0
+
 	if is_instance_valid(data.line):
-		data.line.visible = links_visible
+		data.line.visible = should_show
+		data.line.modulate.a = alpha
 	if is_instance_valid(data.arrow):
-		data.arrow.visible = links_visible
+		data.arrow.visible = should_show
+		data.arrow.modulate.a = alpha
