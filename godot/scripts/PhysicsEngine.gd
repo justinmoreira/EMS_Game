@@ -142,21 +142,17 @@ static func calculate_interference(
 		var jam_height: float
 		var jammer_px: Vector2 = Vector2.ZERO
 
-		var _p = jammer.get("power")
-		jam_power = float(_p if _p != null else 0.0)
-		var _f = jammer.get("frequency")
-		jam_freq = float(_f if _f != null else 0.0)
-		var _b = jammer.get("jammer_bandwidth")
-		bw_idx = int(_b if _b != null else 0)
-		var _h = jammer.get("height")
-		jam_height = float(_h if _h != null else 0.0)
-		var _tp = jammer.get("terrain_px")
-		if _tp != null:
-			jammer_px = _tp
+		jam_power = float(jammer.get("power", 0.0))
+		jam_freq = float(jammer.get("frequency", 0.0))
+		bw_idx = int(jammer.get("jammer_bandwidth", 0))
+		jam_height = float(jammer.get("height", 0.0))
+		var terrain_px = jammer.get("terrain_px")
+		if terrain_px != null:
+			jammer_px = terrain_px
 		else:
-			var _gp = jammer.get("global_position")
-			if _gp != null:
-				jammer_px = _gp
+			var global_pos = jammer.get("global_position")
+			if global_pos != null:
+				jammer_px = global_pos
 
 		var frequency_diff = abs(rx_frequency - jam_freq)
 		var bandwidth_half = BANDWIDTH_MHZ[bw_idx] / 2.0
