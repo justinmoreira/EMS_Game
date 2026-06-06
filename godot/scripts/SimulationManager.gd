@@ -64,9 +64,14 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 	if frequency_diff > bandwidth_half:
 		return LinkState.FREQUENCY_DIFF
 
-	var dist = PhysicsEngine.calculate_distance(tx.global_position, rx.global_position)
-
 	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
+	var tx_uv = terrain.screen_to_world_uv(tx.global_position)
+	var rx_uv = terrain.screen_to_world_uv(rx.global_position)
+	var tx_px = terrain.world_uv_to_terrain_px(tx_uv)
+	var rx_px = terrain.world_uv_to_terrain_px(rx_uv)
+
+	var dist = PhysicsEngine.calculate_distance(tx_px, rx_px)
+
 	var z_tx = terrain.get_unit_total_height(tx)
 	var z_rx = terrain.get_unit_total_height(rx)
 
@@ -77,21 +82,37 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 		return LinkState.FAILED_OUT_OF_RANGE
 
 	var terrain_loss = PhysicsEngine.compute_terrain_loss(
-		tx.global_position,
-		rx.global_position,
-		z_tx,
-		z_rx,
-		terrain.height_grid,
-		terrain.map_origin,
-		terrain.map_scale
+		tx_px, rx_px, z_tx, z_rx, terrain.height_grid, terrain.map_origin, terrain.map_scale
 	)
 
 	var received_power = PhysicsEngine.calculate_received_power(
 		tx.power, z_tx, z_rx, tx.frequency, dist, terrain_loss
 	)
 
+	var jammer_descs: Array = []
+	for jammer_node in jammers:
+		var jam_uv = terrain.screen_to_world_uv(jammer_node.global_position)
+		(
+			jammer_descs
+			. append(
+				{
+					"terrain_px": terrain.world_uv_to_terrain_px(jam_uv),
+					"power": jammer_node.get("power"),
+					"frequency": jammer_node.get("frequency"),
+					"jammer_bandwidth": jammer_node.get("jammer_bandwidth"),
+					"height": jammer_node.get("height"),
+				}
+			)
+		)
+
 	var interference = PhysicsEngine.calculate_interference(
-		rx.frequency, rx.height, rx.global_position, jammers
+		rx.frequency,
+		z_rx,
+		rx_px,
+		jammer_descs,
+		terrain.height_grid,
+		terrain.map_origin,
+		terrain.map_scale
 	)
 
 	var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER[bw_idx]

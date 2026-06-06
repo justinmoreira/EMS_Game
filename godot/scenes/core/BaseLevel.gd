@@ -91,6 +91,17 @@ func world_uv_to_screen(world_uv: Vector2) -> Vector2:
 	return (uv + Vector2(0.5, 0.5)) * map + _map_origin()
 
 
+func world_uv_to_terrain_px(world_uv: Vector2) -> Vector2:
+	var map = get_map_size()
+	var aspect = map.x / map.y
+	var uv = world_uv - Vector2(0.5, 0.5)
+	if aspect > 1.0:
+		uv.x /= aspect
+	else:
+		uv.y *= aspect
+	return (uv + Vector2(0.5, 0.5)) * map + _map_origin()
+
+
 # --- Visual Updates ---
 
 
@@ -189,19 +200,22 @@ func _on_unit_placed(unit: Unit) -> void:
 
 	# Apply current visual settings (show/hide ranges)
 	_set_unit_show_range_visual(unit, show_signal_ranges)
+	_set_unit_show_terrain_heatmap(unit, terrain_heatmap_enabled)
 
 
 # --- Selection Logic (visual highlight only — state lives on GameEvents) ---
 
 
 func _on_selection_changed(unit: Node) -> void:
-	# Single-shot handler covers both new selection and re-selection. Since
-	# `selected_unit` is the source of truth, just diff with our last paint.
-	if _last_highlighted and _last_highlighted != unit:
-		_set_unit_selected_visual(_last_highlighted, false)
+	var prev: Node = _last_highlighted
+	if prev and prev != unit:
+		_set_unit_selected_visual(prev, false)
+		_set_unit_show_terrain_heatmap(prev, false)
+
 	_last_highlighted = unit if unit is Unit else null
 	if _last_highlighted:
 		_set_unit_selected_visual(_last_highlighted, true)
+		_set_unit_show_terrain_heatmap(_last_highlighted, terrain_heatmap_enabled)
 
 
 func _set_unit_selected_visual(unit: Unit, selected: bool) -> void:

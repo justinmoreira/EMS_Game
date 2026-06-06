@@ -342,7 +342,12 @@ func get_unit_total_height(unit: Node) -> float:
 	"""
 	if unit == null:
 		return 0.0
-	var ground = get_ground_height_at_pos(unit.global_position)
+	var terrain_px: Vector2
+	if unit.has_meta("world_uv"):
+		terrain_px = world_uv_to_terrain_px(unit.get_meta("world_uv"))
+	else:
+		terrain_px = unit.global_position
+	var ground = get_ground_height_at_pos(terrain_px)
 	var antenna_h = 0.0
 	if unit is Unit:
 		var val = unit.get("height")

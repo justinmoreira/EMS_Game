@@ -98,7 +98,13 @@ static func calculate_received_power(
 
 
 static func calculate_interference(
-	rx_frequency: float, rx_height: float, rx_pos: Vector2, jammers: Array
+	rx_frequency: float,
+	rx_total_height: float,
+	rx_pos: Vector2,
+	jammers: Array,
+	height_grid: Array = [],
+	map_origin: Vector2 = Vector2(),
+	map_scale: Vector2 = Vector2()
 ) -> float:
 	"""
 	Calculates the total interference power from all jammers
@@ -121,21 +127,64 @@ static func calculate_interference(
 	"""
 	var total_interference := 0.0
 
-	# !BUG: Jammers don't work with TIF yet. Removed implementation until transceivers can be
-	# !BUG: worked out fully.
+	var rx_px := rx_pos
+	var grid_cols := 0
+	var grid_rows := 0
+	if height_grid.size() > 0 and map_scale.x != 0 and map_scale.y != 0:
+		grid_cols = int(height_grid.size())
+		if grid_cols > 0 and height_grid[0] is Array:
+			grid_rows = int(height_grid[0].size())
+
 	for jammer in jammers:
-		var frequency_diff = abs(rx_frequency - jammer.frequency)
-		var bw_idx: int = jammer.jammer_bandwidth
+		var jam_power: float
+		var jam_freq: float
+		var bw_idx: int = 0
+		var jam_height: float
+		var jammer_px: Vector2 = Vector2.ZERO
+
+		jam_power = float(jammer.get("power", 0.0))
+		jam_freq = float(jammer.get("frequency", 0.0))
+		bw_idx = int(jammer.get("jammer_bandwidth", 0))
+		jam_height = float(jammer.get("height", 0.0))
+		if jammer.has("terrain_px"):
+			jammer_px = jammer["terrain_px"]
+		elif jammer.has("global_position"):
+			jammer_px = jammer["global_position"]
+
+		var frequency_diff = abs(rx_frequency - jam_freq)
 		var bandwidth_half = BANDWIDTH_MHZ[bw_idx] / 2.0
 
 		if frequency_diff <= bandwidth_half:
+			var terrain_loss := 1.0
+			var z_jammer := jam_height
+
+			if grid_cols > 0 and grid_rows > 0:
+				var rel = jammer_px - map_origin
+				var gx = clamp(int(rel.x / map_scale.x), 0, max(0, grid_cols - 1))
+				var gy = clamp(int(rel.y / map_scale.y), 0, max(0, grid_rows - 1))
+				var ground_h := 0.0
+				if gx >= 0 and gx < grid_cols and gy >= 0 and gy < grid_rows:
+					ground_h = float(height_grid[gx][gy])
+
+				z_jammer = ground_h + jam_height
+
+				terrain_loss = compute_terrain_loss(
+					jammer_px,
+					rx_px,
+					z_jammer,
+					rx_total_height,
+					height_grid,
+					map_origin,
+					map_scale,
+				)
+
 			var jammer_power_at_rx = calculate_received_power(
-				jammer.power,
-				jammer.height,
-				rx_height,
-				jammer.frequency,
-				calculate_distance(jammer.global_position, rx_pos),
-				1.0
+				jam_power,
+				z_jammer,
+				rx_total_height,
+				jam_freq,
+				calculate_distance(jammer_px, rx_px),
+				terrain_loss
 			)
 			total_interference += jammer_power_at_rx * BANDWIDTH_POWER[bw_idx]
 
