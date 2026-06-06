@@ -12,14 +12,11 @@ var offset := Vector2.ZERO
 var dragging := false
 var last_mouse_pos := Vector2.ZERO
 
-<<<<<<< HEAD
-=======
 # Selection State
 var currently_selected_unit: Node = null
 var currently_hovered_unit: Node = null
 @export var base_hover_radius: float = 32.0
 @export var show_signal_ranges: bool = false
->>>>>>> origin
 # Sidebar layout — populated via signal, no global find_child reach.
 # Width is the live x-size of the sidebar; 0 if no sidebar in this scene.
 var sidebar_width: float = 0.0
