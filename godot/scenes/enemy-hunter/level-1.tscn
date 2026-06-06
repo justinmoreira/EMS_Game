@@ -7,6 +7,9 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_l1"]
 shader = ExtResource("3_nlylg")
+shader_parameter/zoom = 1.0
+shader_parameter/offset = Vector2(0, 0)
+shader_parameter/aspect_ratio = 1.0
 shader_parameter/color_low = Color(0, 0, 0, 1)
 shader_parameter/color_mid = Color(0, 0, 0, 1)
 shader_parameter/color_high = Color(0, 0, 0, 1)
@@ -33,7 +36,6 @@ texture = SubResource("PlaceholderTexture2D_pb6d8")
 expand_mode = 2
 
 [node name="Sidebar" parent="CanvasLayer/Control" parent_id_path=PackedInt32Array(860915758) index="0" unique_id=831222554]
-custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 1
 size_flags_vertical = 1
 
