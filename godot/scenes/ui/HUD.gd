@@ -3,6 +3,7 @@ extends CanvasLayer
 # Settings state
 var settings = {
 	"link_lines": true,
+	"focus_link_lines": true,
 	"unit_ranges": false,
 	"unit_details": false,
 	"suggestions": false,
@@ -23,6 +24,7 @@ func _ready():
 
 	# Connect new UI toggles
 	%LinkLinesToggle.toggled.connect(_on_link_lines_toggled)
+	%FocusLinkLinesToggle.toggled.connect(_on_focus_link_lines_toggled)
 	%UnitRangesToggle.toggled.connect(_on_unit_ranges_toggled)
 	%UnitDetailsToggle.toggled.connect(_on_unit_details_toggled)
 	%SuggestionsToggle.toggled.connect(_on_suggestions_toggled)
@@ -85,16 +87,15 @@ func _on_link_lines_toggled(is_pressed: bool):
 	settings["link_lines"] = is_pressed
 	_save_settings()
 
-	# Apply change immediately to LinkRenderer
 	if LinkRenderer:
 		LinkRenderer.links_visible = is_pressed
-		# Update all active link visuals immediately
-		for key in LinkRenderer.active_links:
-			var data = LinkRenderer.active_links[key]
-			if is_instance_valid(data.get("line")):
-				data.line.visible = is_pressed
-			if is_instance_valid(data.get("arrow")):
-				data.arrow.visible = is_pressed
+		LinkRenderer._refresh_all_visibility()
+	SimulationManager.simulate()
+
+	# Gray out focus toggle when link lines are off entirely
+	if not is_pressed and settings["focus_link_lines"]:
+		%FocusLinkLinesToggle.button_pressed = false
+	%FocusLinkLinesToggle.disabled = not is_pressed
 
 
 func _on_unit_ranges_toggled(is_pressed: bool):
@@ -131,11 +132,14 @@ func _on_suggestions_toggled(is_pressed: bool):
 	# ADD LATER
 
 
-func _on_bidirectional_link_lines_toggled(is_pressed: bool):
-	settings["bidirectional_link_lines"] = is_pressed
+func _on_focus_link_lines_toggled(is_pressed: bool):
+	settings["focus_link_lines"] = is_pressed
 	_save_settings()
 
-	# ADD LATER
+	if LinkRenderer:
+		LinkRenderer.focus_mode = is_pressed
+		LinkRenderer._refresh_all_visibility()
+	SimulationManager.simulate()
 
 
 func _save_settings() -> void:
@@ -156,6 +160,7 @@ func _load_settings() -> void:
 
 	# Update UI to match loaded settings
 	%LinkLinesToggle.button_pressed = settings["link_lines"]
+	%FocusLinkLinesToggle.button_pressed = settings["focus_link_lines"]
 	%UnitRangesToggle.button_pressed = settings["unit_ranges"]
 	%UnitDetailsToggle.button_pressed = settings["unit_details"]
 	%SuggestionsToggle.button_pressed = settings["suggestions"]
@@ -163,3 +168,9 @@ func _load_settings() -> void:
 	%HeatmapToggle.button_pressed = settings["heatmap"]
 	%Toggle.button_pressed = settings["heightmap_shader"]
 	%GridToggle.button_pressed = settings["grid"]
+
+	if LinkRenderer:
+		LinkRenderer.links_visible = settings["link_lines"]
+		LinkRenderer.focus_mode = settings["focus_link_lines"]
+	%FocusLinkLinesToggle.disabled = not settings["link_lines"]
+	SimulationManager.simulate()

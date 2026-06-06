@@ -50,6 +50,12 @@ layout_mode = 2
 button_pressed = true
 text = "Link Lines"
 
+[node name="FocusLinkLinesToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1245678905]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Focused Link Lines"
+
 [node name="UnitRangesToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1245678902]
 unique_name_in_owner = true
 layout_mode = 2

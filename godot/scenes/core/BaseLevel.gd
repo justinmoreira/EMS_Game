@@ -217,6 +217,10 @@ func _on_selection_changed(unit: Node) -> void:
 		_set_unit_selected_visual(_last_highlighted, true)
 		_set_unit_show_terrain_heatmap(_last_highlighted, terrain_heatmap_enabled)
 
+	var focused: Unit = unit if unit is Unit else null
+	LinkRenderer.set_focused_unit(focused)
+	SimulationManager.simulate()
+
 
 func _set_unit_selected_visual(unit: Unit, selected: bool) -> void:
 	if unit and unit.unit_visual:
@@ -340,6 +344,7 @@ func _input(event: InputEvent) -> void:
 			currently_hovered_unit = new_hover
 			if currently_hovered_unit:
 				_set_unit_hover_visual(currently_hovered_unit, true)
+			LinkRenderer.set_hovered_unit(currently_hovered_unit)
 	return
 
 
