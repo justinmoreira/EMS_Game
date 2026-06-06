@@ -31,15 +31,12 @@ func _get_or_create_status_visual(unit: Node) -> UnitStatusVisual:
 
 
 func _compute_status(tx: Unit, link_results: Array, detect_results: Array) -> int:
-	var has_out_of_range := false
-	# Jammed/out-of-range applies only to the RECEIVER of a failed link.
+	# Jammed applies only to the RECEIVER of a failed link.
 	for r in link_results:
 		if r.target != tx:
 			continue
 		if r.state == SimulationManager.LinkState.FAILED_JAMMED:
 			return UnitStatusVisual.Status.JAMMED
-		if r.state == SimulationManager.LinkState.FAILED_OUT_OF_RANGE:
-			has_out_of_range = true
 
 	for d in detect_results:
 		if d.transceiver == tx and d.detected:

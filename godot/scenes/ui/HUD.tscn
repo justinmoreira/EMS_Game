@@ -1,35 +1,103 @@
 [gd_scene format=3 uid="uid://dsj74ba2gk75t"]
 
-[ext_resource type="Script" uid="uid://crq4tqakx02qk" path="res://scenes/ui/HUD.gd" id="1_hud_script"]
+[ext_resource type="Texture2D" uid="uid://c7d0o05hl4s8p" path="res://assets/gear_icon.png" id="2_atyv1"]
+[ext_resource type="Script" uid="uid://crq4tqakx02qk" path="res://scenes/ui/HUD.gd" id="2_settings_icon"]
 
 [node name="HUD" type="CanvasLayer" unique_id=437482512]
 layer = 10
-script = ExtResource("1_hud_script")
+script = ExtResource("2_settings_icon")
 
-[node name="Panel" type="PanelContainer" parent="." unique_id=515779869]
+[node name="SettingsButton" type="Button" parent="." unique_id=2145623890]
+unique_name_in_owner = true
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -229.0
+offset_left = -60.0
+offset_top = 10.0
+offset_right = -10.0
 offset_bottom = 50.0
 grow_horizontal = 0
+icon = ExtResource("2_atyv1")
+icon_alignment = 1
 
-[node name="Margin" type="MarginContainer" parent="Panel" unique_id=136387606]
+[node name="SettingsPopup" type="PopupPanel" parent="." unique_id=-1240129370]
+unique_name_in_owner = true
+size = Vector2i(280, 350)
+popup_window = false
+
+[node name="SettingsContainer" type="VBoxContainer" parent="SettingsPopup" unique_id=-1447673449]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 276.0
+offset_bottom = 346.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Title" type="Label" parent="SettingsPopup/SettingsContainer" unique_id=-403762566]
 layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_right = 10
+text = "Display Settings"
 
-[node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
+[node name="Separator1" type="HSeparator" parent="SettingsPopup/SettingsContainer" unique_id=2068724058]
+custom_minimum_size = Vector2(0, 10)
 layout_mode = 2
 
-[node name="Toggle" type="CheckButton" parent="Panel/Margin/VBox" unique_id=2007966471]
+[node name="LinkLinesToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1245678901]
 unique_name_in_owner = true
 layout_mode = 2
 button_pressed = true
-text = "HEIGHTMAP SHADER"
+text = "Link Lines"
 
-[node name="GridToggle" type="CheckButton" parent="Panel/Margin/VBox"]
+[node name="FocusLinkLinesToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1245678905]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Focused Link Lines"
+
+[node name="UnitRangesToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1245678902]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Unit Ranges"
+
+[node name="UnitDetailsToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1245678903]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Unit Details"
+
+[node name="SuggestionsToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1245678904]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Suggestions"
+
+[node name="Separator2" type="HSeparator" parent="SettingsPopup/SettingsContainer" unique_id=1137264128]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+
+[node name="LegacyToggles" type="VBoxContainer" parent="SettingsPopup/SettingsContainer" unique_id=1245678906]
+layout_mode = 2
+
+[node name="ShaderLabel" type="Label" parent="SettingsPopup/SettingsContainer/LegacyToggles" unique_id=635677991]
+layout_mode = 2
+text = "Rendering"
+
+[node name="Toggle" type="CheckButton" parent="SettingsPopup/SettingsContainer/LegacyToggles" unique_id=2007966471]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Heightmap Shader"
+
+[node name="GridToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer/LegacyToggles" unique_id=2147092773]
 unique_name_in_owner = true
 layout_mode = 2
 button_pressed = true
 text = "GRID"
+
+[node name="RangeToggle" type="CheckButton" parent="Panel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "RANGE"

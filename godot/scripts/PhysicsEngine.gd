@@ -12,7 +12,10 @@ const NOISE_FLOOR = 0.5
 # Previously these were Dictionary[String, float] with a separate name lookup.
 const BANDWIDTH_NAMES := ["Narrow", "Medium", "Wide"]
 const BANDWIDTH_POWER := [1.0, 0.5, 0.3]
-const BANDWIDTH_MHZ := [50.0, 500.0, 1000.0]
+const BANDWIDTH_MHZ := [1.0, 10.0, 50.0]
+
+# Increase or decrease to adjust gameplay success
+const GAME_CALCULATION_RATIO = 3.0
 
 
 static func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
@@ -87,7 +90,8 @@ static func calculate_received_power(
 		terrain_loss = 1.0
 
 	var received_power = (
-		(3 * tx_power * height_factor * frequency_factor) / (distance_loss * terrain_loss)
+		(GAME_CALCULATION_RATIO * tx_power * height_factor * frequency_factor)
+		/ (distance_loss * terrain_loss)
 	)
 	return received_power
 
@@ -133,6 +137,41 @@ static func calculate_interference(
 			total_interference += jammer_power_at_rx * BANDWIDTH_POWER[bw_idx]
 
 	return total_interference
+
+
+static func calculate_signal_range(
+	tx_power: float,
+	height_tx: float,
+	height_rx: float,
+	frequency: float,
+	target: float = NOISE_FLOOR
+) -> float:
+	"""
+	Calculates the maximum communication range (radius) based on the given parameters, ignoring
+	interference and requiring only that the signal is above the noise floor.
+
+	Args:
+		tx_power: Transmission power (0-10)
+		height_tx: Transmitter height in meters
+		height_rx: Receiver height in meters
+		frequency: Frequency in MHz (30-3000)
+		target: Minimum required received power to be considered "in range" (default is
+			NOISE_FLOOR)
+
+	Returns:
+		Maximum range in kilometers as a float
+	"""
+	# Validate inputs
+	if frequency <= 0.0 or target <= 0.0:
+		return 0.0
+
+	var height_factor = calculate_height_factor(height_tx, height_rx)
+	var frequency_factor = 1000.0 / frequency
+	var max_distance = (
+		sqrt((GAME_CALCULATION_RATIO * tx_power * height_factor * frequency_factor) / target) - 1.0
+	)
+
+	return max(0.0, max_distance)
 
 
 static func range_check(received_power: float) -> bool:
