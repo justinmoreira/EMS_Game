@@ -132,6 +132,16 @@ func _on_suggestions_toggled(is_pressed: bool):
 	# ADD LATER
 
 
+func _on_bidirectional_link_lines_toggled(is_pressed: bool):
+	settings["bidirectional_link_lines"] = is_pressed
+	_save_settings()
+
+	if LinkRenderer:
+		LinkRenderer.bidirectional_mode = is_pressed
+		LinkRenderer._refresh_all_visibility()
+	SimulationManager.simulate()
+
+
 func _on_focus_link_lines_toggled(is_pressed: bool):
 	settings["focus_link_lines"] = is_pressed
 	_save_settings()
