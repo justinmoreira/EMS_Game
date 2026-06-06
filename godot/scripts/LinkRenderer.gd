@@ -21,6 +21,7 @@ var active_links: Dictionary = {}
 var links_visible: bool = true
 
 var focus_mode: bool = false
+var bidirectional_mode: bool = false
 var _focused_unit: Unit = null
 var _hovered_unit: Unit = null
 
