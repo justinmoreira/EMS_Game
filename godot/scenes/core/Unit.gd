@@ -141,7 +141,10 @@ func update_ranges() -> void:
 		var sensitivity: float = get_value(&"sensitivity", 3.0)
 		var tuning_frequency: float = get_value(&"tuning_frequency", 1000.0)
 		var bw_idx: int = get_value(&"sensor_bandwidth", 1)
-		var threshold := maxf(PhysicsEngine.NOISE_FLOOR, 10.0 - sensitivity) + PhysicsEngine.bandwidth_penalty(bw_idx)
+		var threshold := (
+			maxf(PhysicsEngine.NOISE_FLOOR, 10.0 - sensitivity)
+			+ PhysicsEngine.bandwidth_penalty(bw_idx)
+		)
 
 		# Use defaults matching the transceiver attribute spec (power=5, height=5)
 		# and tuning_frequency to match is_detected's frequency check
@@ -149,6 +152,7 @@ func update_ranges() -> void:
 			5.0, 5.0, height, tuning_frequency, threshold
 		)
 		_unit_visual.set_ring("detection", detection_range, "DETECTION RANGE")
+
 
 # ── Interaction (drag / click select) ────────────────────────────────
 
