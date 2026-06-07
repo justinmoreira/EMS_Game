@@ -163,8 +163,8 @@ func _refresh_heatmap() -> void:
 	var samples := _compute_heatmap_samples(max_cell_offset)
 	var tex := _bake_heatmap_texture(samples, max_cell_offset)
 
-	var radius_px := max_range_km * PhysicsEngine.PIXELS_PER_UNIT
-	var n := float(2 * max_cell_offset + 1)
+	var radius_px: float = max_range_km * PhysicsEngine.PIXELS_PER_UNIT
+	var n: float = max(float(2.0 * max_cell_offset), 1.0)
 	_heatmap_sprite.texture = tex
 	_heatmap_sprite.scale = Vector2(2.0 * radius_px / n, 2.0 * radius_px / n)
 	_heatmap_mat.set_shader_parameter("alpha", 0.55 if is_selected else 0.35)
