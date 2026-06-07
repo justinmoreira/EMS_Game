@@ -92,14 +92,7 @@ func world_uv_to_screen(world_uv: Vector2) -> Vector2:
 
 
 func world_uv_to_terrain_px(world_uv: Vector2) -> Vector2:
-	var map = get_map_size()
-	var aspect = map.x / map.y
-	var uv = world_uv - Vector2(0.5, 0.5)
-	if aspect > 1.0:
-		uv.x /= aspect
-	else:
-		uv.y *= aspect
-	return (uv + Vector2(0.5, 0.5)) * map + _map_origin()
+	return world_uv * get_map_size() + _map_origin()
 
 
 # --- Visual Updates ---

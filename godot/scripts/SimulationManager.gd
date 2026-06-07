@@ -71,8 +71,8 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 	var z_rx: float
 
 	if terrain != null:
-		var tx_uv = terrain.screen_to_world_uv(tx.global_position)
-		var rx_uv = terrain.screen_to_world_uv(rx.global_position)
+		var tx_uv: Vector2 = tx.get_meta("world_uv") if tx.has_meta("world_uv") else terrain.screen_to_world_uv(tx.global_position)
+		var rx_uv: Vector2 = rx.get_meta("world_uv") if rx.has_meta("world_uv") else terrain.screen_to_world_uv(rx.global_position)
 		tx_px = terrain.world_uv_to_terrain_px(tx_uv)
 		rx_px = terrain.world_uv_to_terrain_px(rx_uv)
 		z_tx = terrain.get_unit_total_height(tx)
@@ -107,7 +107,7 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 	for jammer_node in jammers:
 		var jammer_px: Vector2
 		if terrain != null:
-			var jam_uv = terrain.screen_to_world_uv(jammer_node.global_position)
+			var jam_uv: Vector2 = jammer_node.get_meta("world_uv") if jammer_node.has_meta("world_uv") else terrain.screen_to_world_uv(jammer_node.global_position)
 			jammer_px = terrain.world_uv_to_terrain_px(jam_uv)
 		else:
 			jammer_px = jammer_node.global_position
@@ -146,7 +146,18 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 
 
 func calculate_detection(srx: Unit, tx: Unit) -> bool:
-	var dist = PhysicsEngine.calculate_distance(srx.global_position, tx.global_position)
+	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
+	var srx_px: Vector2
+	var tx_px: Vector2
+	if terrain != null:
+		var srx_uv: Vector2 = srx.get_meta("world_uv") if srx.has_meta("world_uv") else terrain.screen_to_world_uv(srx.global_position)
+		var tx_uv: Vector2 = tx.get_meta("world_uv") if tx.has_meta("world_uv") else terrain.screen_to_world_uv(tx.global_position)
+		srx_px = terrain.world_uv_to_terrain_px(srx_uv)
+		tx_px = terrain.world_uv_to_terrain_px(tx_uv)
+	else:
+		srx_px = srx.global_position
+		tx_px = tx.global_position
+	var dist = PhysicsEngine.calculate_distance(srx_px, tx_px)
 	return PhysicsEngine.is_detected(tx, srx, dist)
 
 
