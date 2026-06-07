@@ -74,7 +74,7 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 		return LinkState.FAILED_OUT_OF_RANGE
 	if PhysicsEngine.bandwidth_penalty_check(received_power, bandwidth_penalty):
 		return LinkState.BANDWIDTH_PENALTY
-	if !PhysicsEngine.jamming_check(received_power * bandwidth_penalty, interference):
+	if !PhysicsEngine.jamming_check(received_power, interference):
 		return LinkState.FAILED_JAMMED
 	return LinkState.SUCCESS
 
@@ -85,6 +85,6 @@ func calculate_detection(srx: Unit, tx: Unit) -> bool:
 
 
 func _update_all_unit_ranges() -> void:
-	for group in [&"transceivers", &"jammers"]:
+	for group in [&"transceivers", &"jammers", &"sensors"]:
 		for unit in get_tree().get_nodes_in_group(group):
 			unit.update_ranges()

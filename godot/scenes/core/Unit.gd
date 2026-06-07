@@ -99,15 +99,18 @@ func _spawn_visual() -> void:
 func update_ranges() -> void:
 	if _unit_visual == null:
 		return
-	var is_transceiver = is_in_group("transceivers")
-	var power: float = get_value(&"power", 0.0)
-	var height: float = get_value(&"height", 0.0)
-	var frequency: float = get_value(&"frequency", 1000.0)
 
-	var max_range = PhysicsEngine.calculate_signal_range(power, height, height, frequency)
-	_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
+	var is_transceiver = is_in_group("transceivers")
+	var is_jammer = is_in_group("jammers")
+	var is_sensor = is_in_group("sensors")
+	var height: float = get_value(&"height", 0.0)
 
 	if is_transceiver:
+		var power: float = get_value(&"power", 0.0)
+		var frequency: float = get_value(&"frequency", 1000.0)
+		var max_range = PhysicsEngine.calculate_signal_range(power, height, height, frequency)
+		_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
+
 		var bw_idx: int = get_value(&"transceiver_bandwidth", 0)
 		var bw_power: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
 		var bw_penalty: float = PhysicsEngine.bandwidth_penalty(bw_idx)
@@ -119,6 +122,33 @@ func update_ranges() -> void:
 		else:
 			_unit_visual.remove_ring("strong_range")
 
+	elif is_jammer:
+		# Jamming range = where received_power * BANDWIDTH_POWER[bw] > NOISE_FLOOR
+		# Rearranged: received_power > NOISE_FLOOR / BANDWIDTH_POWER[bw]
+		# Narrower bandwidth = larger scale = longer range but tighter frequency window
+		var power: float = get_value(&"power", 0.0)
+		var frequency: float = get_value(&"frequency", 1000.0)
+		var bw_idx: int = get_value(&"jammer_bandwidth", 1)
+		var bw_scale: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
+		var effective_target := PhysicsEngine.NOISE_FLOOR / bw_scale
+
+		var jam_range := PhysicsEngine.calculate_signal_range(
+			power, height, 5.0, frequency, effective_target
+		)
+		_unit_visual.set_ring("jamming", jam_range, "JAM RANGE")
+
+	elif is_sensor:
+		var sensitivity: float = get_value(&"sensitivity", 3.0)
+		var tuning_frequency: float = get_value(&"tuning_frequency", 1000.0)
+		var bw_idx: int = get_value(&"sensor_bandwidth", 1)
+		var threshold := maxf(PhysicsEngine.NOISE_FLOOR, 10.0 - sensitivity) + PhysicsEngine.bandwidth_penalty(bw_idx)
+
+		# Use defaults matching the transceiver attribute spec (power=5, height=5)
+		# and tuning_frequency to match is_detected's frequency check
+		var detection_range := PhysicsEngine.calculate_signal_range(
+			5.0, 5.0, height, tuning_frequency, threshold
+		)
+		_unit_visual.set_ring("detection", detection_range, "DETECTION RANGE")
 
 # ── Interaction (drag / click select) ────────────────────────────────
 
