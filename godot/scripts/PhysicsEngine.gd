@@ -50,8 +50,7 @@ static func is_detected(tx: Unit, srx: Unit, dis: float, terrain_loss: float = 1
 		return false
 
 	var threshold = (
-		maxf(PhysicsEngine.NOISE_FLOOR, 10.0 - srx.sensitivity)
-		+ PhysicsEngine.bandwidth_penalty(srx.sensor_bandwidth)
+		lerpf(3.0, NOISE_FLOOR, srx.sensitivity / 10.0) + bandwidth_penalty(srx.sensor_bandwidth)
 	)
 
 	var received_power = calculate_received_power(
