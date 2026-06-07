@@ -342,16 +342,21 @@ func get_unit_total_height(unit: Node) -> float:
 	"""
 	if unit == null:
 		return 0.0
-	var terrain_px: Vector2
+		
+	var ground := 0.0
+
 	if unit.has_meta("world_uv"):
-		terrain_px = world_uv_to_terrain_px(unit.get_meta("world_uv"))
+		var uv: Vector2 = unit.get_meta("world_uv")
+
+		var gx :float= clamp(int(uv.x * float(grid_w)), 0, grid_w - 1)
+		var gy :float= clamp(int(uv.y * float(grid_h)), 0, grid_h - 1)
+		
+		ground = float(height_grid[gx][gy])
 	else:
-		terrain_px = unit.global_position
-	var ground = get_ground_height_at_pos(terrain_px)
-	var antenna_h = 0.0
-	if unit is Unit:
-		var val = unit.get("height")
-		antenna_h = float(val)
+		var terrain_px: Vector2 = unit.global_position
+		ground = get_ground_height_at_pos(terrain_px)
+		
+	var antenna_h := float(unit.get("height"))
 	return ground + antenna_h
 
 
