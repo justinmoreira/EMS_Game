@@ -63,7 +63,7 @@ func _ready() -> void:
 
 	_label_tactical_points(height_grid, grid_w, grid_h)
 
-		
+
 # ── Terrain generation ────────────────────────────────────────────────────────
 
 
@@ -364,12 +364,12 @@ func set_terrain_data(grid: Array, origin: Vector2, map_size: Vector2) -> void:
 	height_grid = grid
 	grid_w = grid.size()
 	grid_h = grid.size() if grid.size() > 0 else 0
-	
+
 	var current_container_size: Vector2 = map_container.size
-	
-	var map_square_dimension : float = current_container_size.y 
-	
+
+	var map_square_dimension: float = current_container_size.y
+
 	map_scale.x = map_square_dimension / float(grid_w)
 	map_scale.y = map_square_dimension / float(grid_h)
-	
+
 	map_origin = origin + Vector2(570.0, 0.0)

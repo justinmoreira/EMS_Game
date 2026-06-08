@@ -276,12 +276,12 @@ static func compute_terrain_loss(
 	var grid_y0 = clamp(int(rel_start.y / map_scale.y), 0, grid_rows - 1)
 	var grid_x1 = clamp(int(rel_end.x / map_scale.x), 0, grid_cols - 1)
 	var grid_y1 = clamp(int(rel_end.y / map_scale.y), 0, grid_rows - 1)
-	
+
 	var path_cells = bresenham(grid_x0, grid_y0, grid_x1, grid_y1)
 	var total_dist = calculate_distance(start_px, end_px)
 	if total_dist * 1000.0 <= 0.0:
 		return 1.0
-	
+
 	# For each sampled cell, compute LOS slope and compare against terrain height
 	var sum := 0.0
 	for c in path_cells:

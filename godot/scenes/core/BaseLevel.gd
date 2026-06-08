@@ -6,7 +6,7 @@ const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
 const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
 
 const MAP_SIZE = Vector2(1080, 1080)
-const MAP_ORIGIN = Vector2(570,0)
+const MAP_ORIGIN = Vector2(570, 0)
 
 # Camera / Viewport State
 var zoom := 1.0
@@ -58,16 +58,17 @@ func _on_window_resized() -> void:
 
 # --- Coordinate Space Math ---
 
-
 # Single source of truth: the rectangle the background shader actually renders
 # over. Overlays (units, labels) derive their screen positions from the SAME
 # rect, so they can never move at a different scale than the terrain.
 # `background` is a Control; .position/.size already account for the sidebar
 # offset_left set in _on_window_resized.
 
+
 #TODO: Fix to give accurate representation of map origin
 func _map_origin() -> Vector2:
 	return background.position if background else Vector2(sidebar_width, 0)
+
 
 #TODO: Fix to give accurate representation of map size
 func get_map_size() -> Vector2:
@@ -98,7 +99,6 @@ func world_uv_to_screen(world_uv: Vector2) -> Vector2:
 
 func world_uv_to_terrain_px(world_uv: Vector2) -> Vector2:
 	return world_uv * MAP_SIZE + MAP_ORIGIN
-	
 
 
 # --- Visual Updates ---
