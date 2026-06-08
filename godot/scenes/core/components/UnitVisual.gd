@@ -154,11 +154,11 @@ func _refresh_heatmap() -> void:
 	if not _heatmap_sprite or not signal_rings.has("max_range"):
 		_hide_heatmap()
 		return
-		
+
 	var max_range_km := 0.0
 	for ring in signal_rings.values():
 		max_range_km = maxf(max_range_km, float(ring.get("radius_km", 0.0)))
-		
+
 	if max_range_km <= 0.0:
 		_hide_heatmap()
 		return
@@ -189,7 +189,7 @@ func _compute_heatmap_samples(max_cell_offset: int) -> Dictionary:
 		terrain_origin_px = terrain.world_uv_to_terrain_px(
 			terrain.screen_to_world_uv(global_position)
 		)
-		
+
 	var is_sensor := parent_unit and parent_unit.is_in_group("sensors")
 
 	var unit_total_height := 0.0
@@ -250,9 +250,7 @@ func _bake_heatmap_texture(sample_grid: Dictionary, max_cell_offset: int) -> Ima
 			if Vector2(cx, cy).length() > float(max_cell_offset):
 				img.set_pixel(i, j, Color(0.0, 0.0, 0.0, 0.0))
 				continue
-			var tif: float = sample_grid.get(
-				"%d,%d" % [cx, cy], 0.0
-			)
+			var tif: float = sample_grid.get("%d,%d" % [cx, cy], 0.0)
 			img.set_pixel(i, j, Color(tif, 0.0, 0.0, 1.0))
 	return ImageTexture.create_from_image(img)
 

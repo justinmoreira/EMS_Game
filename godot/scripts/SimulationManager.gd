@@ -192,7 +192,7 @@ func calculate_detection(srx: Unit, tx: Unit) -> bool:
 		var raw_z_rx = srx.get("height")
 		z_tx = float(raw_z_tx if raw_z_tx != null else 0.0)
 		z_rx = float(raw_z_rx if raw_z_rx != null else 0.0)
-		
+
 	var dist = PhysicsEngine.calculate_distance(srx_px, tx_px)
 	var terrain_loss := 1.0
 	if terrain != null:

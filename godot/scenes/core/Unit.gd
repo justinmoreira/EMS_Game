@@ -106,7 +106,7 @@ func update_ranges() -> void:
 	var power: float = get_value(&"power", 0.0)
 	var height: float = get_value(&"height", 0.0)
 	var frequency: float = get_value(&"frequency", 1000.0)
-	
+
 	var ground_h: float = 0.0
 	var terrain = get_tree().get_first_node_in_group("terrain")
 	if terrain and terrain.has_method("get_ground_height_at_pos"):
@@ -158,7 +158,11 @@ func update_ranges() -> void:
 		# Use defaults matching the transceiver attribute spec (power=5, height=5)
 		# and tuning_frequency to match is_detected's frequency check
 		var detection_range := PhysicsEngine.calculate_signal_range(
-			5.0 * PhysicsEngine.SENSOR_BALANCE_RATIO, 5.0, ground_h + height, tuning_frequency, threshold
+			5.0 * PhysicsEngine.SENSOR_BALANCE_RATIO,
+			5.0,
+			ground_h + height,
+			tuning_frequency,
+			threshold
 		)
 		_unit_visual.set_ring("detection", detection_range, "DETECTION RANGE")
 

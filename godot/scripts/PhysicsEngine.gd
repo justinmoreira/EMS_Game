@@ -230,7 +230,7 @@ static func calculate_signal_range(
 	)
 
 	return max(0.0, max_distance)
-	
+
 
 static func bresenham(x0: int, y0: int, x1: int, y1: int) -> Array:
 	var cells: Array = []
