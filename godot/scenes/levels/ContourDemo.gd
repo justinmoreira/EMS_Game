@@ -364,10 +364,10 @@ func set_terrain_data(grid: Array, origin: Vector2, map_size: Vector2) -> void:
 	height_grid = grid
 	grid_w = grid.size()
 	grid_h = grid.size() if grid.size() > 0 else 0
-	
+
 	#TODO: Fix later
 	map_size = Vector2(1080, 1080)
-	
+
 	var current_container_size: Vector2 = map_container.size
 
 	var map_square_dimension: float = current_container_size.y
