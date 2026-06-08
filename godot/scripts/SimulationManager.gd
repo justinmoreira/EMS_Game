@@ -69,14 +69,16 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 	var rx_px: Vector2
 	var z_tx: float
 	var z_rx: float
+	var tx_uv: Vector2
+	var rx_uv: Vector2
 
 	if terrain != null:
-		var tx_uv: Vector2 = (
+		tx_uv = (
 			tx.get_meta("world_uv")
 			if tx.has_meta("world_uv")
 			else terrain.screen_to_world_uv(tx.global_position)
 		)
-		var rx_uv: Vector2 = (
+		rx_uv = (
 			rx.get_meta("world_uv")
 			if rx.has_meta("world_uv")
 			else terrain.screen_to_world_uv(rx.global_position)
@@ -85,6 +87,7 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 		rx_px = terrain.world_uv_to_terrain_px(rx_uv)
 		z_tx = terrain.get_unit_total_height(tx)
 		z_rx = terrain.get_unit_total_height(rx)
+
 	else:
 		tx_px = tx.global_position
 		rx_px = rx.global_position
