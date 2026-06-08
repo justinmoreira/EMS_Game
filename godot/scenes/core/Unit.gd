@@ -104,11 +104,19 @@ func update_ranges() -> void:
 	var is_jammer = is_in_group("jammers")
 	var is_sensor = is_in_group("sensors")
 	var height: float = get_value(&"height", 0.0)
+	var ground_h: float = 0.0
+	var terrain = get_tree().get_first_node_in_group("terrain")
+	if terrain and terrain.has_method("get_ground_height_at_pos"):
+		ground_h = terrain.get_ground_height_at_pos(global_position)
+
+	var max_range = PhysicsEngine.calculate_signal_range(
+		power, ground_h + height, ground_h + height, frequency
+	)
+	_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
 
 	if is_transceiver:
 		var power: float = get_value(&"power", 0.0)
 		var frequency: float = get_value(&"frequency", 1000.0)
-		var max_range = PhysicsEngine.calculate_signal_range(power, height, height, frequency)
 		_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
 
 		var bw_idx: int = get_value(&"transceiver_bandwidth", 0)
@@ -116,7 +124,11 @@ func update_ranges() -> void:
 		var bw_penalty: float = PhysicsEngine.bandwidth_penalty(bw_idx)
 		if bw_penalty > 0.0:
 			var strong_range = PhysicsEngine.calculate_signal_range(
-				power, height, height, frequency, PhysicsEngine.NOISE_FLOOR / bw_power
+				power,
+				ground_h + height,
+				ground_h + height,
+				frequency,
+				PhysicsEngine.NOISE_FLOOR / bw_power
 			)
 			_unit_visual.set_ring("strong_range", min(strong_range, max_range), "STRONG SIGNAL")
 		else:
