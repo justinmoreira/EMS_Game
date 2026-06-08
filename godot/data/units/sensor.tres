@@ -19,7 +19,7 @@ min_value = 0.0
 max_value = 10.0
 step = 1.0
 unit = "dBm"
-default_value = 3
+default_value = 5
 
 [sub_resource type="Resource" id="a_tuning"]
 script = ExtResource("spec")

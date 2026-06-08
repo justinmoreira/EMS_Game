@@ -162,26 +162,44 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 
 func calculate_detection(srx: Unit, tx: Unit) -> bool:
 	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
-	var srx_px: Vector2
 	var tx_px: Vector2
+	var srx_px: Vector2
+	var z_tx: float
+	var z_rx: float
+	var tx_uv: Vector2
+	var srx_uv: Vector2
+
 	if terrain != null:
-		var srx_uv: Vector2 = (
-			srx.get_meta("world_uv")
-			if srx.has_meta("world_uv")
-			else terrain.screen_to_world_uv(srx.global_position)
-		)
-		var tx_uv: Vector2 = (
+		tx_uv = (
 			tx.get_meta("world_uv")
 			if tx.has_meta("world_uv")
 			else terrain.screen_to_world_uv(tx.global_position)
 		)
-		srx_px = terrain.world_uv_to_terrain_px(srx_uv)
+		srx_uv = (
+			srx.get_meta("world_uv")
+			if srx.has_meta("world_uv")
+			else terrain.screen_to_world_uv(srx.global_position)
+		)
 		tx_px = terrain.world_uv_to_terrain_px(tx_uv)
+		srx_px = terrain.world_uv_to_terrain_px(srx_uv)
+		z_tx = terrain.get_unit_total_height(tx)
+		z_rx = terrain.get_unit_total_height(srx)
+
 	else:
-		srx_px = srx.global_position
 		tx_px = tx.global_position
+		srx_px = srx.global_position
+		var raw_z_tx = tx.get("height")
+		var raw_z_rx = srx.get("height")
+		z_tx = float(raw_z_tx if raw_z_tx != null else 0.0)
+		z_rx = float(raw_z_rx if raw_z_rx != null else 0.0)
+		
 	var dist = PhysicsEngine.calculate_distance(srx_px, tx_px)
-	return PhysicsEngine.is_detected(tx, srx, dist)
+	var terrain_loss := 1.0
+	if terrain != null:
+		terrain_loss = PhysicsEngine.compute_terrain_loss(
+			tx_px, srx_px, z_tx, z_rx, terrain.height_grid, terrain.map_origin, terrain.map_scale
+		)
+	return PhysicsEngine.is_detected(tx, srx, dist, terrain_loss)
 
 
 func _update_all_unit_ranges() -> void:

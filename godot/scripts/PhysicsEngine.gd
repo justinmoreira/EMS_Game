@@ -16,6 +16,7 @@ const BANDWIDTH_MHZ := [1.0, 10.0, 50.0]
 
 # Increase or decrease to adjust gameplay success
 const GAME_CALCULATION_RATIO = 1.2
+const SENSOR_BALANCE_RATIO = 3.0
 
 
 static func calculate_distance(pos1: Vector2, pos2: Vector2) -> float:
@@ -56,7 +57,7 @@ static func is_detected(tx: Unit, srx: Unit, dis: float, terrain_loss: float = 1
 	var received_power = calculate_received_power(
 		tx.power, tx.height, srx.height, tx.frequency, dis, terrain_loss
 	)
-	return received_power > threshold
+	return SENSOR_BALANCE_RATIO * received_power > threshold
 
 
 static func calculate_received_power(
@@ -229,7 +230,7 @@ static func calculate_signal_range(
 	)
 
 	return max(0.0, max_distance)
-
+	
 
 static func bresenham(x0: int, y0: int, x1: int, y1: int) -> Array:
 	var cells: Array = []
