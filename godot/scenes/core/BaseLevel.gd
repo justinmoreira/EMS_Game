@@ -5,6 +5,9 @@ extends Control
 const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
 const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
 
+const MAP_SIZE = Vector2(1080, 1080)
+const MAP_ORIGIN = Vector2(570, 0)
+
 # Camera / Viewport State
 var zoom := 1.0
 var offset := Vector2.ZERO
@@ -24,6 +27,7 @@ var sidebar_width: float = 0.0
 # unhighlight when selection changes. Source of truth lives on GameEvents.
 var _last_highlighted: Unit = null
 var unit_attributes_visible: bool = false
+var terrain_heatmap_enabled: bool = false
 
 @onready var background := $BackgroundTexture
 
@@ -54,16 +58,19 @@ func _on_window_resized() -> void:
 
 # --- Coordinate Space Math ---
 
-
 # Single source of truth: the rectangle the background shader actually renders
 # over. Overlays (units, labels) derive their screen positions from the SAME
 # rect, so they can never move at a different scale than the terrain.
 # `background` is a Control; .position/.size already account for the sidebar
 # offset_left set in _on_window_resized.
+
+
+#TODO: Fix to give accurate representation of map origin
 func _map_origin() -> Vector2:
 	return background.position if background else Vector2(sidebar_width, 0)
 
 
+#TODO: Fix to give accurate representation of map size
 func get_map_size() -> Vector2:
 	return background.size if background else Vector2(size.x - sidebar_width, size.y)
 
@@ -88,6 +95,10 @@ func world_uv_to_screen(world_uv: Vector2) -> Vector2:
 	else:
 		uv.y *= aspect
 	return (uv + Vector2(0.5, 0.5)) * map + _map_origin()
+
+
+func world_uv_to_terrain_px(world_uv: Vector2) -> Vector2:
+	return world_uv * MAP_SIZE + MAP_ORIGIN
 
 
 # --- Visual Updates ---
@@ -186,18 +197,24 @@ func _on_unit_placed(unit: Unit) -> void:
 	if label:
 		label.visible = unit_attributes_visible
 
+	# Apply current visual settings (show/hide ranges)
+	_set_unit_show_range_visual(unit, show_signal_ranges)
+	_set_unit_show_terrain_heatmap(unit, terrain_heatmap_enabled)
+
 
 # --- Selection Logic (visual highlight only — state lives on GameEvents) ---
 
 
 func _on_selection_changed(unit: Node) -> void:
-	# Single-shot handler covers both new selection and re-selection. Since
-	# `selected_unit` is the source of truth, just diff with our last paint.
-	if _last_highlighted and _last_highlighted != unit:
-		_set_unit_selected_visual(_last_highlighted, false)
+	var prev: Node = _last_highlighted
+	if prev and prev != unit:
+		_set_unit_selected_visual(prev, false)
+		_set_unit_show_terrain_heatmap(prev, false)
+
 	_last_highlighted = unit if unit is Unit else null
 	if _last_highlighted:
 		_set_unit_selected_visual(_last_highlighted, true)
+		_set_unit_show_terrain_heatmap(_last_highlighted, terrain_heatmap_enabled)
 
 	var focused: Unit = unit if unit is Unit else null
 	LinkRenderer.set_focused_unit(focused)
@@ -236,6 +253,22 @@ func toggle_signal_ranges(enabled: bool) -> void:
 	for child in get_children():
 		if child is Unit:
 			_set_unit_show_range_visual(child, enabled)
+
+
+func _set_unit_show_terrain_heatmap(unit: Node, enabled: bool) -> void:
+	if unit == null:
+		return
+	for child in unit.get_children():
+		if child is UnitVisual:
+			child.set_show_terrain_heatmap(enabled)
+			break
+
+
+func toggle_terrain_heatmap(enabled: bool) -> void:
+	terrain_heatmap_enabled = enabled
+	for child in get_children():
+		if child is Unit:
+			_set_unit_show_terrain_heatmap(child, enabled)
 
 
 func _get_unit_component(unit: Node) -> Node:
@@ -290,6 +323,7 @@ func _input(event: InputEvent) -> void:
 			_clamp_offset()
 			update_shader()
 
+	# Hover logic
 	elif event is InputEventMouseMotion:
 		if dragging or event.position.x < sidebar_width:
 			return
