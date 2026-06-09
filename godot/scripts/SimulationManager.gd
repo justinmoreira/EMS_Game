@@ -199,7 +199,7 @@ func calculate_detection(srx: Unit, tx: Unit) -> bool:
 		terrain_loss = PhysicsEngine.compute_terrain_loss(
 			tx_px, srx_px, z_tx, z_rx, terrain.height_grid, terrain.map_origin, terrain.map_scale
 		)
-	return PhysicsEngine.is_detected(tx, srx, dist, terrain_loss)
+	return PhysicsEngine.is_detected(tx, srx, dist, terrain_loss, z_tx, z_rx)
 
 
 func _update_all_unit_ranges() -> void:

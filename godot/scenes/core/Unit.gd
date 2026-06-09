@@ -112,12 +112,12 @@ func update_ranges() -> void:
 	if terrain and terrain.has_method("get_ground_height_at_pos"):
 		ground_h = terrain.get_ground_height_at_pos(global_position)
 
-	var max_range = PhysicsEngine.calculate_signal_range(
-		power, ground_h + height, ground_h + height, frequency
-	)
-	_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
-
 	if is_transceiver:
+		var max_range = PhysicsEngine.calculate_signal_range(
+			power, ground_h + height, ground_h + height, frequency
+		)
+		_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
+		
 		var bw_idx: int = get_value(&"transceiver_bandwidth", 0)
 		var bw_power: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
 		var bw_penalty: float = PhysicsEngine.bandwidth_penalty(bw_idx)
@@ -134,17 +134,14 @@ func update_ranges() -> void:
 			_unit_visual.remove_ring("strong_range")
 
 	elif is_jammer:
-		# Jamming range = where received_power * BANDWIDTH_POWER[bw] > NOISE_FLOOR
-		# Rearranged: received_power > NOISE_FLOOR / BANDWIDTH_POWER[bw]
-		# Narrower bandwidth = larger scale = longer range but tighter frequency window
-		var bw_idx: int = get_value(&"jammer_bandwidth", 1)
-		var bw_scale: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
-		var effective_target := PhysicsEngine.NOISE_FLOOR / bw_scale
-
-		var jam_range := PhysicsEngine.calculate_signal_range(
-			power, ground_h + height, 5.0, frequency, effective_target
+		var bw_idx: int = get_value(&"jammer_bandwidth", 0)
+		var bw_power: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
+		var max_range := PhysicsEngine.calculate_signal_range(
+			power, ground_h + height, ground_h + height, frequency,
+			PhysicsEngine.NOISE_FLOOR, bw_power
 		)
-		_unit_visual.set_ring("jamming", jam_range, "JAM RANGE")
+		_unit_visual.set_ring("max_range", max_range, "JAM RANGE")
+		_unit_visual.remove_ring("strong_range")
 
 	elif is_sensor:
 		var sensitivity: float = get_value(&"sensitivity", 3.0)
@@ -155,14 +152,13 @@ func update_ranges() -> void:
 			+ PhysicsEngine.bandwidth_penalty(bw_idx)
 		)
 
-		# Use defaults matching the transceiver attribute spec (power=5, height=5)
-		# and tuning_frequency to match is_detected's frequency check
 		var detection_range := PhysicsEngine.calculate_signal_range(
-			5.0 * PhysicsEngine.SENSOR_BALANCE_RATIO,
-			5.0,
+			10.0,
+			ground_h + height,
 			ground_h + height,
 			tuning_frequency,
 			threshold
+			#PhysicsEngine.SENSOR_BALANCE_RATIO
 		)
 		_unit_visual.set_ring("detection", detection_range, "DETECTION RANGE")
 
