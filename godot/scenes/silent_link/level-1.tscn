@@ -48,14 +48,14 @@ is_immovable = true
 is_removable = false
 
 [node name="EnemyJammer" type="Node2D" parent="." index="4" unique_id=897180373]
-position = Vector2(604, 871)
+position = Vector2(300, 870)
 script = ExtResource("4_1ghud")
 definition = ExtResource("6_sbe1m")
 is_immovable = true
 is_removable = false
 
 [node name="EnemySensor" type="Node2D" parent="." index="5" unique_id=1803114092]
-position = Vector2(758, 158)
+position = Vector2(750, 150)
 script = ExtResource("4_1ghud")
 definition = ExtResource("7_14gxw")
 is_immovable = true
