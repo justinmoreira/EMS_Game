@@ -44,7 +44,14 @@ static func bandwidth_penalty(receiver: Bandwidth) -> float:
 			return 0.0
 
 
-static func is_detected(tx: Unit, srx: Unit, dis: float, terrain_loss: float = 1, z_tx: float = -1.0, z_srx: float = -1.0) -> bool:
+static func is_detected(
+	tx: Unit,
+	srx: Unit,
+	dis: float,
+	terrain_loss: float = 1,
+	z_tx: float = -1.0,
+	z_srx: float = -1.0
+) -> bool:
 	var frequency_diff = abs(tx.frequency - srx.tuning_frequency)
 	var bandwidth_half = BANDWIDTH_MHZ[srx.sensor_bandwidth] / 2.0
 
@@ -54,10 +61,14 @@ static func is_detected(tx: Unit, srx: Unit, dis: float, terrain_loss: float = 1
 	var threshold = (
 		lerpf(3.0, NOISE_FLOOR, srx.sensitivity / 10.0) + bandwidth_penalty(srx.sensor_bandwidth)
 	)
-	
-	var h_tx: float = z_tx if z_tx >= 0.0 else float(tx.get("height") if tx.get("height") != null else 0.0)
-	var h_srx: float = z_srx if z_srx >= 0.0 else float(srx.get("height") if srx.get("height") != null else 0.0)
-	
+
+	var h_tx: float = (
+		z_tx if z_tx >= 0.0 else float(tx.get("height") if tx.get("height") != null else 0.0)
+	)
+	var h_srx: float = (
+		z_srx if z_srx >= 0.0 else float(srx.get("height") if srx.get("height") != null else 0.0)
+	)
+
 	var received_power = calculate_received_power(
 		tx.power, h_tx, h_srx, tx.frequency, dis, terrain_loss
 	)
@@ -196,7 +207,9 @@ static func calculate_interference(
 				calculate_distance(jammer_px, rx_px),
 				terrain_loss
 			)
-			total_interference += JAMMER_BALANCE_RATIO * jammer_power_at_rx * BANDWIDTH_POWER[bw_idx]
+			total_interference += (
+				JAMMER_BALANCE_RATIO * jammer_power_at_rx * BANDWIDTH_POWER[bw_idx]
+			)
 
 	return total_interference
 
@@ -231,7 +244,19 @@ static func calculate_signal_range(
 	var height_factor = calculate_height_factor(height_tx, height_rx)
 	var frequency_factor = 1000.0 / frequency
 	var max_distance = (
-		sqrt((TRANSCEIVER_BALANCE_RATIO * balance_ratio * tx_power * height_factor * frequency_factor) / target) - 1.0
+		sqrt(
+			(
+				(
+					TRANSCEIVER_BALANCE_RATIO
+					* balance_ratio
+					* tx_power
+					* height_factor
+					* frequency_factor
+				)
+				/ target
+			)
+		)
+		- 1.0
 	)
 
 	return max(0.0, max_distance)

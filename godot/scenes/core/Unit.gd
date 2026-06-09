@@ -117,7 +117,7 @@ func update_ranges() -> void:
 			power, ground_h + height, ground_h + height, frequency
 		)
 		_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
-		
+
 		var bw_idx: int = get_value(&"transceiver_bandwidth", 0)
 		var bw_power: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
 		var bw_penalty: float = PhysicsEngine.bandwidth_penalty(bw_idx)
@@ -137,8 +137,12 @@ func update_ranges() -> void:
 		var bw_idx: int = get_value(&"jammer_bandwidth", 0)
 		var bw_power: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
 		var max_range := PhysicsEngine.calculate_signal_range(
-			power, ground_h + height, ground_h + height, frequency,
-			PhysicsEngine.NOISE_FLOOR, bw_power
+			power,
+			ground_h + height,
+			ground_h + height,
+			frequency,
+			PhysicsEngine.NOISE_FLOOR,
+			bw_power
 		)
 		_unit_visual.set_ring("max_range", max_range, "JAM RANGE")
 		_unit_visual.remove_ring("strong_range")
@@ -152,13 +156,16 @@ func update_ranges() -> void:
 			+ PhysicsEngine.bandwidth_penalty(bw_idx)
 		)
 
-		var detection_range := PhysicsEngine.calculate_signal_range(
-			10.0,
-			ground_h + height,
-			ground_h + height,
-			tuning_frequency,
-			threshold
-			#PhysicsEngine.SENSOR_BALANCE_RATIO
+		var detection_range := (
+			PhysicsEngine
+			. calculate_signal_range(
+				10.0,
+				ground_h + height,
+				ground_h + height,
+				tuning_frequency,
+				threshold
+				#PhysicsEngine.SENSOR_BALANCE_RATIO
+			)
 		)
 		_unit_visual.set_ring("detection", detection_range, "DETECTION RANGE")
 
