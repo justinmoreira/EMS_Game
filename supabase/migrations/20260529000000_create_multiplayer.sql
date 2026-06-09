@@ -118,7 +118,16 @@ CREATE TRIGGER on_matches_updated
 
 
 -- Realtime: clients subscribe to postgres_changes on these tables to
--- observe opponent submissions and turn advancement.
+-- observe opponent submissions and turn advancement. The `supabase_realtime`
+-- publication is created by Supabase's services (not by plain Postgres), so
+-- we guard the attach — CI runs migrations against a vanilla Postgres where
+-- the publication doesn't exist yet, and we don't want this to break the
+-- migration-replays-cleanly check.
 
-alter publication supabase_realtime add table public.matches;
-alter publication supabase_realtime add table public.match_actions;
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    alter publication supabase_realtime add table public.matches;
+    alter publication supabase_realtime add table public.match_actions;
+  end if;
+end $$;
