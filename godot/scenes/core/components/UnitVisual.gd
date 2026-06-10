@@ -151,7 +151,7 @@ func _hide_heatmap() -> void:
 
 
 func _refresh_heatmap() -> void:
-	if not _heatmap_sprite or not signal_rings.has("max_range"):
+	if not _heatmap_sprite:
 		_hide_heatmap()
 		return
 

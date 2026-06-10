@@ -159,11 +159,12 @@ func update_ranges() -> void:
 		var detection_range := (
 			PhysicsEngine
 			. calculate_signal_range(
-				10.0,
+				5.0,
 				ground_h + height,
 				ground_h + height,
 				tuning_frequency,
-				threshold
+				threshold,
+				PhysicsEngine.SENSOR_BALANCE_RATIO
 			)
 		)
 		_unit_visual.set_ring("detection", detection_range, "DETECTION RANGE")
