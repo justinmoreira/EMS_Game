@@ -13,6 +13,7 @@ var detect_results: Array[Dictionary] = []
 func _ready() -> void:
 	call_deferred("simulate")
 
+
 func simulate() -> void:
 	link_results.clear()
 	detect_results.clear()

@@ -156,16 +156,13 @@ func update_ranges() -> void:
 			+ PhysicsEngine.bandwidth_penalty(bw_idx)
 		)
 
-		var detection_range := (
-			PhysicsEngine
-			. calculate_signal_range(
-				5.0,
-				ground_h + height,
-				ground_h + height,
-				tuning_frequency,
-				threshold,
-				PhysicsEngine.SENSOR_BALANCE_RATIO
-			)
+		var detection_range := PhysicsEngine.calculate_signal_range(
+			5.0,
+			ground_h + height,
+			ground_h + height,
+			tuning_frequency,
+			threshold,
+			PhysicsEngine.SENSOR_BALANCE_RATIO
 		)
 		_unit_visual.set_ring("detection", detection_range, "DETECTION RANGE")
 
