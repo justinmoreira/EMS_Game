@@ -13,7 +13,7 @@ default_value = ""
 [sub_resource type="Resource" id="a_sensitivity"]
 script = ExtResource("spec")
 id = &"sensitivity"
-display_name = "Sensitivity".
+display_name = "Sensitivity"
 kind = 0
 min_value = 0.0
 max_value = 10.0
@@ -25,7 +25,7 @@ default_value = 5
 script = ExtResource("spec")
 id = &"tuning_frequency"
 display_name = "Tuning Frequency"
-kind = 1
+kind = 0
 min_value = 30.0
 max_value = 3000.0
 step = 1.0

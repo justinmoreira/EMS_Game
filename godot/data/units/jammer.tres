@@ -28,10 +28,11 @@ display_name = "Frequency"
 kind = 1
 min_value = 30.0
 max_value = 3000.0
-unit = "MHz"
 step = 1.0
+unit = "MHz"
 default_value = 1000.0
 
+[sub_resource type="Resource" id="a_height"]
 script = ExtResource("spec")
 id = &"height"
 display_name = "Height"
@@ -42,7 +43,10 @@ step = 1.0
 unit = "m"
 default_value = 5
 
+[sub_resource type="Resource" id="a_bandwidth"]
+script = ExtResource("spec")
 id = &"jammer_bandwidth"
+display_name = "Bandwidth"
 kind = 4
 enum_options = PackedStringArray("Narrow", "Medium", "Wide")
 default_value = 1
