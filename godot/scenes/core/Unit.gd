@@ -17,6 +17,7 @@ var unit_visual: UnitVisual:
 
 var _selection_area: Area2D
 var _is_being_dragged: bool = false
+var _drag_cleared_links: bool = false
 var _drag_start_pos: Vector2 = Vector2.ZERO
 var _drag_distance: float = 0.0
 
@@ -197,10 +198,10 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 	# _input so they keep working when the cursor leaves the shape mid-drag.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		# Preserve main #61's UX: clear stale link visuals on drag-press.
-		GameEvents.links_clear_requested.emit()
 		_is_being_dragged = true
 		_drag_start_pos = get_global_mouse_position()
 		_drag_distance = 0.0
+		_drag_cleared_links = false
 		get_tree().root.set_input_as_handled()
 
 
@@ -239,6 +240,9 @@ func _input(event: InputEvent) -> void:
 
 		global_position = base_level.world_uv_to_screen(clamped)
 		_drag_distance = _drag_start_pos.distance_to(global_position)
+		if _drag_distance >= CLICK_DRAG_THRESHOLD_PX and not _drag_cleared_links:
+			GameEvents.links_clear_requested.emit()
+			_drag_cleared_links = true
 		get_tree().root.set_input_as_handled()
 
 

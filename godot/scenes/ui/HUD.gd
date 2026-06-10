@@ -127,7 +127,9 @@ func _on_suggestions_toggled(is_pressed: bool):
 	settings["suggestions"] = is_pressed
 	_save_settings()
 
-	# ADD LATER
+	var level = get_tree().current_scene
+	if level.has_method("toggle_suggestions"):
+		level.toggle_suggestions(is_pressed)
 
 
 func _on_focus_link_lines_toggled(is_pressed: bool):

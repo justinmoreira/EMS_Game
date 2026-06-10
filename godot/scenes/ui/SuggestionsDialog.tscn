@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://cu4oeeuun3ctr"]
+
+[ext_resource type="Script" uid="uid://bovy15bjdxiyb" path="res://scenes/ui/SuggestionsDialog.gd" id="1_m2wi7"]
+
+[node name="SuggestionsDialog" type="PanelContainer" unique_id=1784836666]
+script = ExtResource("1_m2wi7")
+
+[node name="VBox" type="VBoxContainer" parent="." unique_id=1004840418]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="VBox" unique_id=621163135]
+layout_mode = 2
+
+[node name="ContentLabel" type="Label" parent="VBox" unique_id=1076132353]
+layout_mode = 2

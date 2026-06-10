@@ -4,6 +4,7 @@ extends Control
 # Unit attribute controls
 const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
 const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
+const SUGGESTIONS_PANEL_SCENE := preload("res://scenes/ui/SuggestionsDialog.tscn")
 
 const MAP_SIZE = Vector2(1080, 1080)
 const MAP_ORIGIN = Vector2(570, 0)
@@ -17,8 +18,11 @@ var last_mouse_pos := Vector2.ZERO
 # Selection State
 var currently_selected_unit: Node = null
 var currently_hovered_unit: Node = null
+var suggestions_panel: Control = null
+
 @export var base_hover_radius: float = 32.0
 @export var show_signal_ranges: bool = false
+@export var suggestions_enabled: bool = false
 # Sidebar layout — populated via signal, no global find_child reach.
 # Width is the live x-size of the sidebar; 0 if no sidebar in this scene.
 var sidebar_width: float = 0.0
@@ -42,6 +46,8 @@ func _ready():
 	GameEvents.delete_requested.connect(_on_delete_requested)
 	GameEvents.sidebar_resized.connect(_on_sidebar_resized)
 	_on_window_resized()
+
+	toggle_suggestions(suggestions_enabled)
 
 
 func _on_sidebar_resized(width: float) -> void:
@@ -146,6 +152,7 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 		return false
 	if at_position.x < sidebar_width:
 		return false
+
 	# The map is world_uv ∈ [0,1]; outside that is the shader's void border.
 	# Reject drops there so units can't be placed off the map.
 	var world_uv := screen_to_world_uv(at_position)
@@ -168,6 +175,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	unit.set_meta("world_uv", screen_to_world_uv(at_position))
 	unit.position = at_position
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
+
 	# Mark this unit as not saved to the scene file (instantiated at runtime).
 	unit.owner = null
 
@@ -193,9 +201,11 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 
 
 func _on_unit_placed(unit: Unit) -> void:
+	currently_selected_unit = unit
 	var label = _get_or_create_attribute_label(unit)
 	if label:
 		label.visible = unit_attributes_visible
+	toggle_suggestions(suggestions_enabled)
 
 	# Apply current visual settings (show/hide ranges)
 	_set_unit_show_range_visual(unit, show_signal_ranges)
@@ -253,6 +263,30 @@ func toggle_signal_ranges(enabled: bool) -> void:
 	for child in get_children():
 		if child is Unit:
 			_set_unit_show_range_visual(child, enabled)
+
+
+func toggle_suggestions(enabled: bool) -> void:
+	suggestions_enabled = enabled
+	if enabled:
+		if suggestions_panel == null:
+			suggestions_panel = SUGGESTIONS_PANEL_SCENE.instantiate()
+			add_child.call_deferred(suggestions_panel)
+	else:
+		if suggestions_panel:
+			suggestions_panel.queue_free()
+			suggestions_panel = null
+
+	call_deferred("_refresh_suggestions_ui")
+
+
+func _refresh_suggestions_ui() -> void:
+	if suggestions_panel == null:
+		return
+
+	if currently_selected_unit == null:
+		return
+
+	suggestions_panel._on_selection_changed(currently_selected_unit)
 
 
 func _set_unit_show_terrain_heatmap(unit: Node, enabled: bool) -> void:
@@ -374,8 +408,13 @@ func _unhandled_input(event: InputEvent) -> void:
 					):
 						clicked_unit = true
 						break
+
+				if not clicked_unit:
+					GameEvents.clear_selection()
+					get_tree().root.set_input_as_handled()
 				# Clicking on a unit hands off to the unit's own drag handler —
 				# don't engage map pan or the two thrash each other.
+
 				if clicked_unit:
 					return
 

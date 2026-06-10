@@ -27,6 +27,10 @@ func test_calculate_interference():
 	}
 	jammers = [jammer_a]
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
+
+	# JammerPowerAtRx = calculate_received_power(5, 5, 5, 1000, 1, 1) = 1.875 * GAME_RATIO = 5.625
+	# BandwidthPower = 1.0 (Narrow)
+	# Total = 5.625 * 1.0 = 5.625
 	assert_eq(
 		interference,
 		1.2625 * PhysicsEngine.JAMMER_BALANCE_RATIO,

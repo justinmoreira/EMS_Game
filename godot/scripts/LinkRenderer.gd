@@ -240,3 +240,12 @@ func _apply_visibility_for_key(key: String) -> void:
 	if is_instance_valid(data.arrow):
 		data.arrow.visible = should_show
 		data.arrow.modulate.a = alpha
+
+
+func get_links_for_unit(unit: Unit) -> Array:
+	var results := []
+	for key in active_links:
+		var data = active_links[key]
+		if data.source == unit or data.target == unit:
+			results.append(data)
+	return results

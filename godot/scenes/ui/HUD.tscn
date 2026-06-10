@@ -70,7 +70,6 @@ text = "Unit Details"
 [node name="SuggestionsToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1245678904]
 unique_name_in_owner = true
 layout_mode = 2
-button_pressed = true
 text = "Suggestions"
 
 [node name="HeatmapToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=593618751]
