@@ -142,7 +142,7 @@ func update_ranges() -> void:
 			ground_h + height,
 			frequency,
 			PhysicsEngine.NOISE_FLOOR,
-			bw_power
+			bw_power * PhysicsEngine.JAMMER_BALANCE_RATIO
 		)
 		_unit_visual.set_ring("max_range", max_range, "JAM RANGE")
 		_unit_visual.remove_ring("strong_range")
