@@ -29,7 +29,7 @@ func test_calculate_interference():
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
 	assert_eq(
 		interference,
-		1.2625 * PhysicsEngine.GAME_CALCULATION_RATIO,
+		1.2625 * PhysicsEngine.JAMMER_BALANCE_RATIO,
 		"Single jammer same frequency: Got 1.515"
 	)
 
@@ -67,7 +67,7 @@ func test_calculate_interference():
 	interference = PhysicsEngine.calculate_interference(1000.0, 5.0, Vector2(0, 0), jammers)
 	assert_approx(
 		interference,
-		1.6411 * PhysicsEngine.GAME_CALCULATION_RATIO,
+		1.6411 * PhysicsEngine.JAMMER_BALANCE_RATIO,
 		0.01,
 		"Multiple jammers: Got ~1.969"
 	)

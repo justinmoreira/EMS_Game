@@ -109,7 +109,7 @@ static func calculate_received_power(
 		terrain_loss = 1.0
 
 	var received_power = (
-		(TRANSCEIVER_BALANCE_RATIO * tx_power * height_factor * frequency_factor)
+		(tx_power * height_factor * frequency_factor)
 		/ (distance_loss * terrain_loss)
 	)
 	return received_power
@@ -247,8 +247,7 @@ static func calculate_signal_range(
 		sqrt(
 			(
 				(
-					TRANSCEIVER_BALANCE_RATIO
-					* balance_ratio
+					balance_ratio
 					* tx_power
 					* height_factor
 					* frequency_factor
