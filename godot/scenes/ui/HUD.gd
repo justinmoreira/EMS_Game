@@ -7,7 +7,6 @@ var settings = {
 	"unit_ranges": false,
 	"unit_details": false,
 	"suggestions": false,
-	"bidirectional_link_lines": false,
 	"heatmap": false,
 	"heightmap_shader": true,
 	"grid": true
@@ -28,7 +27,6 @@ func _ready():
 	%UnitRangesToggle.toggled.connect(_on_unit_ranges_toggled)
 	%UnitDetailsToggle.toggled.connect(_on_unit_details_toggled)
 	%SuggestionsToggle.toggled.connect(_on_suggestions_toggled)
-	%BidirectionalLinkLinesToggle.toggled.connect(_on_bidirectional_link_lines_toggled)
 	%HeatmapToggle.toggled.connect(_on_heatmap_toggled)
 
 	# Load saved settings
@@ -132,16 +130,6 @@ func _on_suggestions_toggled(is_pressed: bool):
 	# ADD LATER
 
 
-func _on_bidirectional_link_lines_toggled(is_pressed: bool):
-	settings["bidirectional_link_lines"] = is_pressed
-	_save_settings()
-
-	if LinkRenderer:
-		LinkRenderer.bidirectional_mode = is_pressed
-		LinkRenderer._refresh_all_visibility()
-	SimulationManager.simulate()
-
-
 func _on_focus_link_lines_toggled(is_pressed: bool):
 	settings["focus_link_lines"] = is_pressed
 	_save_settings()
@@ -174,7 +162,6 @@ func _load_settings() -> void:
 	%UnitRangesToggle.button_pressed = settings["unit_ranges"]
 	%UnitDetailsToggle.button_pressed = settings["unit_details"]
 	%SuggestionsToggle.button_pressed = settings["suggestions"]
-	%BidirectionalLinkLinesToggle.button_pressed = settings["bidirectional_link_lines"]
 	%HeatmapToggle.button_pressed = settings["heatmap"]
 	%Toggle.button_pressed = settings["heightmap_shader"]
 	%GridToggle.button_pressed = settings["grid"]

@@ -99,7 +99,10 @@ func _spawn_visual() -> void:
 func update_ranges() -> void:
 	if _unit_visual == null:
 		return
+
 	var is_transceiver = is_in_group("transceivers")
+	var is_jammer = is_in_group("jammers")
+	var is_sensor = is_in_group("sensors")
 	var power: float = get_value(&"power", 0.0)
 	var height: float = get_value(&"height", 0.0)
 	var frequency: float = get_value(&"frequency", 1000.0)
@@ -109,12 +112,17 @@ func update_ranges() -> void:
 	if terrain and terrain.has_method("get_ground_height_at_pos"):
 		ground_h = terrain.get_ground_height_at_pos(global_position)
 
-	var max_range = PhysicsEngine.calculate_signal_range(
-		power, ground_h + height, ground_h + height, frequency
-	)
-	_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
-
 	if is_transceiver:
+		var max_range = PhysicsEngine.calculate_signal_range(
+			power,
+			ground_h + height,
+			ground_h + height,
+			frequency,
+			0.5,
+			PhysicsEngine.TRANSCEIVER_BALANCE_RATIO
+		)
+		_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
+
 		var bw_idx: int = get_value(&"transceiver_bandwidth", 0)
 		var bw_power: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
 		var bw_penalty: float = PhysicsEngine.bandwidth_penalty(bw_idx)
@@ -124,11 +132,45 @@ func update_ranges() -> void:
 				ground_h + height,
 				ground_h + height,
 				frequency,
-				PhysicsEngine.NOISE_FLOOR / bw_power
+				PhysicsEngine.NOISE_FLOOR / bw_power,
+				PhysicsEngine.TRANSCEIVER_BALANCE_RATIO
 			)
 			_unit_visual.set_ring("strong_range", min(strong_range, max_range), "STRONG SIGNAL")
 		else:
 			_unit_visual.remove_ring("strong_range")
+
+	elif is_jammer:
+		var bw_idx: int = get_value(&"jammer_bandwidth", 0)
+		var bw_power: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
+		var max_range := PhysicsEngine.calculate_signal_range(
+			power,
+			ground_h + height,
+			ground_h + height,
+			frequency,
+			PhysicsEngine.NOISE_FLOOR,
+			bw_power * PhysicsEngine.JAMMER_BALANCE_RATIO
+		)
+		_unit_visual.set_ring("max_range", max_range, "JAM RANGE")
+		_unit_visual.remove_ring("strong_range")
+
+	elif is_sensor:
+		var sensitivity: float = get_value(&"sensitivity", 3.0)
+		var tuning_frequency: float = get_value(&"tuning_frequency", 1000.0)
+		var bw_idx: int = get_value(&"sensor_bandwidth", 1)
+		var threshold := (
+			lerpf(3.0, PhysicsEngine.NOISE_FLOOR, sensitivity / 10.0)
+			+ PhysicsEngine.bandwidth_penalty(bw_idx)
+		)
+
+		var detection_range := PhysicsEngine.calculate_signal_range(
+			5.0,
+			ground_h + height,
+			ground_h + height,
+			tuning_frequency,
+			threshold,
+			PhysicsEngine.SENSOR_BALANCE_RATIO
+		)
+		_unit_visual.set_ring("detection", detection_range, "DETECTION RANGE")
 
 
 # ── Interaction (drag / click select) ────────────────────────────────

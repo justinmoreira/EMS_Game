@@ -108,7 +108,7 @@ func set_signal_rings(kv: Dictionary) -> void:
 
 func set_ring(key: String, radius_km: float, label: String = "") -> void:
 	signal_rings[key] = {"radius_km": radius_km, "label": label}
-	if key == "max_range" and show_terrain_heatmap and is_selected:
+	if show_terrain_heatmap and is_selected:
 		_refresh_heatmap()
 	queue_redraw()
 
@@ -151,10 +151,14 @@ func _hide_heatmap() -> void:
 
 
 func _refresh_heatmap() -> void:
-	if not _heatmap_sprite or not signal_rings.has("max_range"):
+	if not _heatmap_sprite:
 		_hide_heatmap()
 		return
-	var max_range_km := float(signal_rings["max_range"].get("radius_km", 0.0))
+
+	var max_range_km := 0.0
+	for ring in signal_rings.values():
+		max_range_km = maxf(max_range_km, float(ring.get("radius_km", 0.0)))
+
 	if max_range_km <= 0.0:
 		_hide_heatmap()
 		return
@@ -186,11 +190,13 @@ func _compute_heatmap_samples(max_cell_offset: int) -> Dictionary:
 			terrain.screen_to_world_uv(global_position)
 		)
 
-	var z_tx := 0.0
+	var is_sensor := parent_unit and parent_unit.is_in_group("sensors")
+
+	var unit_total_height := 0.0
 	if parent_unit:
-		z_tx = terrain.get_unit_total_height(parent_unit)
+		unit_total_height = terrain.get_unit_total_height(parent_unit)
 	else:
-		z_tx = terrain.get_ground_height_at_pos(terrain_origin_px)
+		unit_total_height = terrain.get_ground_height_at_pos(terrain_origin_px)
 
 	var has_terrain := (
 		terrain.height_grid.size() > 0
@@ -201,19 +207,33 @@ func _compute_heatmap_samples(max_cell_offset: int) -> Dictionary:
 
 	for cx in range(-max_cell_offset, max_cell_offset + 1):
 		for cy in range(-max_cell_offset, max_cell_offset + 1):
+			if Vector2(cx, cy).length() > float(max_cell_offset):
+				continue
 			var world_pos := terrain_origin_px + Vector2(cx, cy) * PhysicsEngine.PIXELS_PER_UNIT
 			var tif := 1.0
 			if has_terrain:
 				var z_gnd := terrain.get_ground_height_at_pos(world_pos)
-				var loss := PhysicsEngine.compute_terrain_loss(
-					terrain_origin_px,
-					world_pos,
-					z_tx,
-					z_gnd + 1.0,
-					terrain.height_grid,
-					terrain.map_origin,
-					terrain.map_scale
-				)
+				var loss := 0.0
+				if is_sensor:
+					loss = PhysicsEngine.compute_terrain_loss(
+						world_pos,
+						terrain_origin_px,
+						z_gnd + 5.0,
+						unit_total_height,
+						terrain.height_grid,
+						terrain.map_origin,
+						terrain.map_scale
+					)
+				else:
+					loss = PhysicsEngine.compute_terrain_loss(
+						terrain_origin_px,
+						world_pos,
+						unit_total_height,
+						z_gnd + 5.0,
+						terrain.height_grid,
+						terrain.map_origin,
+						terrain.map_scale
+					)
 				tif = 0.0 if loss >= 1e6 else clamp(1.0 / loss, 0.0, 1.0)
 			sample_grid["%d,%d" % [cx, cy]] = tif
 
@@ -225,9 +245,12 @@ func _bake_heatmap_texture(sample_grid: Dictionary, max_cell_offset: int) -> Ima
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	for i in range(n):
 		for j in range(n):
-			var tif: float = sample_grid.get(
-				"%d,%d" % [i - max_cell_offset, j - max_cell_offset], 1.0
-			)
+			var cx := i - max_cell_offset
+			var cy := j - max_cell_offset
+			if Vector2(cx, cy).length() > float(max_cell_offset):
+				img.set_pixel(i, j, Color(0.0, 0.0, 0.0, 0.0))
+				continue
+			var tif: float = sample_grid.get("%d,%d" % [cx, cy], 0.0)
 			img.set_pixel(i, j, Color(tif, 0.0, 0.0, 1.0))
 	return ImageTexture.create_from_image(img)
 
