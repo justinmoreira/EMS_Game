@@ -33,12 +33,12 @@ func test_height():
 	var res1 = PhysicsEngine.calculate_height_factor(0.0, 0.0)
 	assert_eq(res1, 1.0, "Ground Level: Got 1.0")
 
-	# Test 2: Equal height (10m + 10m)
+	# Test 2: Equal height (10m + 10m): 1 + (10+10)/1000 = 1.02
 	var res2 = PhysicsEngine.calculate_height_factor(10.0, 10.0)
-	assert_eq(res2, 2.0, "Equal height: Got 2.0")
+	assert_eq(res2, 1.02, "Equal height: Got 1.02")
 
-	# Test 3: Asymmetrical height (20m + 0m)
+	# Test 3: Asymmetrical height (20m + 0m): 1 + (20+0)/1000 = 1.02
 	var res3 = PhysicsEngine.calculate_height_factor(20.0, 0.0)
-	assert_eq(res3, 2.0, "Asymmetrical: Got 2.0")
+	assert_eq(res3, 1.02, "Asymmetrical: Got 1.02")
 
 	print("\n")
