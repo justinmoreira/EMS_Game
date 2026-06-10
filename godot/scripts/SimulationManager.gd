@@ -13,14 +13,6 @@ var detect_results: Array[Dictionary] = []
 func _ready() -> void:
 	call_deferred("simulate")
 
-
-# func _exit_tree() -> void:
-# 	clear_all_links()
-
-# func _process(_delta: float) -> void:
-# 	_update_active_link_visuals()
-
-
 func simulate() -> void:
 	link_results.clear()
 	detect_results.clear()

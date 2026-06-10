@@ -164,7 +164,6 @@ func update_ranges() -> void:
 				ground_h + height,
 				tuning_frequency,
 				threshold
-				#PhysicsEngine.SENSOR_BALANCE_RATIO
 			)
 		)
 		_unit_visual.set_ring("detection", detection_range, "DETECTION RANGE")
