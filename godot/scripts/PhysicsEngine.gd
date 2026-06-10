@@ -109,8 +109,7 @@ static func calculate_received_power(
 		terrain_loss = 1.0
 
 	var received_power = (
-		(tx_power * height_factor * frequency_factor)
-		/ (distance_loss * terrain_loss)
+		(tx_power * height_factor * frequency_factor) / (distance_loss * terrain_loss)
 	)
 	return received_power
 
@@ -244,18 +243,7 @@ static func calculate_signal_range(
 	var height_factor = calculate_height_factor(height_tx, height_rx)
 	var frequency_factor = 1000.0 / frequency
 	var max_distance = (
-		sqrt(
-			(
-				(
-					balance_ratio
-					* tx_power
-					* height_factor
-					* frequency_factor
-				)
-				/ target
-			)
-		)
-		- 1.0
+		sqrt((balance_ratio * tx_power * height_factor * frequency_factor) / target) - 1.0
 	)
 
 	return max(0.0, max_distance)

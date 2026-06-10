@@ -114,7 +114,12 @@ func update_ranges() -> void:
 
 	if is_transceiver:
 		var max_range = PhysicsEngine.calculate_signal_range(
-			power, ground_h + height, ground_h + height, frequency, 0.5, PhysicsEngine.TRANSCEIVER_BALANCE_RATIO
+			power,
+			ground_h + height,
+			ground_h + height,
+			frequency,
+			0.5,
+			PhysicsEngine.TRANSCEIVER_BALANCE_RATIO
 		)
 		_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
 

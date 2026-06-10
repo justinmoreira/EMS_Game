@@ -15,9 +15,7 @@ func test_received_power():
 	# DistanceLoss = (1+1)^2 = 4
 	# ReceivedPower = (10 * 1.01 * 1.0) / (4 * 1) = 2.525 * GAME_RATIO
 	var result1 = PhysicsEngine.calculate_received_power(10.0, 5.0, 5.0, 1000.0, 1.0, 1.0)
-	assert_eq(
-		result1, 2.525, "Baseline calculation: Got 2.525"
-	)
+	assert_eq(result1, 2.525, "Baseline calculation: Got 2.525")
 
 	# Test 2: Zero distance (closest possible)
 	# DistanceLoss = (0+1)^2 = 1
@@ -46,8 +44,6 @@ func test_received_power():
 	# Test 6: Low transmission power
 	# ReceivedPower = (2 * 1.01 * 1.0) / (4 * 1) = 0.505 * GAME_RATIO
 	var result6 = PhysicsEngine.calculate_received_power(2.0, 5.0, 5.0, 1000.0, 1.0, 1.0)
-	assert_eq(
-		result6, 0.505, "Low transmission power: Got 0.505"
-	)
+	assert_eq(result6, 0.505, "Low transmission power: Got 0.505")
 
 	print("\nAll Received Power Tests Complete")

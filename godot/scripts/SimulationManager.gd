@@ -103,8 +103,11 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 			tx_px, rx_px, z_tx, z_rx, terrain.height_grid, terrain.map_origin, terrain.map_scale
 		)
 
-	var received_power = PhysicsEngine.TRANSCEIVER_BALANCE_RATIO * PhysicsEngine.calculate_received_power(
-		tx.power, z_tx, z_rx, tx.frequency, dist, terrain_loss
+	var received_power = (
+		PhysicsEngine.TRANSCEIVER_BALANCE_RATIO
+		* PhysicsEngine.calculate_received_power(
+			tx.power, z_tx, z_rx, tx.frequency, dist, terrain_loss
+		)
 	)
 
 	var jammer_descs: Array = []
