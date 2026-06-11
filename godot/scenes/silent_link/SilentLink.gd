@@ -106,9 +106,13 @@ func _apply_card_restrictions() -> void:
 			var is_allowed = entity["id"] in _allowed_units
 			card.modulate.a = 1.0 if is_allowed else 0.3
 			card.set_process_input(is_allowed)
-			card.mouse_filter = Control.MOUSE_FILTER_STOP if is_allowed else Control.MOUSE_FILTER_IGNORE
+			card.mouse_filter = (
+				Control.MOUSE_FILTER_STOP if is_allowed else Control.MOUSE_FILTER_IGNORE
+			)
 			for child in card.get_children():
-				child.mouse_filter = Control.MOUSE_FILTER_PASS if is_allowed else Control.MOUSE_FILTER_IGNORE
+				child.mouse_filter = (
+					Control.MOUSE_FILTER_PASS if is_allowed else Control.MOUSE_FILTER_IGNORE
+				)
 
 
 func _exit_tree() -> void:
@@ -233,9 +237,7 @@ func register_player_unit(unit: Node) -> void:
 	# Track sensor for visualization
 	if unit.is_in_group("sensors") and _current_level >= 4:
 		_sensor_visualizations[unit] = {
-			"rings": [],
-			"pulse_time": 0.0,
-			"closest_jammer_distance": INF
+			"rings": [], "pulse_time": 0.0, "closest_jammer_distance": INF
 		}
 
 
@@ -296,9 +298,7 @@ func _update_sensor_visualizations(delta: float) -> void:
 		# Initialize visualization data if not present
 		if not _sensor_visualizations.has(sensor):
 			_sensor_visualizations[sensor] = {
-				"rings": [],
-				"pulse_time": 0.0,
-				"closest_jammer_distance": INF
+				"rings": [], "pulse_time": 0.0, "closest_jammer_distance": INF
 			}
 
 		var vis_data = _sensor_visualizations[sensor]
@@ -394,7 +394,7 @@ func _simulate_link() -> void:
 	# Reset detection/jamming flags
 	_player_detected = false
 	_jammed = false
-	
+
 	if not _check_link_possible():
 		_show_hint("Link not possible - check your placements and retry!")
 		_finish(false)
