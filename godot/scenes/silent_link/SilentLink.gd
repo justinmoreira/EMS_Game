@@ -6,6 +6,9 @@ extends ContourDemo
 const SILENT_LINK_INTRO_POPUP := preload("res://scenes/ui/IntroPopup.tscn")
 const SILENT_LINK_HINT := preload("res://scenes/ui/HintPopup.tscn")
 
+const SENSOR_DETECTION_RANGE := 300.0  # How far sensors can detect jammers
+const SENSOR_PULSE_SPEED := 1.0  # How fast the rings pulse
+
 const MAX_LEVEL := 5
 
 enum Step { WELCOME, PLANNING, SIMULATING, COMPLETE }
@@ -28,6 +31,7 @@ var _player_units: Array = []
 var _enemy_units: Array = []
 var _transceivers: Array = []
 var _allowed_units: Array[StringName] = []
+var _sensor_visualizations: Dictionary = {}
 var _scene_ready := false
 
 
@@ -79,8 +83,32 @@ func _setup_level_restrictions() -> void:
 			# Default: all units
 			_allowed_units = [&"transceiver", &"jammer", &"sensor"]
 
-	# Apply the restrictions to the sidebar
-	GameEvents.tutorial_filter_sidebar.emit(_allowed_units)
+	# Disable entity cards that aren't allowed
+	_apply_card_restrictions()
+
+
+func _apply_card_restrictions() -> void:
+	var sidebar = get_tree().get_first_node_in_group("ui") as Sidebar
+	if not sidebar:
+		sidebar = get_tree().root.find_child("Sidebar", true, false) as Sidebar
+
+	# Access the entity cards through the sidebar's _entity_cards dictionary
+	# We need to disable cards by type
+	var entity_types = [
+		{"type": Sidebar.EntityType.TRANSCEIVER, "id": &"transceiver"},
+		{"type": Sidebar.EntityType.JAMMER, "id": &"jammer"},
+		{"type": Sidebar.EntityType.SENSOR, "id": &"sensor"}
+	]
+
+	for entity in entity_types:
+		var card = sidebar._entity_cards.get(entity["type"])
+		if card:
+			var is_allowed = entity["id"] in _allowed_units
+			card.modulate.a = 1.0 if is_allowed else 0.3
+			card.set_process_input(is_allowed)
+			card.mouse_filter = Control.MOUSE_FILTER_STOP if is_allowed else Control.MOUSE_FILTER_IGNORE
+			for child in card.get_children():
+				child.mouse_filter = Control.MOUSE_FILTER_PASS if is_allowed else Control.MOUSE_FILTER_IGNORE
 
 
 func _exit_tree() -> void:
@@ -167,9 +195,9 @@ func _get_level_intro_content(level: int) -> Dictionary:
 					"Hiiden units are on the map!\n\n"
 					+ "[i]The enemy now has invisible\n"
 					+ "jamming equipment.\n\n"
-					+ "• Only the most strategic placements will work\n"
-					+ "• Every frequency choice matters\n"
-					+ "• Use sensors to find hidden jammers![/i]"
+					+ "• Sensors will pulse red, orange, yellow, or blue"
+					+ " depending on how far the jammer is\n"
+					+ "• Red is closest and blue is nothing found![/i]"
 				)
 			}
 		5:
@@ -194,17 +222,32 @@ func _on_intro_closed() -> void:
 	_step = Step.PLANNING
 	_start_time = Time.get_ticks_msec() / 1000.0
 	_show_timer()
-	_setup_level_restrictions()
+	await get_tree().process_frame
+	_apply_card_restrictions()
 
 
 func register_player_unit(unit: Node) -> void:
 	if not _player_units.has(unit):
 		_player_units.append(unit)
 
+	# Track sensor for visualization
+	if unit.is_in_group("sensors") and _current_level >= 4:
+		_sensor_visualizations[unit] = {
+			"rings": [],
+			"pulse_time": 0.0,
+			"closest_jammer_distance": INF
+		}
+
 
 func unregister_player_unit(unit: Node) -> void:
 	if _player_units.has(unit):
 		_player_units.erase(unit)
+
+	# Clean up sensor visualization
+	if _sensor_visualizations.has(unit):
+		for ring in _sensor_visualizations[unit]["rings"]:
+			ring.queue_free()
+		_sensor_visualizations.erase(unit)
 
 
 func _begin_simulation() -> void:
@@ -227,6 +270,9 @@ func _process(_delta: float) -> void:
 		var elapsed = Time.get_ticks_msec() / 1000.0 - _start_time
 		_timer_label.text = "Time: %.1fs" % elapsed
 
+	if _current_level >= 4:
+		_update_sensor_visualizations(_delta)
+
 	if _step == Step.SIMULATING and not _simulation_over:
 		_check_detection()
 		_check_jamming()
@@ -234,6 +280,101 @@ func _process(_delta: float) -> void:
 			_finish(true)
 		elif _player_detected or _jammed:
 			_finish(false)
+
+
+func _update_sensor_visualizations(delta: float) -> void:
+	var sensors = get_tree().get_nodes_in_group("sensors")
+
+	for sensor in sensors:
+		# Skip enemy sensors (preplaced)
+		if sensor.name.begins_with("Enemy"):
+			continue
+
+		if not sensor.global_position:
+			continue
+
+		# Initialize visualization data if not present
+		if not _sensor_visualizations.has(sensor):
+			_sensor_visualizations[sensor] = {
+				"rings": [],
+				"pulse_time": 0.0,
+				"closest_jammer_distance": INF
+			}
+
+		var vis_data = _sensor_visualizations[sensor]
+		vis_data["pulse_time"] += delta
+
+		# Find closest jammer to this sensor
+		var closest_distance = INF
+		var jammers = get_tree().get_nodes_in_group("jammers")
+		for jammer in jammers:
+			var dist = sensor.global_position.distance_to(jammer.global_position)
+			if dist < closest_distance:
+				closest_distance = dist
+
+		vis_data["closest_jammer_distance"] = closest_distance
+
+		# Create or update rings based on detection
+		_update_sensor_rings(sensor, vis_data, delta)
+
+
+func _update_sensor_rings(sensor: Node, vis_data: Dictionary, delta: float) -> void:
+	var distance = vis_data["closest_jammer_distance"]
+	var ring_count = 3
+
+	# Ensure we have rings
+	while vis_data["rings"].size() < ring_count:
+		var ring = _create_sensor_ring(sensor)
+		vis_data["rings"].append(ring)
+
+	# Update or remove extra rings
+	while vis_data["rings"].size() > ring_count:
+		vis_data["rings"].pop_back().queue_free()
+
+	# Determine color based on distance
+	var ring_color = Color.BLUE  # Default: no jammer nearby
+	if distance < SENSOR_DETECTION_RANGE:
+		if distance < 100:
+			ring_color = Color.RED  # Very close
+		elif distance < 200:
+			ring_color = Color.ORANGE  # Orange: nearby
+		else:
+			ring_color = Color(1.0, 1.0, 0.0, 1.0)  # Yellow: somewhat far
+
+	# Animate rings with pulsing effect
+	var pulse = sin(vis_data["pulse_time"] * SENSOR_PULSE_SPEED * PI) * 0.5 + 0.5
+
+	for i in range(vis_data["rings"].size()):
+		var ring = vis_data["rings"][i]
+		var delay = float(i) / float(ring_count)
+		var phase = fmod(vis_data["pulse_time"] * SENSOR_PULSE_SPEED + delay, 1.0)
+		var alpha = (1.0 - phase) * 0.8  # Fade out as ring expands
+
+		ring.modulate = Color(ring_color.r, ring_color.g, ring_color.b, alpha)
+		ring.scale = Vector2.ONE * (0.5 + phase * 1.0)  # Expand from small to large
+		ring.global_position = sensor.global_position
+
+
+func _create_sensor_ring(sensor: Node) -> Node2D:
+	var ring = Node2D.new()
+	ring.global_position = sensor.global_position
+	ring.z_index = 100
+	add_child(ring)
+
+	# Create circle using a polygon or multiple line segments
+	var circle = Line2D.new()
+	circle.width = 2.5
+	circle.antialiased = true
+
+	# Draw circle (24 points for smooth circle)
+	var segments = 24
+	for i in range(segments + 1):
+		var angle = (float(i) / float(segments)) * TAU
+		var point = Vector2(cos(angle), sin(angle)) * 50.0
+		circle.add_point(point)
+
+	ring.add_child(circle)
+	return ring
 
 
 func _finish(success: bool) -> void:
@@ -250,21 +391,25 @@ func _finish(success: bool) -> void:
 
 
 func _simulate_link() -> void:
+	# Reset detection/jamming flags
+	_player_detected = false
+	_jammed = false
+	
 	if not _check_link_possible():
 		_show_hint("Link not possible - check your placements and retry!")
 		_finish(false)
 		return
 
 	# Always run these to update detection and jamming for this frame
-	_check_detection()
 	_check_jamming()
+	_check_detection()
 
-	if _player_detected:
-		_show_hint("Detected by enemy! Try again.")
-		_finish(false)
-		return
 	if _jammed:
 		_show_hint("Signal jammed! Try again.")
+		_finish(false)
+		return
+	if _player_detected:
+		_show_hint("Detected by enemy! Try again.")
 		_finish(false)
 		return
 
@@ -335,7 +480,7 @@ func _unit_is_jammed(unit: Node) -> bool:
 
 
 func _check_link_possible() -> bool:
-	# For level 1: One preplaced, one player. Both must exist.
+	# Must have at least 2 transceivers total (preplaced + player)
 	var total_transceivers = _player_units.duplicate()
 	for t in _transceivers:
 		if t not in total_transceivers:
@@ -343,13 +488,25 @@ func _check_link_possible() -> bool:
 	if total_transceivers.size() < 2:
 		return false
 
-	# For each transceiver, check if link is possible (not in detection/jam)
-	for u in total_transceivers:
-		for e in _enemy_units:
-			if _unit_in_detection_zone(u, e):
-				return false
-		if _unit_is_jammed(u):
+	# Check if at least two transceivers can link (basic checks)
+	if total_transceivers.size() >= 2:
+		var tx1 = total_transceivers[0]
+		var tx2 = total_transceivers[1]
+
+		# Make sure they're not at the same position
+		if tx1.global_position.distance_to(tx2.global_position) < 10:
 			return false
+
+		# Check distance (max range ~500 pixels based on typical signal range)
+		var distance = tx1.global_position.distance_to(tx2.global_position)
+		if distance > 500:
+			return false
+
+		# Check if frequencies match or are close enough
+		var freq_diff = abs(tx1.frequency - tx2.frequency)
+		if freq_diff > 100:  # Simple frequency check
+			return false
+
 	return true
 
 
@@ -438,6 +595,12 @@ func _on_next_level_pressed() -> void:
 	_current_level += 1
 	set_process(false)
 	set_physics_process(false)
+
+	# Clean up sensor visualizations
+	for sensor in _sensor_visualizations:
+		for ring in _sensor_visualizations[sensor]["rings"]:
+			ring.queue_free()
+	_sensor_visualizations.clear()
 
 	if _current_level > MAX_LEVEL:
 		# Show completion screen for finishing Silent Link
