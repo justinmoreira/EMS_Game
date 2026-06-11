@@ -82,7 +82,7 @@ func _start() -> void:
 	_intro_popup_open = true
 
 	var popup := SILENT_LINK_INTRO_POPUP.instantiate()
-	
+
 	# Set level-specific content based on current level
 	var level_content = _get_level_intro_content(_current_level)
 	popup.title_string = level_content["title"]
@@ -103,60 +103,72 @@ func _get_level_intro_content(level: int) -> Dictionary:
 		1:
 			return {
 				"title": "Silent Link Mode - Level 1",
-				"body": "Establish a connection between the two friendly transceivers\n"
+				"body":
+				(
+					"Establish a connection between the two friendly transceivers\n"
 					+ "without being detected or jammed by the enemy!\n\n"
 					+ "[i]• Place your units and link carefully\n"
 					+ "• Avoid detection zones & jammers\n"
 					+ "• Adjust frequency: high for fast, low for stealth\n\n"
 					+ "Start with this basic challenge\n"
 					+ "One transceiver has been placed for you![/i]"
+				)
 			}
 		2:
 			return {
 				"title": "Silent Link Mode - Level 2",
-				"body": "Things are getting trickier!\n\n"
+				"body":
+				(
+					"Things are getting trickier!\n\n"
 					+ "[i]More enemy units are now on the field.\n"
 					+ "You'll need to plan your link route more carefully\n"
 					+ "to avoid their detection zones.\n\n"
 					+ "• Study the terrain\n"
 					+ "• Use natural barriers to your advantage\n"
 					+ "• Timing and frequency adjustment are key![/i]"
+				)
 			}
 		3:
 			return {
 				"title": "Silent Link Mode - Level 3",
-				"body": "The enemy has added more units!\n\n"
+				"body":
+				(
+					"The enemy has added more units!\n\n"
 					+ "[i]Advanced jammers and detection equipment\n"
 					+ "make this level significantly more challenging.\n\n"
 					+ "• Multiple overlapping detection zones\n"
 					+ "• Powerful jamming capabilities\n"
 					+ "• Be careful with your units![/i]"
+				)
 			}
 		4:
 			return {
 				"title": "Silent Link Mode - Level 4",
-				"body": "Hiiden units are on the map!\n\n"
+				"body":
+				(
+					"Hiiden units are on the map!\n\n"
 					+ "[i]The enemy now has invisible\n"
 					+ "jamming equipment.\n\n"
 					+ "• Only the most strategic placements will work\n"
 					+ "• Every frequency choice matters\n"
 					+ "• Use sensors to find hidden jammers![/i]"
+				)
 			}
 		5:
 			return {
 				"title": "Silent Link Mode - Level 5",
-				"body": "The final challenge awaits!\n\n"
+				"body":
+				(
+					"The final challenge awaits!\n\n"
 					+ "[i]This is the ultimate test of your skills.\n"
 					+ "Multiple hidden jammers have been placed.\n\n"
 					+ "• All your skills will be tested\n"
 					+ "• Make good use of your sensors\n"
 					+ "• Success here means you've mastered Silent Link![/i]"
+				)
 			}
 		_:
-			return {
-				"title": "Silent Link Mode",
-				"body": "Unknown level"
-			}
+			return {"title": "Silent Link Mode", "body": "Unknown level"}
 
 
 func _on_intro_closed() -> void:
