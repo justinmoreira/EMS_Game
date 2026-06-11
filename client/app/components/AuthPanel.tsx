@@ -246,6 +246,14 @@ export default function AccountModal() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
   const user = authUser.value;
+  const displayName = user
+    ? (user.user_metadata?.display_name as string) ||
+      user.email?.split("@")[0] ||
+      ""
+    : "";
+  useEffect(() => {
+    if (displayName) localStorage.setItem("account_display_name", displayName);
+  }, [displayName]);
 
   return (
     <>
@@ -254,23 +262,20 @@ export default function AccountModal() {
         onClick={() => setOpen(true)}
         class="text-sm font-medium hover:text-white text-neutral-300 transition-colors min-w-[70px] text-right cursor-pointer"
       >
-        {(() => {
-          const name = user
-            ? (user.user_metadata?.display_name as string) ||
-              user.email?.split("@")[0] ||
-              ""
-            : "";
-          if (name) localStorage.setItem("account_display_name", name);
-          return ready ? name || "Account" : getCachedName();
-        })()}
+        {ready ? displayName || "Account" : getCachedName()}
       </button>
       {open &&
         createPortal(
-          <button
-            type="button"
+          <div
+            role="dialog"
+            aria-modal="true"
+            tabIndex={-1}
             class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60"
             onClick={(e) => {
               if (e.target === e.currentTarget) setOpen(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setOpen(false);
             }}
           >
             <div class="w-full max-w-sm bg-neutral-900 border border-neutral-700 rounded-xl p-8 relative">
@@ -320,7 +325,7 @@ export default function AccountModal() {
                 </span>
               </div>
             </div>
-          </button>,
+          </div>,
           document.body,
         )}
     </>

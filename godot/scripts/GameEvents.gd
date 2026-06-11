@@ -1,12 +1,87 @@
 extends Node
 
+# Global event bus + small amount of cross-cutting state (selection).
+# Signals here are emitted from outside this class by design, so the
+# per-signal `unused_signal` warnings are spurious.
+
+# ── Existing / unit updates ───────────────────
+@warning_ignore("unused_signal")
 signal units_changed
 
+@warning_ignore("unused_signal")
 signal unit_placed(unit: Node)
+
+@warning_ignore("unused_signal")
 signal unit_selected(unit: Node)
+
+@warning_ignore("unused_signal")
 signal unit_deleted(unit: Node)
 
+@warning_ignore("unused_signal")
 signal unit_attribute_changed(unit: Node, attribute_name: String, new_value: Variant)
 
-signal tutorial_filter_sidebar(allowed_types: Array)
+# ── Tutorial filters ──────────────────────────
+# IMPORTANT:
+# New main branch Sidebar.gd expects UnitDefinition ids, not Sidebar.EntityType.
+# Use: [&"transceiver"], [&"jammer"], [&"sensor"], or [] to unlock all.
+@warning_ignore("unused_signal")
+signal tutorial_filter_sidebar(allowed_ids: Array)
+
+# Use attribute names/ids:
+# ["frequency"], ["power"], ["height"], ["bandwidth"], ["sensitivity"], etc.
+@warning_ignore("unused_signal")
 signal tutorial_filter_attributes(allowed_attributes: Array)
+
+# ── Selection (single source of truth) ─────────
+# Both BaseLevel (visual highlight) and Sidebar (attribute panel) read from
+# `selected_unit` via the `selection_changed` signal. `selected_unit == null`
+# means nothing selected. Always go through `select(unit)` / `clear_selection()`
+# so the signal stays in sync with the field.
+var selected_unit: Node = null
+
+@warning_ignore("unused_signal")
+signal selection_changed(unit: Node)
+
+
+func select(unit: Node) -> void:
+	if selected_unit == unit:
+		return
+
+	selected_unit = unit
+	selection_changed.emit(unit)
+
+
+func clear_selection() -> void:
+	if selected_unit == null:
+		return
+
+	selected_unit = null
+	selection_changed.emit(null)
+
+
+# ── UI button intents ─────────────────────────
+# Sidebar emits, BaseLevel acts.
+@warning_ignore("unused_signal")
+signal simulation_requested
+
+@warning_ignore("unused_signal")
+signal reset_requested
+
+@warning_ignore("unused_signal")
+signal delete_requested(unit: Node)
+
+# ── Link / layout / simulation events ─────────
+# Drag-press clears stale link visuals before the new drag-release sim.
+# LinkRenderer wires this to clear_all so Unit.gd stays decoupled from
+# the SimulationManager singleton.
+@warning_ignore("unused_signal")
+signal links_clear_requested
+
+# Sidebar publishes its width on resize so BaseLevel can update layout
+# without a global find_child reach.
+@warning_ignore("unused_signal")
+signal sidebar_resized(width: float)
+
+# Sim broadcast — SimulationManager emits, renderers/listeners react.
+@warning_ignore("unused_signal")
+signal simulation_complete(link_results: Array, detect_results: Array)

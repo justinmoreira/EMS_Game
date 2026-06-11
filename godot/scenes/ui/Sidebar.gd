@@ -7,6 +7,16 @@ extends PanelContainer
 
 enum EntityType { NONE, TRANSCEIVER, JAMMER, SENSOR }
 
+const TRANSCEIVER_DEF: UnitDefinition = preload("res://data/units/transceiver.tres")
+const JAMMER_DEF: UnitDefinition = preload("res://data/units/jammer.tres")
+const SENSOR_DEF: UnitDefinition = preload("res://data/units/sensor.tres")
+
+# Fixed design width reported to the map layout. The panel's content can grow a
+# few px when the attribute rows populate; reporting a constant keeps the map
+# from reflowing/recentering every time the panel changes. The sidebar is
+# opaque on a CanvasLayer above the map, so any minor overhang is hidden.
+const SIDEBAR_WIDTH := 300.0
+
 # ── Colors ────────────────────────────────────
 const C_BG_DARK := Color("0d0f14")
 const C_BG_MID := Color("13161e")
@@ -20,9 +30,6 @@ const C_TEXT := Color("e8eaf0")
 const C_DIM := Color("6b7594")
 const C_PURPLE := Color("e099ff")
 
-# Constants
-var invalid_props = ["script", "name", "owner", "unique_name_in_owner"]
-
 # ── State ─────────────────────────────────────
 var selected_entity: EntityType = EntityType.NONE
 var selected_entity_name: String = ""
@@ -30,34 +37,64 @@ var selected_node: Node = null
 var pending_attributes: Dictionary = {}
 var pending_entity_type: EntityType = EntityType.NONE
 var _reset_btn: Button = null
-var _simulate_btn: Button = null
 var _delete_btn: Button = null
+var _confirm_btn: Button = null
 
 # ── Node refs ─────────────────────────────────
+# Slots come from Sidebar.tscn — script populates them on _ready.
+@onready var _header_slot: PanelContainer = $Layout/Header
+@onready var _tray_slot: PanelContainer = $Layout/Tray
+@onready var _divider_slot: HSeparator = $Layout/Divider
+@onready var _attr_section: PanelContainer = $Layout/AttrSection
+
 var _attr_header: Label
 var _attr_body: VBoxContainer
 var _attr_placeholder: Label
 var _entity_cards: Dictionary = {}  # EntityType -> Control
-var _attr_section: PanelContainer
 var _attr_content: VBoxContainer
 var _tutorial_active: bool = false
-
-# Tutorial vars
-var _tutorial_allowed_types: Array = []
+var _tutorial_allowed_ids: Array = []
 var _tutorial_allowed_attributes: Array = []
 
 
 func _ready() -> void:
-	GameEvents.units_changed.connect(_update_simulate_button)
+	GameEvents.units_changed.connect(_update_reset_button)
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
 	GameEvents.tutorial_filter_attributes.connect(_on_tutorial_filter_attributes)
+	GameEvents.selection_changed.connect(_on_selection_changed)
 	_build_sidebar()
 	_refresh_attribute_panel()
+	# Publish the fixed design width to listeners (BaseLevel). Constant, not the
+	# live size.x, so attribute-panel growth doesn't recenter the map.
+	GameEvents.sidebar_resized.emit.call_deferred(SIDEBAR_WIDTH)
+
+
+func _on_selection_changed(unit: Node) -> void:
+	if unit is Unit and unit.definition:
+		var t := _entity_type_for_def_id(unit.definition.id)
+		select_entity(t, unit.definition.display_name, unit)
+	else:
+		select_entity(EntityType.NONE)
+
+
+func _entity_type_for_def_id(id: StringName) -> EntityType:
+	match id:
+		&"transceiver":
+			return EntityType.TRANSCEIVER
+		&"jammer":
+			return EntityType.JAMMER
+		&"sensor":
+			return EntityType.SENSOR
+	return EntityType.NONE
 
 
 func select_entity(type: EntityType, display_name: String = "", node: Node = null) -> void:
-	if _tutorial_active and type != EntityType.NONE and not type in _tutorial_allowed_types:
-		return
+	# In tutorial mode, only block sidebar card selection for disallowed types.
+	# Do not block already placed units. The attribute panel must still refresh
+	# when the user clicks a placed unit on the map.
+	if _tutorial_active and node == null and type != EntityType.NONE:
+		if not _is_entity_type_allowed(type):
+			return
 
 	if type != EntityType.NONE and type != pending_entity_type:
 		pending_attributes.clear()
@@ -66,16 +103,14 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 	selected_entity_name = display_name
 	selected_node = node
 
-	# If selecting a new entity type from sidebar without a placed unit
 	if node == null and type != EntityType.NONE:
 		pending_entity_type = type
 	else:
-		# Selecting a placed unit, clear pending
 		pending_entity_type = EntityType.NONE
 		pending_attributes.clear()
 
 	_refresh_attribute_panel()
-	_update_simulate_button()
+	_update_reset_button()
 
 
 # ════════════════════════════════════════════
@@ -84,26 +119,17 @@ func select_entity(type: EntityType, display_name: String = "", node: Node = nul
 
 
 func _build_sidebar() -> void:
+	# Root layout (VBoxContainer "Layout") + named section slots (Header/Tray/
+	# Divider/AttrSection) come from Sidebar.tscn. Styling + dynamic content
+	# still live in script for now (B4 skeleton extraction; theme migration TBD).
 	_apply_style(self, C_BG_DARK, C_BORDER, 0, 0, 0, 1)
-	custom_minimum_size = Vector2(300, 0)
-	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	var vbox := VBoxContainer.new()
-	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_theme_constant_override("separation", 0)
-	add_child(vbox)
-
-	vbox.add_child(_build_header())
-	vbox.add_child(_build_tray())
-	vbox.add_child(_build_divider())
-	_attr_section = _build_attr_section()
-	vbox.add_child(_attr_section)
+	_populate_header(_header_slot)
+	_populate_tray(_tray_slot)
+	_style_divider(_divider_slot)
+	_populate_attr_section(_attr_section)
 
 
-func _build_header() -> PanelContainer:
-	var panel := PanelContainer.new()
+func _populate_header(panel: PanelContainer) -> void:
 	_apply_style(panel, C_BG_MID, C_GREEN, 0, 2, 0, 0)
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_MID, 12))
 
@@ -145,45 +171,11 @@ func _build_header() -> PanelContainer:
 	hbox.add_child(reset_btn)
 	_reset_btn = reset_btn
 
-	var btn := Button.new()
-	btn.text = "SIMULATE"
-	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	btn.add_theme_font_size_override("font_size", 13)
-	btn.add_theme_color_override("font_color", C_BG_DARK)
-
-	var btn_style := StyleBoxFlat.new()
-	btn_style.bg_color = C_GREEN
-	btn_style.corner_radius_top_left = 3
-	btn_style.corner_radius_top_right = 3
-	btn_style.corner_radius_bottom_left = 3
-	btn_style.corner_radius_bottom_right = 3
-	btn_style.set_content_margin_all(8)
-	btn.add_theme_stylebox_override("normal", btn_style)
-
-	var btn_disabled_style := StyleBoxFlat.new()
-	btn_disabled_style.bg_color = C_BORDER
-	btn_disabled_style.corner_radius_top_left = 3
-	btn_disabled_style.corner_radius_top_right = 3
-	btn_disabled_style.corner_radius_bottom_left = 3
-	btn_disabled_style.corner_radius_bottom_right = 3
-	btn_disabled_style.set_content_margin_all(8)
-	btn.add_theme_stylebox_override("disabled", btn_disabled_style)
-
-	btn.pressed.connect(_on_simulate_pressed)
-	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	hbox.add_child(btn)
-
-	_simulate_btn = btn
-	_update_simulate_button()
-
-	return panel
+	_update_reset_button()
 
 
-func _build_tray() -> PanelContainer:
-	var panel := PanelContainer.new()
+func _populate_tray(panel: PanelContainer) -> void:
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_MID, 14))
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var vbox := VBoxContainer.new()
 	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -237,8 +229,6 @@ func _build_tray() -> PanelContainer:
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(hint)
 
-	return panel
-
 
 func _build_entity_card(
 	label: String,
@@ -260,19 +250,19 @@ func _build_entity_card(
 		C_BG_LIGHT.lightened(0.08),
 		sprite_path
 	)
+	# Drag payload picks up the user's pending attribute tweaks.
+	card.pending_provider = func(): return pending_attributes.duplicate()
 	card.pressed.connect(
 		func():
-			_clear_selection()
+			# Drop any prior unit selection so the highlight clears with the panel.
+			GameEvents.clear_selection()
 			select_entity(type, label, null)
 	)
 	return card
 
 
-func _build_attr_section() -> PanelContainer:
-	var panel := PanelContainer.new()
+func _populate_attr_section(panel: PanelContainer) -> void:
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_MID, 14))
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	_attr_content = VBoxContainer.new()
 	_attr_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -286,15 +276,17 @@ func _build_attr_section() -> PanelContainer:
 
 	attr_header_row.add_child(_make_label("ATTRIBUTES", C_DIM, 15))
 
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	attr_header_row.add_child(spacer)
+	var button_row := HBoxContainer.new()
+	button_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button_row.add_theme_constant_override("separation", 10)
+	_attr_content.add_child(button_row)
 
 	var delete_btn := Button.new()
 	delete_btn.text = "DELETE UNIT"
 	delete_btn.add_theme_font_size_override("font_size", 12)
 	delete_btn.add_theme_color_override("font_color", C_BG_DARK)
 	delete_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	delete_btn.custom_minimum_size = Vector2(120, 0)
 
 	var del_style := StyleBoxFlat.new()
 	del_style.bg_color = C_RED
@@ -303,13 +295,39 @@ func _build_attr_section() -> PanelContainer:
 	del_style.corner_radius_bottom_left = 3
 	del_style.corner_radius_bottom_right = 3
 	del_style.set_content_margin_all(8)
+
 	delete_btn.add_theme_stylebox_override("normal", del_style)
-	delete_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	delete_btn.pressed.connect(_on_delete_pressed)
 	delete_btn.visible = false
 
-	attr_header_row.add_child(delete_btn)
+	button_row.add_child(delete_btn)
 	_delete_btn = delete_btn
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button_row.add_child(spacer)
+
+	var confirm_btn := Button.new()
+	confirm_btn.text = "CONFIRM"
+	confirm_btn.add_theme_font_size_override("font_size", 12)
+	confirm_btn.add_theme_color_override("font_color", C_BG_DARK)
+	confirm_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	confirm_btn.custom_minimum_size = Vector2(120, 0)
+
+	var cfm_style := StyleBoxFlat.new()
+	cfm_style.bg_color = C_GREEN
+	cfm_style.corner_radius_top_left = 3
+	cfm_style.corner_radius_top_right = 3
+	cfm_style.corner_radius_bottom_left = 3
+	cfm_style.corner_radius_bottom_right = 3
+	cfm_style.set_content_margin_all(8)
+
+	confirm_btn.add_theme_stylebox_override("normal", cfm_style)
+	confirm_btn.pressed.connect(_on_confirm_pressed)
+	confirm_btn.visible = false
+
+	button_row.add_child(confirm_btn)
+	_confirm_btn = confirm_btn
 
 	_attr_header = _make_label("", C_TEXT, 20)
 	_attr_content.add_child(_attr_header)
@@ -331,17 +349,14 @@ func _build_attr_section() -> PanelContainer:
 	_attr_placeholder.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_attr_placeholder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_attr_placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_child(_attr_placeholder)
 
-	return panel
+	_attr_content.add_child(_attr_placeholder)
 
 
-func _build_divider() -> HSeparator:
-	var sep := HSeparator.new()
+func _style_divider(sep: HSeparator) -> void:
 	var s := StyleBoxFlat.new()
 	s.bg_color = C_BORDER
 	sep.add_theme_stylebox_override("separator", s)
-	return sep
 
 
 func _refresh_attribute_panel() -> void:
@@ -351,6 +366,9 @@ func _refresh_attribute_panel() -> void:
 	if _delete_btn:
 		_delete_btn.visible = selected_entity != EntityType.NONE and selected_node != null
 
+	if _confirm_btn:
+		_confirm_btn.visible = selected_entity != EntityType.NONE and selected_node != null
+
 	if selected_entity == EntityType.NONE:
 		_attr_header.visible = false
 		_attr_placeholder.visible = true
@@ -359,172 +377,108 @@ func _refresh_attribute_panel() -> void:
 	_attr_placeholder.visible = false
 	_attr_header.visible = true
 
-	match selected_entity:
-		EntityType.TRANSCEIVER:
-			_attr_header.text = "Transceiver"
-			_attr_header.add_theme_color_override("font_color", C_BLUE)
-			_add_accent_bar(C_BLUE)
-			_add_text_input(
-				"Name",
-				_prop_string("unit_name", UnitNameManager.peek_next_name("transceiver")),
-				C_BLUE,
-				func(v): _write("unit_name", v)
-			)
-			_add_slider(
-				"Tx Power",
-				0.0,
-				10.0,
-				_prop_float("power", 5.0),
-				"dBm",
-				C_BLUE,
-				func(v): _write("power", int(v)),
-				true,
-				"power"
-			)
-			_add_slider(
-				"Frequency",
-				30.0,
-				3000.0,
-				_prop_float("frequency", 1000.0),
-				"MHz",
-				C_BLUE,
-				func(v): _write("frequency", v),
-				true,
-				"frequency"
-			)
-			_add_slider(
-				"Height",
-				0.0,
-				10.0,
-				_prop_int("height", 5),
-				"m",
-				C_BLUE,
-				func(v): _write("height", int(v)),
-				true,
-				"height"
-			)
-			_add_dropdown(
-				"Bandwidth",
-				["Narrow", "Medium", "Wide"],
-				_prop_int("transceiver_bandwidth", 1),
-				C_BLUE,
-				func(v): _write("transceiver_bandwidth", v),
-				"bandwidth"
-			)
+	var def := _definition_for(selected_entity)
+	if def == null:
+		return
 
-		EntityType.JAMMER:
-			_attr_header.text = "Jammer"
-			_attr_header.add_theme_color_override("font_color", C_RED)
-			_add_accent_bar(C_RED)
-			_add_text_input(
-				"Name",
-				_prop_string("unit_name", UnitNameManager.peek_next_name("jammer")),
-				C_AMBER,
-				func(v): _write("unit_name", v)
-			)
-			_add_slider(
-				"Power",
-				0.0,
-				10.0,
-				_prop_int("power", 5),
-				"dBm",
-				C_RED,
-				func(v): _write("power", int(v)),
-				true,
-				"power"
-			)
-			_add_slider(
-				"Frequency",
-				30.0,
-				3000.0,
-				_prop_float("frequency", 1000.0),
-				"MHz",
-				C_RED,
-				func(v): _write("frequency", v),
-				true,
-				"frequency"
-			)
-			_add_slider(
-				"Height",
-				0.0,
-				10.0,
-				_prop_int("height", 5),
-				"m",
-				C_RED,
-				func(v): _write("height", int(v)),
-				true,
-				"height"
-			)
-			_add_dropdown(
-				"Bandwidth",
-				["Narrow", "Medium", "Wide"],
-				_prop_int("jammer_bandwidth", 1),
-				C_RED,
-				func(v): _write("jammer_bandwidth", v),
-				"bandwidth"
-			)
+	_attr_header.text = def.display_name
+	_attr_header.add_theme_color_override("font_color", def.color)
+	_add_accent_bar(def.color)
 
-		EntityType.SENSOR:
-			_attr_header.text = "Sensor"
-			_attr_header.add_theme_color_override("font_color", C_PURPLE)
-			_add_accent_bar(C_PURPLE)
-			_add_text_input(
-				"Name",
-				_prop_string("unit_name", UnitNameManager.peek_next_name("sensor")),
-				C_RED,
-				func(v): _write("unit_name", v)
-			)
-			_add_slider(
-				"Sensitivity",
-				0.0,
-				10.0,
-				_prop_int("sensitivity", 3),
-				"dBm",
-				C_PURPLE,
-				func(v): _write("sensitivity", int(v)),
-				true,
-				"sensitivity"
-			)
-			_add_slider(
-				"Tuning Frequency",
-				30.0,
-				3000.0,
-				_node_int("tuning_frequency", 1000),
-				"MHz",
-				C_PURPLE,
-				func(v): _write_node("tuning_frequency", int(v)),
-				true,
-				"tuning_frequency"
-			)
-			_add_slider(
-				"Height",
-				0.0,
-				10.0,
-				_prop_int("height", 5),
-				"m",
-				C_PURPLE,
-				func(v): _write("height", int(v)),
-				true,
-				"height"
-			)
-			_add_dropdown(
-				"Bandwidth",
-				["Narrow", "Medium", "Wide"],
-				_prop_int("sensor_bandwidth", 1),
-				C_PURPLE,
-				func(v): _write("sensor_bandwidth", v),
-				"bandwidth"
-			)
-			_add_toggle(
-				"Scanning",
-				_prop_bool("is_scanning", true),
-				C_PURPLE,
-				func(v): _write("is_scanning", v),
-				"scanning"
-			)
+	for spec in def.attributes:
+		_add_attribute_input(spec, def)
 
+	# Reapply the stored tutorial filter after every row rebuild.
+	# queue_free() is deferred, so we defer this too to run after the
+	# new rows are fully added to the scene tree.
 	if not _tutorial_allowed_attributes.is_empty():
-		_on_tutorial_filter_attributes(_tutorial_allowed_attributes)
+		call_deferred("_on_tutorial_filter_attributes", _tutorial_allowed_attributes)
+
+
+func _definition_for(t: EntityType) -> UnitDefinition:
+	match t:
+		EntityType.TRANSCEIVER:
+			return TRANSCEIVER_DEF
+		EntityType.JAMMER:
+			return JAMMER_DEF
+		EntityType.SENSOR:
+			return SENSOR_DEF
+	return null
+
+
+func _add_attribute_input(spec: AttributeSpec, def: UnitDefinition) -> void:
+	var accent := def.color
+	var current = _read_attribute(spec, def)
+	var attribute_key := String(spec.id)
+
+	match spec.kind:
+		AttributeSpec.Kind.INT:
+			_add_slider(
+				spec.display_name,
+				spec.min_value,
+				spec.max_value,
+				float(current),
+				spec.unit,
+				accent,
+				func(v): _write_attribute(spec.id, int(v)),
+				true,
+				attribute_key
+			)
+		AttributeSpec.Kind.FLOAT:
+			_add_slider(
+				spec.display_name,
+				spec.min_value,
+				spec.max_value,
+				float(current),
+				spec.unit,
+				accent,
+				func(v): _write_attribute(spec.id, v),
+				false,
+				attribute_key
+			)
+		AttributeSpec.Kind.ENUM:
+			_add_dropdown(
+				spec.display_name,
+				Array(spec.enum_options),
+				int(current),
+				accent,
+				func(v): _write_attribute(spec.id, v),
+				attribute_key
+			)
+		AttributeSpec.Kind.BOOL:
+			_add_toggle(
+				spec.display_name,
+				bool(current),
+				accent,
+				func(v): _write_attribute(spec.id, v),
+				attribute_key
+			)
+		AttributeSpec.Kind.STRING:
+			_add_text_input(
+				spec.display_name,
+				str(current),
+				accent,
+				func(v): _write_attribute(spec.id, v),
+				attribute_key
+			)
+
+
+func _read_attribute(spec: AttributeSpec, def: UnitDefinition):
+	if selected_node and selected_node is Unit:
+		return selected_node.get_value(spec.id, spec.default_value)
+	if pending_attributes.has(spec.id):
+		return pending_attributes[spec.id]
+	# Special case: name placeholder shows the next auto-name.
+	if spec.id == &"unit_name":
+		return UnitNameManager.peek_next_name(def.id)
+	return spec.default_value
+
+
+func _write_attribute(id: StringName, value) -> void:
+	if selected_node and selected_node is Unit:
+		selected_node.set_value(id, value)
+	else:
+		pending_attributes[id] = value
 
 
 func _add_accent_bar(accent: Color) -> void:
@@ -675,17 +629,7 @@ func _on_reset_pressed() -> void:
 
 	dialog.confirmed.connect(
 		func():
-			# Reset unit name counters
-			UnitNameManager.reset()
-			for unit in get_tree().get_nodes_in_group("transceivers"):
-				unit.get_parent().queue_free()
-			for unit in get_tree().get_nodes_in_group("sensors"):
-				unit.get_parent().queue_free()
-			for unit in get_tree().get_nodes_in_group("jammers"):
-				unit.get_parent().queue_free()
-			select_entity(EntityType.NONE)
-			SimulationManager.clear_all_links()
-			GameEvents.units_changed.emit()
+			GameEvents.reset_requested.emit()
 			dialog.queue_free()
 	)
 	dialog.canceled.connect(func(): dialog.queue_free())
@@ -703,33 +647,40 @@ func _on_delete_pressed() -> void:
 	get_tree().root.add_child(dialog)
 	dialog.popup_centered()
 
+	var to_delete = selected_node
 	dialog.confirmed.connect(
 		func():
-			var deleted_unit := selected_node.get_parent()
-
-			GameEvents.unit_deleted.emit(deleted_unit)
-
-			deleted_unit.queue_free()
-			select_entity(EntityType.NONE)
-			SimulationManager.clear_all_links()
-			GameEvents.units_changed.emit()
+			GameEvents.delete_requested.emit(to_delete)
 			dialog.queue_free()
 	)
 	dialog.canceled.connect(func(): dialog.queue_free())
 
 
-func _update_simulate_button() -> void:
+func _on_confirm_pressed() -> void:
+	if not selected_node:
+		return
+
+	# Round-6 routes attribute writes through _write_attribute, which goes
+	# straight to selected_node.set_value when a Unit is selected. So pending
+	# is normally empty here; flush stragglers just in case.
+	if selected_node is Unit:
+		for id in pending_attributes:
+			selected_node.set_value(id, pending_attributes[id])
+	pending_attributes.clear()
+
+	# clear_selection routes through GameEvents → BaseLevel handles the
+	# visual unhighlight; no direct Visual node poke here.
+	GameEvents.clear_selection()
+	select_entity(EntityType.NONE)
+	GameEvents.simulation_requested.emit()
+
+
+func _update_reset_button() -> void:
 	var has_units = (
 		get_tree().get_nodes_in_group("transceivers").size() > 0
 		or get_tree().get_nodes_in_group("jammers").size() > 0
 		or get_tree().get_nodes_in_group("sensors").size() > 0
 	)
-
-	if _simulate_btn:
-		_simulate_btn.disabled = not has_units
-		_simulate_btn.mouse_default_cursor_shape = (
-			Control.CURSOR_POINTING_HAND if has_units else Control.CURSOR_ARROW
-		)
 
 	if _reset_btn:
 		_reset_btn.disabled = not has_units
@@ -739,15 +690,13 @@ func _update_simulate_button() -> void:
 
 
 func _on_simulate_pressed() -> void:
-	SimulationManager.simulate()
+	GameEvents.simulation_requested.emit()
 
 
-func _component() -> Node:
-	return selected_node
-
-
-func _add_text_input(label: String, current: String, accent: Color, on_change: Callable) -> void:
-	var vbox := _make_row_container()
+func _add_text_input(
+	label: String, current: String, accent: Color, on_change: Callable, attribute_key: String = ""
+) -> void:
+	var vbox := _make_row_container(attribute_key)
 	var hbox := HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_theme_constant_override("separation", 8)
@@ -763,117 +712,6 @@ func _add_text_input(label: String, current: String, accent: Color, on_change: C
 	input.text_submitted.connect(func(v): on_change.call(v))
 	input.focus_exited.connect(func(): on_change.call(input.text))
 	hbox.add_child(input)
-
-
-func _prop_string(p: String, fallback: String) -> String:
-	var c := _component()
-	if c:
-		var val = c.get(p)
-		if val != null:
-			return str(val)
-	if pending_attributes.has(p):
-		return str(pending_attributes[p])
-	return fallback
-
-
-func _prop_float(p: String, fallback: float) -> float:
-	var c := _component()
-	if c:
-		var val = c.get(p)
-		if val != null:
-			return float(val)
-	if pending_attributes.has(p):
-		return float(pending_attributes[p])
-	return fallback
-
-
-func _prop_int(p: String, fallback: int) -> int:
-	var c := _component()
-	if c:
-		var val = c.get(p)
-		if val != null:
-			return int(val)
-	if pending_attributes.has(p):
-		return int(pending_attributes[p])
-	return fallback
-
-
-func _prop_bool(p: String, fallback: bool) -> bool:
-	var c := _component()
-	if c and p in c:
-		return bool(c.get(p))
-	if pending_attributes.has(p):
-		return bool(pending_attributes[p])
-	return fallback
-
-
-func _write(p: String, value) -> void:
-	# Don't write properties that aren't actual component attributes
-	if p in invalid_props:
-		return
-
-	var c := _component()
-	if not c:
-		# If no component is selected, this is a pending entity being configured
-		# Store the attribute for when it's placed
-		pending_attributes[p] = value
-		return
-
-	c.set(p, value)
-
-	GameEvents.unit_attribute_changed.emit(c, p, value)
-	GameEvents.units_changed.emit()
-
-	var unit = c.get_parent()
-	if unit:
-		var scene_path = unit.scene_file_path
-		if scene_path:
-			var packed_scene := PackedScene.new()
-			if packed_scene.pack(unit) == OK:
-				ResourceSaver.save(packed_scene, scene_path)
-			else:
-				push_error("Failed to pack unit")
-
-
-func _is_transceiver_unit(unit: Node) -> bool:
-	if unit == null:
-		return false
-
-	for child in unit.get_children():
-		if child.name == "Transceiver":
-			return true
-
-	return false
-
-
-func _node_int(p: String, fallback: int) -> int:
-	return int(selected_node.get(p)) if selected_node and p in selected_node else fallback
-
-
-func _write_node(p: String, value) -> void:
-	if not (selected_node and p in selected_node):
-		return
-
-	selected_node.set(p, value)
-
-	GameEvents.unit_attribute_changed.emit(selected_node, p, value)
-	GameEvents.units_changed.emit()
-
-	var scene_path = selected_node.scene_file_path
-	if scene_path:
-		var packed_scene := PackedScene.new()
-		if packed_scene.pack(selected_node) == OK:
-			ResourceSaver.save(packed_scene, scene_path)
-		else:
-			push_error("Failed to pack unit")
-
-
-func _clear_selection() -> void:
-	# When clicking a sidebar entity type, deselect any currently viewed unit
-	# so we show fresh defaults instead of the previous unit's values
-	selected_node = null
-	selected_entity_name = ""
-	_refresh_attribute_panel()
 
 
 # ════════════════════════════════════════════
@@ -909,6 +747,7 @@ func _apply_style(
 func _make_label(text: String, color: Color, txt_size: int, expand: bool = false) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
+	lbl.custom_minimum_size.x = 120
 	lbl.add_theme_color_override("font_color", color)
 	lbl.add_theme_font_size_override("font_size", txt_size)
 	if expand:
@@ -916,13 +755,16 @@ func _make_label(text: String, color: Color, txt_size: int, expand: bool = false
 	return lbl
 
 
-func _on_tutorial_filter(allowed_types: Array) -> void:
-	_tutorial_allowed_types = allowed_types
-	_tutorial_active = not allowed_types.is_empty()
+func _on_tutorial_filter(allowed_ids: Array) -> void:
+	# Supports the newer UnitDefinition ids, such as &"transceiver", while also
+	# accepting the older EntityType enum values from EMS-183 if TutorialLevel
+	# still emits those.
+	_tutorial_allowed_ids = allowed_ids
+	_tutorial_active = not allowed_ids.is_empty()
 
 	for type in _entity_cards:
 		var card = _entity_cards[type]
-		var enabled = not _tutorial_active or type in allowed_types
+		var enabled := not _tutorial_active or _is_entity_type_allowed(type)
 
 		card.modulate.a = 1.0 if enabled else 0.3
 		card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
@@ -937,13 +779,35 @@ func _on_tutorial_filter(allowed_types: Array) -> void:
 				)
 
 
+func _is_entity_type_allowed(type: EntityType) -> bool:
+	if _tutorial_allowed_ids.is_empty():
+		return true
+
+	var def := _definition_for(type)
+	if def and def.id in _tutorial_allowed_ids:
+		return true
+	if def and String(def.id) in _tutorial_allowed_ids:
+		return true
+	if type in _tutorial_allowed_ids:
+		return true
+
+	return false
+
+
 func _on_tutorial_filter_attributes(allowed_attributes: Array) -> void:
 	_tutorial_allowed_attributes = allowed_attributes
 
 	if _attr_body == null:
 		return
 
-	var lock_attributes := not allowed_attributes.is_empty()
+	var lock_all := false
+	for allowed_attribute in allowed_attributes:
+		var allowed_text := str(allowed_attribute).to_lower()
+		if allowed_text == "__lock_all__":
+			lock_all = true
+			break
+
+	var lock_attributes := lock_all or not allowed_attributes.is_empty()
 
 	for row in _attr_body.get_children():
 		if not row is Control:
@@ -952,10 +816,15 @@ func _on_tutorial_filter_attributes(allowed_attributes: Array) -> void:
 		var row_name := row.name.to_lower()
 		var enabled := not lock_attributes
 
-		for allowed_attribute in allowed_attributes:
-			if row_name.contains(str(allowed_attribute).to_lower()):
-				enabled = true
-				break
+		if lock_all:
+			enabled = false
+		else:
+			for allowed_attribute in allowed_attributes:
+				var allowed_text := str(allowed_attribute).to_lower()
+
+				if row_name == allowed_text or row_name.contains(allowed_text):
+					enabled = true
+					break
 
 		row.modulate.a = 1.0 if enabled else 0.35
 		_set_interactivity(row, enabled)

@@ -1,21 +1,21 @@
 extends "res://scenes/levels/ContourDemo.gd"
-
 const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
 const TUTORIAL_COMPLETION_POPUP := preload("res://scenes/ui/TutorialCompletionPopup.tscn")
-
+const TUTORIAL_TEXT := preload("res://scenes/levels/TutorialText.gd")
 const TUTORIAL_TERRAIN_SEED := 12345
 const TUTORIAL_FREQUENCY := 1000.0
-const TUTORIAL_SENSOR_SENSITIVITY := 1.0
 const FREQUENCY_TOLERANCE := 5.0
 const PLACEMENT_TOLERANCE := 75.0
 const MOVE_TARGET_TOLERANCE := 50.0
-
-const FIRST_TRANSCEIVER_POS := Vector2(500, 260)
+const FIRST_TRANSCEIVER_POS := Vector2(550, 260)
 const FIRST_TRANSCEIVER_GREEN_POS := Vector2(650, 260)
-const SECOND_TRANSCEIVER_POS := Vector2(750, 260)
-const SENSOR_POS := Vector2(630, 290)
+const SECOND_TRANSCEIVER_POS := Vector2(950, 260)
+const SENSOR_POS := Vector2(600, 370)
 const JAMMER_POS := Vector2(690, 180)
-
+const UNIT_ID_TRANSCEIVER := &"transceiver"
+const UNIT_ID_SENSOR := &"sensor"
+const UNIT_ID_JAMMER := &"jammer"
+const LOCK_ALL_ATTRIBUTES := "__lock_all__"
 enum TutorialStep {
 	WELCOME,
 	INTRO_MAP,
@@ -47,66 +47,97 @@ enum TutorialStep {
 	PLACE_JAMMER,
 	CHANGE_JAMMER_FREQUENCY_AWAY,
 	CHANGE_JAMMER_FREQUENCY_BACK,
+	INTRO_DISPLAY_SETTINGS,
+	TRY_LINK_LINES_TOGGLE,
+	TRY_UNIT_RANGES_TOGGLE,
+	VIEW_UNIT_RANGE,
+	TRY_UNIT_DETAILS_TOGGLE,
+	TRY_SUGGESTIONS_TOGGLE,
+	TRY_BIDIRECTIONAL_LINK_LINES_TOGGLE,
+	EXPLAIN_HEIGHTMAP_AND_GRID,
+	DISPLAY_SETTINGS_COMPLETE,
 	COMPLETE
 }
-
 var _tutorial_step: TutorialStep = TutorialStep.WELCOME
-
 var _first_transceiver: Node = null
 var _second_transceiver: Node = null
 var _sensor: Node = null
 var _jammer: Node = null
 var _selected_tutorial_unit: Node = null
 var _pending_placement_unit: Node = null
-
+var _wrong_placement_popup_open := false
+var _frequency_went_outside_range := false
+var _tutorial_selection_refreshing := false
 var _original_power := 10.0
 var _original_height := 10.0
+var _original_sensor_sensitivity := 10.0
 var _original_sensor_tuning := TUTORIAL_FREQUENCY
-
-var _frequency_went_outside_range := false
-
 var _placement_marker: Control = null
 var _completion_popup: Control = null
-
-# Stores every tutorial hint so the player can review earlier popups
-# without changing or undoing the current tutorial step.
+var _repeat_instruction_button: Button = null
+var _current_instruction_text := ""
+var intro_popup_open := false
 var _popup_history: Array[Dictionary] = []
 var _popup_history_index := -1
-
 var _lock_transceiver_frequency := false
-var _lock_sensor_sensitivity := false
 var _lock_jammer_frequency := false
+var _locked_unit_targets: Dictionary = {}
+var _waiting_display_setting_key := ""
+var _waiting_display_setting_original: Variant = null
 
 
 func _ready() -> void:
+	_remove_sandbox_intro_popups()
+	intro_popup_open = false
 	super._ready()
+	_remove_sandbox_intro_popups()
+	intro_popup_open = false
+	_connect_tutorial_signals()
+	call_deferred("_create_repeat_instruction_button")
+	call_deferred("_start_tutorial")
 
+
+func _connect_tutorial_signals() -> void:
 	if not GameEvents.unit_placed.is_connected(_on_tutorial_unit_placed):
 		GameEvents.unit_placed.connect(_on_tutorial_unit_placed)
+	if GameEvents.has_signal("unit_selected"):
+		if not GameEvents.unit_selected.is_connected(_on_tutorial_unit_selected):
+			GameEvents.unit_selected.connect(_on_tutorial_unit_selected)
+	if GameEvents.has_signal("selection_changed"):
+		if not GameEvents.selection_changed.is_connected(_on_tutorial_unit_selected):
+			GameEvents.selection_changed.connect(_on_tutorial_unit_selected)
+	if not GameEvents.simulation_requested.is_connected(_on_tutorial_confirm_pressed):
+		GameEvents.simulation_requested.connect(_on_tutorial_confirm_pressed)
 
-	if not GameEvents.unit_selected.is_connected(_on_tutorial_unit_selected):
-		GameEvents.unit_selected.connect(_on_tutorial_unit_selected)
 
-	if not GameEvents.unit_attribute_changed.is_connected(_on_tutorial_attribute_changed):
-		GameEvents.unit_attribute_changed.connect(_on_tutorial_attribute_changed)
-
+func _start_tutorial() -> void:
+	_remove_sandbox_intro_popups()
+	intro_popup_open = false
 	_enter_step(TutorialStep.WELCOME)
 
 
 func _process(_delta: float) -> void:
+	_remove_sandbox_intro_popups()
+	_lock_placed_units()
 	_check_pending_placement()
 	_check_transceiver_move_target()
-
+	_check_display_setting_change()
 	if _lock_transceiver_frequency:
 		_lock_transceiver_frequencies()
-
-	if _lock_sensor_sensitivity:
-		_set_number_on_unit(
-			_sensor, ["sensitivity", "detection_sensitivity"], TUTORIAL_SENSOR_SENSITIVITY
-		)
-
 	if _lock_jammer_frequency:
 		_set_number_on_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
+
+
+func _input(event: InputEvent) -> void:
+	if intro_popup_open:
+		return
+	super._input(event)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if intro_popup_open:
+		return
+	super._unhandled_input(event)
 
 
 func _generate_terrain(w: int, h: int) -> Array:
@@ -114,546 +145,405 @@ func _generate_terrain(w: int, h: int) -> Array:
 	noise.seed = TUTORIAL_TERRAIN_SEED
 	noise.frequency = 0.025
 	noise.fractal_octaves = 3
-
 	var grid: Array = []
 	for x in range(w):
 		grid.append([])
 		for y in range(h):
 			var n := noise.get_noise_2d(float(x), float(y))
 			grid[x].append((n + 1.0) * 0.5 * 500.0)
-
 	return grid
 
 
 func _enter_step(step: TutorialStep) -> void:
+	_remove_sandbox_intro_popups()
 	_tutorial_step = step
+	_waiting_display_setting_key = ""
+	_waiting_display_setting_original = null
+	if step == TutorialStep.COMPLETE:
+		_setup()
+		_current_instruction_text = ""
+		_update_repeat_instruction_button_visibility()
+		_show_completion_popup()
+		return
 
+	if TUTORIAL_TEXT.should_run_simulation_on_enter(step):
+		_run_simulation_if_possible()
+	if step == TutorialStep.MOVE_FIRST_TRANSCEIVER_CLOSER:
+		_unlock_unit(_first_transceiver)
+
+	var attributes := TUTORIAL_TEXT.attributes_for_step(step)
+	if not attributes.is_empty():
+		_select_expected_unit_for_edit(attributes)
+
+	_apply_step_start_side_effects(step)
+
+	var display_key := TUTORIAL_TEXT.display_setting_key_for_step(step)
+	if display_key != "":
+		_begin_display_setting_trial(display_key)
+
+	var data := _step_data(step)
+	_current_instruction_text = str(data.get("text", ""))
+	_setup(
+		data.get("sidebar", []),
+		data.get("attributes", []),
+		data.get("marker", null),
+		data.get("label", "")
+	)
+	_update_repeat_instruction_button_visibility()
+	_say([data.get("text", "")], int(data.get("next", -1)))
+
+
+func _apply_step_start_side_effects(step: TutorialStep) -> void:
 	match step:
-		TutorialStep.WELCOME:
-			_setup()
-			_say(
-				[
-					"Welcome to Tutorial Mode.\n\n",
-					"This mode teaches the basics of Gamify EMS. ",
-					"You will place units, edit attributes, create links, ",
-					"detect signals, and see how jammers affect communication."
-				],
-				TutorialStep.INTRO_MAP
-			)
-
-		TutorialStep.INTRO_MAP:
-			_setup()
-			_say(
-				[
-					"This is the simulation map.\n\n",
-					"Units can be placed on the map to represent ",
-					"communication equipment, sensors, and jammers. ",
-					"Position matters because distance affects signal strength."
-				],
-				TutorialStep.PLACE_FIRST_TRANSCEIVER
-			)
-
-		TutorialStep.PLACE_FIRST_TRANSCEIVER:
-			_setup(
-				[Sidebar.EntityType.TRANSCEIVER], [], FIRST_TRANSCEIVER_POS, "Place\nTransceiver 1"
-			)
-			_say(["Place a Transceiver inside the highlighted area."])
-
-		TutorialStep.FIRST_TRANSCEIVER_PLACED:
-			_setup()
-			_say(
-				[
-					"Good. You placed your first Transceiver.\n\n",
-					"Transceivers have frequency, power, bandwidth, ",
-					"and height settings. These values affect communication."
-				],
-				TutorialStep.PLACE_SECOND_TRANSCEIVER
-			)
-
-		TutorialStep.PLACE_SECOND_TRANSCEIVER:
-			_setup(
-				[Sidebar.EntityType.TRANSCEIVER], [], SECOND_TRANSCEIVER_POS, "Place\nTransceiver 2"
-			)
-			_say(["Now place a second Transceiver inside the highlighted area."])
-
-		TutorialStep.EXPLAIN_LINK:
-			_setup()
-			_run_simulation_if_possible()
-			_say(
-				[
-					"The two Transceivers are trying to communicate.\n\n",
-					"Green means the connection is successful.\n",
-					"Orange means the signal is too weak or out of range.\n",
-					"Red means the connection may be jammed.\n",
-					"Purple means there is a bandwidth penalty.\n",
-					"Blue means the units are using different frequency ranges."
-				],
-				TutorialStep.EXPLAIN_BANDWIDTH_PENALTY
-			)
-
-		TutorialStep.EXPLAIN_BANDWIDTH_PENALTY:
-			_setup()
-			_run_simulation_if_possible()
-			_say(
-				[
-					"The purple line shows a bandwidth penalty.\n\n",
-					"Bandwidth is the range of frequencies around the ",
-					"main frequency. A wider bandwidth can carry more ",
-					"information, but it can also make the signal less clean.",
-					"\n\nAcceptable frequency differences in this simulation:",
-					"\nNarrow | 1 MHz | ±0.5 MHz",
-					"\nMedium | 10 MHz | ±5 MHz",
-					"\nWide | 50 MHz | ±25 MHz"
-				],
-				TutorialStep.MOVE_FIRST_TRANSCEIVER_CLOSER
-			)
-
-		TutorialStep.MOVE_FIRST_TRANSCEIVER_CLOSER:
-			_setup([], [], FIRST_TRANSCEIVER_GREEN_POS, "Move\nTransceiver 1")
-			_say(
-				[
-					"Move Transceiver 1 into the new highlighted area.\n\n",
-					"Moving the Transceiver closer should improve the signal ",
-					"and create a green connection line."
-				]
-			)
-
-		TutorialStep.EXPLAIN_SUCCESSFUL_LINK:
-			_setup()
-			_run_simulation_if_possible()
-			_say(
-				[
-					"Good. The green line means the connection worked.\n\n",
-					"The units are now close enough, their settings match, ",
-					"and the signal is strong enough to communicate."
-				],
-				TutorialStep.SELECT_TRANSCEIVER
-			)
-
-		TutorialStep.SELECT_TRANSCEIVER:
-			_setup()
-			_say(
-				[
-					"Click one of the Transceivers to view its attributes.\n\n",
-					"The attribute panel lets you edit frequency, power, ",
-					"bandwidth, and antenna height."
-				],
-				TutorialStep.EXPLAIN_FREQUENCY
-			)
-
 		TutorialStep.EXPLAIN_FREQUENCY:
-			_setup([], ["frequency"])
-			_pick_default_transceiver()
 			_frequency_went_outside_range = false
 			_lock_transceiver_frequency = false
 			_lock_transceiver_frequencies()
 			_run_simulation_if_possible()
-			_say(
-				[
-					"Frequency controls what channel the unit uses.\n\n",
-					"The Transceivers currently use Medium bandwidth. ",
-					"In this simulation, Medium bandwidth allows a ",
-					"frequency difference of plus or minus 5."
-				],
-				TutorialStep.CHANGE_FREQUENCY_AWAY
-			)
-
-		TutorialStep.CHANGE_FREQUENCY_AWAY:
-			_setup([], ["frequency"])
-			_say(
-				[
-					"Move one Transceiver frequency outside the matching ",
-					"range.\n\n",
-					"Set it below 995 or above 1005. The connection should ",
-					"turn blue because the frequency ranges no longer match."
-				]
-			)
-
-		TutorialStep.CHANGE_FREQUENCY_BACK:
-			_setup([], ["frequency"])
-			_say(
-				[
-					"Now move the frequency back inside the matching range.\n\n",
-					"Set it between 995 and 1005 to restore the connection."
-				]
-			)
-
 		TutorialStep.EXPLAIN_POWER:
-			_setup([], ["power"])
-			_original_power = _read_number_from_unit(_selected_tutorial_unit, ["power"], 10.0)
-			_say(
-				[
-					"Power affects signal strength.\n\n",
-					"Higher power can help a signal travel farther, ",
-					"but it may also make the unit easier to detect."
-				],
-				TutorialStep.LOWER_POWER
-			)
-
-		TutorialStep.LOWER_POWER:
-			_setup([], ["power"])
-			_say(["Lower the Transceiver power and watch the link change."])
-
-		TutorialStep.RAISE_POWER:
-			_setup([], ["power"])
-			_say(["Now raise the power again to help restore the link."])
-
+			_original_power = _read_number_from_unit(_first_transceiver, ["power"], 10.0)
 		TutorialStep.EXPLAIN_HEIGHT:
-			_setup([], ["height"])
-			_original_height = _read_number_from_unit(_selected_tutorial_unit, ["height"], 10.0)
-			_say(
-				[
-					"Antenna height can also affect communication.\n\n",
-					"A taller antenna can improve signal performance ",
-					"by giving the unit a better transmission path."
-				],
-				TutorialStep.INCREASE_HEIGHT
-			)
-
-		TutorialStep.INCREASE_HEIGHT:
-			_setup([], ["height"])
-			_say(["Increase the antenna height of one Transceiver."])
-
-		TutorialStep.INTRO_SENSOR:
-			_setup([Sidebar.EntityType.SENSOR])
-			_say(
-				[
-					"Sensors are used to detect signals.\n\n",
-					"A Sensor does not create a communication link. ",
-					"It listens for nearby transmissions."
-				],
-				TutorialStep.PLACE_SENSOR
-			)
-
-		TutorialStep.PLACE_SENSOR:
-			_setup([Sidebar.EntityType.SENSOR], [], SENSOR_POS, "Place\nSensor")
-			_say(["Place a Sensor inside the highlighted area."])
-
+			_original_height = _read_number_from_unit(_first_transceiver, ["height"], 10.0)
 		TutorialStep.EXPLAIN_SENSOR_SENSITIVITY:
-			_setup([], ["sensitivity", "detection_sensitivity"])
-			_say(
-				[
-					"Sensitivity controls how easily a Sensor detects signals.",
-					"\n\nSet the Sensor sensitivity to 1. The tutorial will ",
-					"lock it there for consistency."
-				],
-				TutorialStep.LOWER_SENSOR_SENSITIVITY
+			_original_sensor_sensitivity = _read_number_from_unit(
+				_sensor, ["sensitivity", "detection_sensitivity"], 10.0
 			)
-
-		TutorialStep.LOWER_SENSOR_SENSITIVITY:
-			_setup([], ["sensitivity", "detection_sensitivity"])
-			_say(["Set the Sensor sensitivity to 1."])
-
 		TutorialStep.EXPLAIN_SENSOR_TUNING:
-			_setup([], ["tuning_frequency"])
 			_original_sensor_tuning = _read_number_from_unit(
 				_sensor, ["tuning_frequency"], TUTORIAL_FREQUENCY
 			)
-			_say(
-				[
-					"A Sensor has tuning frequency and bandwidth.\n\n",
-					"Tuning frequency is what the Sensor listens for. ",
-					"Bandwidth controls how wide the listening range is."
-				],
-				TutorialStep.CHANGE_SENSOR_TUNING_AWAY
-			)
-
-		TutorialStep.CHANGE_SENSOR_TUNING_AWAY:
-			_setup([], ["tuning_frequency"])
-			_say(["Move the Sensor tuning frequency away from 1000."])
-
-		TutorialStep.EXPLAIN_BANDWIDTH:
-			_setup([], ["bandwidth"])
-			_say(
-				[
-					"Bandwidth controls how flexible detection is.\n\n",
-					"A wider bandwidth can detect a wider frequency range."
-				],
-				TutorialStep.INCREASE_BANDWIDTH
-			)
-
-		TutorialStep.INCREASE_BANDWIDTH:
-			_setup([], ["bandwidth"])
-			_say(["Increase the Sensor bandwidth."])
-
-		TutorialStep.INTRO_JAMMER:
-			_setup([Sidebar.EntityType.JAMMER])
-			_say(
-				[
-					"Jammers interfere with communication.\n\n",
-					"A Jammer can weaken or break a link if its frequency ",
-					"overlaps with the Transceivers."
-				],
-				TutorialStep.PLACE_JAMMER
-			)
-
-		TutorialStep.PLACE_JAMMER:
-			_setup([Sidebar.EntityType.JAMMER], [], JAMMER_POS, "Place\nJammer")
-			_say(["Place the Jammer inside the highlighted area."])
-
 		TutorialStep.CHANGE_JAMMER_FREQUENCY_AWAY:
-			_setup([], ["frequency"])
 			_lock_jammer_frequency = false
 			_set_number_on_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
 			_run_simulation_if_possible()
-			_say(
-				[
-					"A Jammer works best when its frequency overlaps ",
-					"the target.\n\n",
-					"Move the Jammer frequency away from 1000."
-				]
-			)
-
-		TutorialStep.CHANGE_JAMMER_FREQUENCY_BACK:
-			_setup([], ["frequency"])
-			_say(["Now move the Jammer frequency back to 1000."])
-
-		TutorialStep.COMPLETE:
-			_setup()
-			_show_completion_popup()
-
-
-func _on_tutorial_unit_placed(unit: Node) -> void:
-	match _tutorial_step:
-		TutorialStep.PLACE_FIRST_TRANSCEIVER:
-			if _is_transceiver(unit):
-				_handle_placement(unit, FIRST_TRANSCEIVER_POS, "Transceiver 1")
-
-		TutorialStep.PLACE_SECOND_TRANSCEIVER:
-			if _is_transceiver(unit):
-				_handle_placement(unit, SECOND_TRANSCEIVER_POS, "Transceiver 2")
-
-		TutorialStep.PLACE_SENSOR:
-			if _is_sensor(unit):
-				_handle_placement(unit, SENSOR_POS, "Sensor")
-
-		TutorialStep.PLACE_JAMMER:
-			if _is_jammer(unit):
-				_handle_placement(unit, JAMMER_POS, "Jammer")
-
 		_:
 			pass
 
 
-func _handle_placement(unit: Node, target_position: Vector2, label_text: String) -> void:
+func _step_data(step: TutorialStep) -> Dictionary:
+	return TUTORIAL_TEXT.step_data(step)
+
+
+func _on_tutorial_unit_placed(unit: Node) -> void:
+	var target = _placement_target_for_current_step(unit)
+	if target != null:
+		_handle_placement(unit, target)
+
+
+func _placement_target_for_current_step(unit: Node) -> Variant:
+	match _tutorial_step:
+		TutorialStep.PLACE_FIRST_TRANSCEIVER:
+			return FIRST_TRANSCEIVER_POS if _is_transceiver(unit) else null
+		TutorialStep.PLACE_SECOND_TRANSCEIVER:
+			return SECOND_TRANSCEIVER_POS if _is_transceiver(unit) else null
+		TutorialStep.PLACE_SENSOR:
+			return SENSOR_POS if _is_sensor(unit) else null
+		TutorialStep.PLACE_JAMMER:
+			return JAMMER_POS if _is_jammer(unit) else null
+		_:
+			return null
+
+
+func _handle_placement(unit: Node, target_position: Vector2) -> void:
 	if _is_near_target(unit, target_position):
+		_wrong_placement_popup_open = false
+		_snap_unit_to_local_pos(unit, target_position)
 		_accept_placement(unit)
 		return
-
 	_pending_placement_unit = unit
-	_show_wrong_placement_popup(label_text)
+	_show_wrong_placement_popup()
 
 
 func _check_pending_placement() -> void:
-	if intro_popup_open:
+	if intro_popup_open or _pending_placement_unit == null:
 		return
-
-	if _pending_placement_unit == null:
-		return
-
 	if not is_instance_valid(_pending_placement_unit):
 		_pending_placement_unit = null
+		_wrong_placement_popup_open = false
 		return
-
-	match _tutorial_step:
-		TutorialStep.PLACE_FIRST_TRANSCEIVER:
-			if _is_near_target(_pending_placement_unit, FIRST_TRANSCEIVER_POS):
-				_accept_placement(_pending_placement_unit)
-
-		TutorialStep.PLACE_SECOND_TRANSCEIVER:
-			if _is_near_target(_pending_placement_unit, SECOND_TRANSCEIVER_POS):
-				_accept_placement(_pending_placement_unit)
-
-		TutorialStep.PLACE_SENSOR:
-			if _is_near_target(_pending_placement_unit, SENSOR_POS):
-				_accept_placement(_pending_placement_unit)
-
-		TutorialStep.PLACE_JAMMER:
-			if _is_near_target(_pending_placement_unit, JAMMER_POS):
-				_accept_placement(_pending_placement_unit)
-
-		_:
-			_pending_placement_unit = null
+	var target = _placement_target_for_current_step(_pending_placement_unit)
+	if target == null:
+		_pending_placement_unit = null
+		_wrong_placement_popup_open = false
+		return
+	if _is_near_target(_pending_placement_unit, target):
+		_wrong_placement_popup_open = false
+		_snap_unit_to_local_pos(_pending_placement_unit, target)
+		_accept_placement(_pending_placement_unit)
 
 
 func _check_transceiver_move_target() -> void:
 	if intro_popup_open:
 		return
-
 	if _tutorial_step != TutorialStep.MOVE_FIRST_TRANSCEIVER_CLOSER:
 		return
-
-	if _first_transceiver == null:
+	if _first_transceiver == null or not is_instance_valid(_first_transceiver):
 		return
-
-	if not is_instance_valid(_first_transceiver):
-		return
-
 	if _is_near_target(_first_transceiver, FIRST_TRANSCEIVER_GREEN_POS, MOVE_TARGET_TOLERANCE):
+		_snap_unit_to_local_pos(_first_transceiver, FIRST_TRANSCEIVER_GREEN_POS)
+		_lock_unit_to(_first_transceiver, FIRST_TRANSCEIVER_GREEN_POS)
 		_run_simulation_if_possible()
 		_enter_step(TutorialStep.EXPLAIN_SUCCESSFUL_LINK)
 
 
 func _accept_placement(unit: Node) -> void:
 	_pending_placement_unit = null
-
+	_wrong_placement_popup_open = false
+	_clear_placement_marker()
 	match _tutorial_step:
 		TutorialStep.PLACE_FIRST_TRANSCEIVER:
 			_first_transceiver = unit
+			_lock_unit_to(unit, FIRST_TRANSCEIVER_POS)
 			_run_simulation_if_possible()
 			_enter_step(TutorialStep.FIRST_TRANSCEIVER_PLACED)
-
 		TutorialStep.PLACE_SECOND_TRANSCEIVER:
 			_second_transceiver = unit
+			_lock_unit_to(unit, SECOND_TRANSCEIVER_POS)
 			_run_simulation_if_possible()
 			_enter_step(TutorialStep.EXPLAIN_LINK)
-
 		TutorialStep.PLACE_SENSOR:
 			_sensor = unit
+			_lock_unit_to(unit, SENSOR_POS)
 			_run_simulation_if_possible()
 			_enter_step(TutorialStep.EXPLAIN_SENSOR_SENSITIVITY)
-
 		TutorialStep.PLACE_JAMMER:
 			_jammer = unit
+			_lock_unit_to(unit, JAMMER_POS)
 			_run_simulation_if_possible()
 			_enter_step(TutorialStep.CHANGE_JAMMER_FREQUENCY_AWAY)
 
-		_:
-			pass
-
 
 func _on_tutorial_unit_selected(unit: Node) -> void:
-	if unit == null:
+	if _tutorial_selection_refreshing:
 		return
+	if unit == null or not is_instance_valid(unit):
+		return
+	if _tutorial_step == TutorialStep.SELECT_TRANSCEIVER:
+		if unit == _first_transceiver:
+			_enter_step(TutorialStep.EXPLAIN_FREQUENCY)
+		elif _is_transceiver(unit):
+			_lock_all_attributes()
+		return
+	if _tutorial_step == TutorialStep.VIEW_UNIT_RANGE:
+		if _is_tutorial_map_unit(unit):
+			_selected_tutorial_unit = unit
+			_lock_all_attributes()
+			_say(
+				["Good. Selecting a unit lets you inspect its range circle."],
+				TutorialStep.TRY_UNIT_DETAILS_TOGGLE
+			)
+		return
+	var expected_unit := _expected_edit_unit_for_current_step()
+	if expected_unit == null:
+		return
+	if unit == expected_unit:
+		_selected_tutorial_unit = unit
+		_apply_attribute_filter(_attributes_for_current_step())
+	else:
+		_selected_tutorial_unit = unit
+		_lock_all_attributes()
 
-	_selected_tutorial_unit = unit
 
-	if _tutorial_step == TutorialStep.SELECT_TRANSCEIVER and _is_transceiver(unit):
-		_enter_step(TutorialStep.EXPLAIN_FREQUENCY)
-
-
-func _on_tutorial_attribute_changed(
-	_unit: Node, attribute_name: String, new_value: Variant
-) -> void:
-	var attr := attribute_name.to_lower()
-	var value := _variant_to_float(new_value, 0.0)
-
+func _on_tutorial_confirm_pressed() -> void:
 	match _tutorial_step:
-		TutorialStep.LOWER_SENSOR_SENSITIVITY:
-			if attr.contains("sensitivity"):
-				_lock_sensor_sensitivity = true
-				_run_simulation_if_possible()
-				_say(
-					["Good. The Sensor sensitivity is now locked to 1."],
-					TutorialStep.EXPLAIN_SENSOR_TUNING
-				)
-
 		TutorialStep.CHANGE_FREQUENCY_AWAY:
-			if attr.contains("freq") and _outside_match_range(value):
+			var value := _read_number_from_unit(
+				_first_transceiver, ["frequency"], TUTORIAL_FREQUENCY
+			)
+			if _outside_match_range(value):
 				_frequency_went_outside_range = true
 				_run_simulation_if_possible()
 				_say(
 					[
-						"Good. The connection is blue because the ",
-						"frequency is outside the matching range.\n\n",
-						"Now move it back between 995 and 1005."
+						(
+							"Good. Transceiver 1 is outside the matching range.\n\n"
+							+ "Now move the frequency back between 995 and 1005."
+						)
 					],
 					TutorialStep.CHANGE_FREQUENCY_BACK
 				)
-
 		TutorialStep.CHANGE_FREQUENCY_BACK:
-			if attr.contains("freq") and _inside_match_range(value):
-				if _frequency_went_outside_range:
-					_lock_transceiver_frequency = true
-					_lock_transceiver_frequencies()
-					_run_simulation_if_possible()
-					_say(
-						[
-							"Good. The Transceivers are back inside the ",
-							"matching frequency range."
-						],
-						TutorialStep.EXPLAIN_POWER
-					)
-
+			var value := _read_number_from_unit(
+				_first_transceiver, ["frequency"], TUTORIAL_FREQUENCY
+			)
+			if _frequency_went_outside_range and _inside_match_range(value):
+				_lock_transceiver_frequencies()
+				_lock_transceiver_frequency = true
+				_run_simulation_if_possible()
+				_say(
+					["Good. The Transceivers are back inside the matching range."],
+					TutorialStep.EXPLAIN_POWER
+				)
 		TutorialStep.LOWER_POWER:
-			if attr.contains("power") and value < _original_power:
-				_run_simulation_if_possible()
-				_enter_step(TutorialStep.RAISE_POWER)
-
+			_confirm_number_less(
+				_first_transceiver, ["power"], _original_power, TutorialStep.RAISE_POWER
+			)
 		TutorialStep.RAISE_POWER:
-			if attr.contains("power") and value >= _original_power:
-				_run_simulation_if_possible()
-				_say(
-					["Good. Increasing power helped restore the link."], TutorialStep.EXPLAIN_HEIGHT
-				)
-
+			_confirm_number_at_least(
+				_first_transceiver,
+				["power"],
+				_original_power,
+				["Good. Increasing power helped restore the link."],
+				TutorialStep.EXPLAIN_HEIGHT
+			)
 		TutorialStep.INCREASE_HEIGHT:
-			if attr.contains("height") and value > _original_height:
-				_run_simulation_if_possible()
-				_say(
-					["Good. Increasing height can improve communication."],
-					TutorialStep.INTRO_SENSOR
-				)
-
+			_confirm_number_greater(
+				_first_transceiver,
+				["height"],
+				_original_height,
+				["Good. Increasing height can improve communication."],
+				TutorialStep.INTRO_SENSOR
+			)
+		TutorialStep.LOWER_SENSOR_SENSITIVITY:
+			_confirm_number_less(
+				_sensor,
+				["sensitivity", "detection_sensitivity"],
+				_original_sensor_sensitivity,
+				TutorialStep.EXPLAIN_SENSOR_TUNING,
+				["Good. Lowering sensitivity makes detection less likely."]
+			)
 		TutorialStep.CHANGE_SENSOR_TUNING_AWAY:
-			if attr.contains("freq"):
-				if abs(value - _original_sensor_tuning) >= FREQUENCY_TOLERANCE:
-					_run_simulation_if_possible()
-					_say(
-						[
-							"The Sensor can no longer detect the signal.\n\n",
-							"This shows how frequency affects detection."
-						],
-						TutorialStep.EXPLAIN_BANDWIDTH
-					)
-
-		TutorialStep.INCREASE_BANDWIDTH:
-			if attr.contains("bandwidth"):
-				_run_simulation_if_possible()
-				_say(
-					["Good. A wider bandwidth makes detection more flexible."],
-					TutorialStep.INTRO_JAMMER
-				)
-
-		TutorialStep.CHANGE_JAMMER_FREQUENCY_AWAY:
-			if attr.contains("freq") and _outside_match_range(value):
+			var tuning := _read_number_from_unit(_sensor, ["tuning_frequency"], TUTORIAL_FREQUENCY)
+			if abs(tuning - _original_sensor_tuning) >= FREQUENCY_TOLERANCE:
 				_run_simulation_if_possible()
 				_say(
 					[
-						"The link recovered because the Jammer is no longer ",
-						"targeting the correct frequency."
+						(
+							"The Sensor can no longer detect the signal.\n\n"
+							+ "This shows how frequency affects detection."
+						)
+					],
+					TutorialStep.EXPLAIN_BANDWIDTH
+				)
+		TutorialStep.INCREASE_BANDWIDTH:
+			_run_simulation_if_possible()
+			_say(
+				["Good. A wider bandwidth makes detection more flexible."],
+				TutorialStep.INTRO_JAMMER
+			)
+		TutorialStep.CHANGE_JAMMER_FREQUENCY_AWAY:
+			var value := _read_number_from_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
+			if _outside_match_range(value):
+				_run_simulation_if_possible()
+				_say(
+					[
+						(
+							"The link recovered because the Jammer moved away "
+							+ "from the correct frequency."
+						)
 					],
 					TutorialStep.CHANGE_JAMMER_FREQUENCY_BACK
 				)
-
 		TutorialStep.CHANGE_JAMMER_FREQUENCY_BACK:
-			if attr.contains("freq"):
+			var value := _read_number_from_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
+			if _inside_match_range(value):
 				_lock_jammer_frequency = true
 				_set_number_on_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
 				_run_simulation_if_possible()
-				_say(["Good. The Jammer is locked back to 1000."], TutorialStep.COMPLETE)
+				_say(
+					["Good. The Jammer is locked back to 1000."],
+					TutorialStep.INTRO_DISPLAY_SETTINGS
+				)
 
-		_:
-			pass
+
+func _confirm_number_less(
+	unit: Node, fields: Array, original: float, next_step: int, message: Array = []
+) -> void:
+	if _read_number_from_unit(unit, fields, original) < original:
+		_run_simulation_if_possible()
+		if message.is_empty():
+			_enter_step(next_step)
+		else:
+			_say(message, next_step)
+
+
+func _confirm_number_greater(
+	unit: Node, fields: Array, original: float, message: Array, next_step: int
+) -> void:
+	if _read_number_from_unit(unit, fields, original) > original:
+		_run_simulation_if_possible()
+		_say(message, next_step)
+
+
+func _confirm_number_at_least(
+	unit: Node, fields: Array, original: float, message: Array, next_step: int
+) -> void:
+	if _read_number_from_unit(unit, fields, original) >= original:
+		_run_simulation_if_possible()
+		_say(message, next_step)
 
 
 func _setup(
-	sidebar_types: Array = [],
+	sidebar_ids: Array = [],
 	attributes: Array = [],
 	marker_pos: Variant = null,
 	marker_label: String = ""
 ) -> void:
-	if sidebar_types.is_empty():
+	if sidebar_ids.is_empty():
 		_unlock_sidebar()
 	else:
-		_lock_sidebar_to(sidebar_types)
-
+		_lock_sidebar_to(sidebar_ids)
 	_lock_attributes(attributes)
-
 	if marker_pos is Vector2:
 		_show_placement_marker(marker_pos, marker_label)
 	else:
 		_clear_placement_marker()
+
+
+func _select_primary_transceiver_for_edit(attributes: Array) -> void:
+	_select_unit_for_edit(_first_transceiver, attributes)
+
+
+func _select_expected_unit_for_edit(attributes: Array) -> void:
+	var unit := _expected_edit_unit_for_current_step()
+	if unit != null:
+		_select_unit_for_edit(unit, attributes)
+
+
+# CHANGED: emit select first so Sidebar rebuilds rows for the correct unit,
+# then defer the filter so it lands after _on_selection_changed →
+# _refresh_attribute_panel completes. Sidebar.gd also reapplies
+# _tutorial_allowed_attributes after every rebuild via its own call_deferred,
+# so one emission here is sufficient.
+func _select_unit_for_edit(unit: Node, attributes: Array) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	_selected_tutorial_unit = unit
+	_tutorial_selection_refreshing = true
+	GameEvents.select(unit)
+	call_deferred("_apply_attribute_filter", attributes)
+	call_deferred("_finish_tutorial_selection_refresh")
+
+
+func _finish_tutorial_selection_refresh() -> void:
+	_tutorial_selection_refreshing = false
+
+
+# CHANGED: single emission only. The triple call_deferred pattern was a
+# workaround for the race this fix eliminates. Sidebar.gd now owns the
+# reapply responsibility after each _refresh_attribute_panel rebuild.
+func _apply_attribute_filter(attributes: Array) -> void:
+	_lock_attributes(attributes)
+
+
+func _lock_all_attributes() -> void:
+	_apply_attribute_filter([LOCK_ALL_ATTRIBUTES])
+
+
+func _attributes_for_current_step() -> Array:
+	return TUTORIAL_TEXT.attributes_for_step(_tutorial_step)
+
+
+func _expected_edit_unit_for_current_step() -> Node:
+	match TUTORIAL_TEXT.edit_target_for_step(_tutorial_step):
+		"transceiver":
+			return _first_transceiver
+		"sensor":
+			return _sensor
+		"jammer":
+			return _jammer
+		_:
+			return null
 
 
 func _say(parts: Array, next_step: int = -1) -> void:
@@ -667,92 +557,179 @@ func _join_text(parts: Array) -> String:
 	return text
 
 
-func _show_popup(text: String, next_step: int = -1) -> void:
+func _create_repeat_instruction_button() -> void:
+	if _repeat_instruction_button != null and is_instance_valid(_repeat_instruction_button):
+		return
+	if not has_node("CanvasLayer"):
+		return
+
+	var button := Button.new()
+	button.name = "RepeatInstructionButton"
+	button.text = "Show Instruction"
+	button.tooltip_text = "Show the current tutorial instruction again."
+	button.custom_minimum_size = Vector2(180, 42)
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	button.anchor_left = 1.0
+	button.anchor_top = 0.0
+	button.anchor_right = 1.0
+	button.anchor_bottom = 0.0
+	button.offset_left = -210.0
+	button.offset_top = 75.0
+	button.offset_right = -16.0
+	button.offset_bottom = 117.0
+
+	button.pressed.connect(_on_repeat_instruction_button_pressed)
+	$CanvasLayer.add_child(button)
+	_repeat_instruction_button = button
+	_update_repeat_instruction_button_visibility()
+
+
+func _update_repeat_instruction_button_visibility() -> void:
+	if _repeat_instruction_button == null or not is_instance_valid(_repeat_instruction_button):
+		return
+
+	var has_instruction := not _current_instruction_text.strip_edges().is_empty()
+	var tutorial_finished := _tutorial_step == TutorialStep.COMPLETE
+	_repeat_instruction_button.visible = (
+		has_instruction and not intro_popup_open and not tutorial_finished
+	)
+
+
+func _on_repeat_instruction_button_pressed() -> void:
 	if intro_popup_open:
 		return
 
+	var text := _current_instruction_text.strip_edges()
+	if text.is_empty():
+		var data := _step_data(_tutorial_step)
+		text = str(data.get("text", "")).strip_edges()
+
+	if text.is_empty():
+		return
+
+	_show_repeat_instruction_popup(text)
+
+
+func _show_repeat_instruction_popup(text: String) -> void:
+	_remove_sandbox_intro_popups()
+	if intro_popup_open:
+		return
+	if not has_node("CanvasLayer"):
+		return
+
+	var popup := TUTORIAL_HINT_POPUP.instantiate()
+	popup.name = "TutorialRepeatInstructionPopup"
+	popup.set("hint_text", "Current instruction:\n\n" + text)
+
+	intro_popup_open = true
+	_update_repeat_instruction_button_visibility()
+	$CanvasLayer.add_child(popup)
+
+	popup.tree_exited.connect(
+		func():
+			if not _has_tutorial_popup_open():
+				intro_popup_open = false
+			_update_repeat_instruction_button_visibility()
+	)
+
+
+func _show_popup(text: String, next_step: int = -1) -> void:
+	_remove_sandbox_intro_popups()
+	if intro_popup_open:
+		return
 	_popup_history.append({"text": text, "next_step": next_step})
 	_popup_history_index = _popup_history.size() - 1
-
 	_display_popup_history_entry()
 
 
 func _display_popup_history_entry() -> void:
-	if _popup_history_index < 0:
+	_remove_sandbox_intro_popups()
+	_update_repeat_instruction_button_visibility()
+	if _popup_history_index < 0 or _popup_history_index >= _popup_history.size():
 		return
-
-	if _popup_history_index >= _popup_history.size():
-		return
-
 	var entry: Dictionary = _popup_history[_popup_history_index]
 	var popup := TUTORIAL_HINT_POPUP.instantiate()
-
+	popup.name = "TutorialHintPopup"
 	popup.set("hint_text", str(entry.get("text", "")))
 	popup.set("show_previous", _popup_history_index > 0)
 	popup.set("show_next", true)
-
 	intro_popup_open = true
+	_update_repeat_instruction_button_visibility()
 	$CanvasLayer.add_child(popup)
-
 	if popup.has_signal("previous_requested"):
 		popup.previous_requested.connect(_on_popup_previous_requested)
-
 	if popup.has_signal("continued"):
 		popup.continued.connect(_on_popup_next_requested)
+	popup.tree_exited.connect(
+		func():
+			if not _has_tutorial_popup_open():
+				intro_popup_open = false
+			_update_repeat_instruction_button_visibility()
+	)
 
 
 func _on_popup_previous_requested() -> void:
 	intro_popup_open = false
-
 	if _popup_history_index <= 0:
 		return
-
 	_popup_history_index -= 1
 	call_deferred("_display_popup_history_entry")
 
 
 func _on_popup_next_requested() -> void:
 	intro_popup_open = false
-
-	# When reviewing an older popup, Next moves forward through history.
+	if _wrong_placement_popup_open:
+		return
 	if _popup_history_index < _popup_history.size() - 1:
 		_popup_history_index += 1
 		call_deferred("_display_popup_history_entry")
 		return
-
-	# On the newest popup, Next either advances the tutorial or closes the
-	# instruction so the player can complete the required action.
 	var entry: Dictionary = _popup_history[_popup_history_index]
 	var next_step := int(entry.get("next_step", -1))
-
 	if next_step != -1:
 		call_deferred("_enter_step", next_step)
 
 
+func _has_tutorial_popup_open() -> bool:
+	if not has_node("CanvasLayer"):
+		return false
+	for child in $CanvasLayer.get_children():
+		var child_name := child.name.to_lower()
+		if child_name.contains("tutorial") and child_name.contains("popup"):
+			return true
+	return false
+
+
 func _show_completion_popup() -> void:
+	_remove_sandbox_intro_popups()
+	_update_repeat_instruction_button_visibility()
 	if _completion_popup != null and is_instance_valid(_completion_popup):
 		return
-
 	intro_popup_open = true
 	_completion_popup = TUTORIAL_COMPLETION_POPUP.instantiate()
+	_completion_popup.name = "TutorialCompletionPopup"
 	$CanvasLayer.add_child(_completion_popup)
+	_completion_popup.tree_exited.connect(
+		func():
+			intro_popup_open = false
+			_update_repeat_instruction_button_visibility()
+	)
 
 
 func _show_placement_marker(local_pos: Vector2, label_text: String) -> void:
 	_clear_placement_marker()
-
 	var marker := PanelContainer.new()
 	marker.name = "TutorialPlacementMarker"
 	marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	marker.custom_minimum_size = Vector2(100, 70)
 	marker.z_index = 50
-
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(1.0, 0.85, 0.1, 0.25)
 	style.border_color = Color(1.0, 0.85, 0.1, 1.0)
 	style.set_border_width_all(3)
 	marker.add_theme_stylebox_override("panel", style)
-
 	var label := Label.new()
 	label.text = label_text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -761,7 +738,6 @@ func _show_placement_marker(local_pos: Vector2, label_text: String) -> void:
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 3)
 	marker.add_child(label)
-
 	map_container.add_child(marker)
 	marker.position = local_pos - marker.custom_minimum_size * 0.5
 	_placement_marker = marker
@@ -770,19 +746,7 @@ func _show_placement_marker(local_pos: Vector2, label_text: String) -> void:
 func _clear_placement_marker() -> void:
 	if _placement_marker != null and is_instance_valid(_placement_marker):
 		_placement_marker.queue_free()
-
 	_placement_marker = null
-
-
-func _show_wrong_placement_popup(label_text: String) -> void:
-	_say(
-		[
-			"That unit is not close enough to the highlighted area.\n\n",
-			"Move it closer to the marker labeled ",
-			label_text,
-			", then try again."
-		]
-	)
 
 
 func _is_near_target(
@@ -790,35 +754,50 @@ func _is_near_target(
 ) -> bool:
 	if unit == null or not is_instance_valid(unit):
 		return false
-
 	var target = map_container.global_position + local_pos
 	var unit_pos := _get_unit_position(unit)
-
 	return unit_pos.distance_to(target) <= tolerance
 
 
 func _get_unit_position(unit: Node) -> Vector2:
-	if unit is Node2D:
+	if unit is Node2D or unit is Control:
 		return unit.global_position
-
-	if unit is Control:
-		return unit.global_position
-
 	var raw_position = unit.get("global_position")
 	if raw_position is Vector2:
 		return raw_position
-
 	return Vector2(-999999.0, -999999.0)
 
 
-func _pick_default_transceiver() -> void:
-	if _selected_tutorial_unit != null:
+func _snap_unit_to_local_pos(unit: Node, local_pos: Vector2) -> void:
+	if unit == null or not is_instance_valid(unit):
 		return
+	var global_pos: Vector2 = map_container.global_position + local_pos
+	var base_local_pos: Vector2 = global_pos - global_position
+	if unit is Node2D or unit is Control:
+		unit.global_position = global_pos
+	else:
+		unit.set("position", base_local_pos)
+	unit.set_meta("world_uv", screen_to_world_uv(base_local_pos))
 
-	if _second_transceiver != null:
-		_selected_tutorial_unit = _second_transceiver
-	elif _first_transceiver != null:
-		_selected_tutorial_unit = _first_transceiver
+
+func _lock_unit_to(unit: Node, local_pos: Vector2) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	_locked_unit_targets[unit] = local_pos
+	_snap_unit_to_local_pos(unit, local_pos)
+
+
+func _unlock_unit(unit: Node) -> void:
+	if unit != null and _locked_unit_targets.has(unit):
+		_locked_unit_targets.erase(unit)
+
+
+func _lock_placed_units() -> void:
+	for unit in _locked_unit_targets.keys():
+		if unit == null or not is_instance_valid(unit):
+			_locked_unit_targets.erase(unit)
+			continue
+		_snap_unit_to_local_pos(unit, _locked_unit_targets[unit])
 
 
 func _outside_match_range(value: float) -> bool:
@@ -832,11 +811,10 @@ func _inside_match_range(value: float) -> bool:
 func _lock_transceiver_frequencies() -> void:
 	_set_number_on_unit(_first_transceiver, ["frequency"], TUTORIAL_FREQUENCY)
 	_set_number_on_unit(_second_transceiver, ["frequency"], TUTORIAL_FREQUENCY)
-	_set_number_on_unit(_selected_tutorial_unit, ["frequency"], TUTORIAL_FREQUENCY)
 
 
-func _lock_sidebar_to(types: Array) -> void:
-	GameEvents.tutorial_filter_sidebar.emit(types)
+func _lock_sidebar_to(ids: Array) -> void:
+	GameEvents.tutorial_filter_sidebar.emit(ids)
 
 
 func _unlock_sidebar() -> void:
@@ -850,6 +828,10 @@ func _lock_attributes(attributes: Array) -> void:
 func _run_simulation_if_possible() -> void:
 	if SimulationManager:
 		SimulationManager.simulate()
+
+
+func _is_tutorial_map_unit(unit: Node) -> bool:
+	return _is_transceiver(unit) or _is_sensor(unit) or _is_jammer(unit)
 
 
 func _is_transceiver(unit: Node) -> bool:
@@ -867,63 +849,157 @@ func _is_jammer(unit: Node) -> bool:
 func _unit_matches(unit: Node, name_text: String, group_name: String) -> bool:
 	if unit == null:
 		return false
-
-	if unit.is_in_group(group_name):
+	if unit.is_in_group(group_name) or unit.name.to_lower().contains(name_text):
 		return true
-
-	if unit.name.to_lower().contains(name_text):
-		return true
-
+	if unit is Unit and unit.definition:
+		if str(unit.definition.id).to_lower().contains(name_text):
+			return true
 	for child in unit.get_children():
 		if child.name.to_lower().contains(name_text):
 			return true
-
 	return false
 
 
 func _read_number_from_unit(unit: Node, possible_names: Array, fallback: float) -> float:
-	if unit == null:
+	if unit == null or not is_instance_valid(unit):
 		return fallback
-
+	if unit is Unit:
+		for property_name in possible_names:
+			var value = unit.get_value(StringName(str(property_name)), null)
+			if value != null:
+				return _variant_to_float(value, fallback)
 	for property_name in possible_names:
-		var value = unit.get(property_name)
-		if value != null:
-			return _variant_to_float(value, fallback)
-
+		var direct_value = unit.get(property_name)
+		if direct_value != null:
+			return _variant_to_float(direct_value, fallback)
 	for child in unit.get_children():
 		for property_name in possible_names:
 			var child_value = child.get(property_name)
 			if child_value != null:
 				return _variant_to_float(child_value, fallback)
-
 	return fallback
 
 
 func _variant_to_float(value: Variant, fallback: float) -> float:
 	if value == null:
 		return fallback
-
 	if value is int or value is float:
 		return float(value)
-
 	var text := str(value)
-	if text.is_valid_float():
-		return text.to_float()
-
-	return fallback
+	return text.to_float() if text.is_valid_float() else fallback
 
 
 func _set_number_on_unit(unit: Node, possible_names: Array, new_value: float) -> void:
-	if unit == null:
+	if unit == null or not is_instance_valid(unit):
 		return
-
+	if unit is Unit:
+		for property_name in possible_names:
+			var id := StringName(str(property_name))
+			var existing = unit.get_value(id, null)
+			if existing != null:
+				unit.set_value(id, new_value)
+				return
 	for property_name in possible_names:
 		if unit.get(property_name) != null:
 			unit.set(property_name, new_value)
 			return
-
 	for child in unit.get_children():
 		for property_name in possible_names:
 			if child.get(property_name) != null:
 				child.set(property_name, new_value)
 				return
+
+
+func _remove_sandbox_intro_popups() -> void:
+	if get_tree() != null:
+		_remove_sandbox_intro_popups_recursive(get_tree().root)
+
+
+func _remove_sandbox_intro_popups_recursive(node: Node) -> void:
+	if node == null:
+		return
+	for child in node.get_children():
+		_remove_sandbox_intro_popups_recursive(child)
+		if _is_sandbox_intro_popup(child):
+			child.queue_free()
+
+
+func _is_sandbox_intro_popup(node: Node) -> bool:
+	if node == null:
+		return false
+	var node_name := node.name.to_lower()
+	var scene_path := str(node.scene_file_path).to_lower()
+	if node_name.contains("sandbox") and node_name.contains("intro"):
+		return true
+	if scene_path.contains("sandboxintropopup") or scene_path.contains("sandbox_intro_popup"):
+		return true
+	var script = node.get_script()
+	if script is Resource:
+		var script_path := str(script.resource_path).to_lower()
+		return script_path.contains("sandbox") and script_path.contains("intro")
+	return false
+
+
+func _begin_display_setting_trial(setting_key: String) -> void:
+	_waiting_display_setting_key = setting_key
+	_waiting_display_setting_original = _read_hud_setting(setting_key, null)
+
+
+func _check_display_setting_change() -> void:
+	if intro_popup_open or _waiting_display_setting_key == "":
+		return
+	var current_value = _read_hud_setting(_waiting_display_setting_key, null)
+	if current_value == null or current_value == _waiting_display_setting_original:
+		return
+	var completed_key := _waiting_display_setting_key
+	_waiting_display_setting_key = ""
+	_waiting_display_setting_original = null
+	var result := TUTORIAL_TEXT.display_setting_result(completed_key)
+	_say([result.get("text", "Good. That display setting changed.")], result.get("next", -1))
+
+
+func _read_hud_setting(setting_key: String, fallback: Variant = null) -> Variant:
+	var hud := _find_node_by_name(get_tree().root, "HUD")
+	if hud == null:
+		return fallback
+	var settings = hud.get("settings")
+	if typeof(settings) == TYPE_DICTIONARY and settings.has(setting_key):
+		return settings[setting_key]
+	for toggle_name in _display_toggle_node_names(setting_key):
+		var toggle := _find_node_by_name(hud, toggle_name)
+		if toggle == null:
+			continue
+		var button_pressed = toggle.get("button_pressed")
+		if button_pressed != null:
+			return bool(button_pressed)
+	return fallback
+
+
+func _display_toggle_node_names(setting_key: String) -> Array[String]:
+	return TUTORIAL_TEXT.display_toggle_node_names(setting_key)
+
+
+func _find_node_by_name(root: Node, wanted_name: String) -> Node:
+	if root == null:
+		return null
+	if root.name == wanted_name:
+		return root
+	for child in root.get_children():
+		var found := _find_node_by_name(child, wanted_name)
+		if found != null:
+			return found
+	return null
+
+
+func _show_wrong_placement_popup() -> void:
+	if _wrong_placement_popup_open:
+		return
+	_wrong_placement_popup_open = true
+	_say(
+		[
+			(
+				"That unit is not in the correct spot yet.\n\n"
+				+ "Move it into the highlighted area on the map."
+			)
+		]
+	)

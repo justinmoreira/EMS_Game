@@ -50,6 +50,7 @@ custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 24
 text = ""
 
 [node name="ButtonRow" type="HBoxContainer" parent="CenterContainer/Panel/Margin/VBox"]

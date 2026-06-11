@@ -12,31 +12,43 @@ var zoom := 1.0
 var offset := Vector2.ZERO
 var dragging := false
 var last_mouse_pos := Vector2.ZERO
-var sidebar_width: float = 0.0
-var intro_popup_open := false
 
 # Selection State
 var currently_selected_unit: Node = null
+var currently_hovered_unit: Node = null
+@export var base_hover_radius: float = 32.0
+@export var show_signal_ranges: bool = false
+# Sidebar layout — populated via signal, no global find_child reach.
+# Width is the live x-size of the sidebar; 0 if no sidebar in this scene.
+var sidebar_width: float = 0.0
 
+# Selection visual cache — the *previous* selected unit, so we know which to
+# unhighlight when selection changes. Source of truth lives on GameEvents.
+var _last_highlighted: Unit = null
 var unit_attributes_visible: bool = false
 
 @onready var background := $BackgroundTexture
-@onready var sidebar_node = get_tree().root.find_child("Sidebar", true, false)
 
 # --- Initialization ---
 
 
 func _ready():
-	# Handle window resizing and sidebar layout
 	get_tree().get_root().size_changed.connect(_on_window_resized)
-	if sidebar_node:
-		sidebar_node.resized.connect(_on_window_resized)
+	GameEvents.selection_changed.connect(_on_selection_changed)
+	GameEvents.simulation_requested.connect(SimulationManager.simulate)
+	GameEvents.reset_requested.connect(_on_reset_requested)
+	GameEvents.delete_requested.connect(_on_delete_requested)
+	GameEvents.sidebar_resized.connect(_on_sidebar_resized)
+	_on_window_resized()
+
+
+func _on_sidebar_resized(width: float) -> void:
+	sidebar_width = width
 	_on_window_resized()
 
 
 func _on_window_resized() -> void:
 	self.size = get_viewport_rect().size
-	sidebar_width = sidebar_node.size.x if sidebar_node else 0.0
 	if background:
 		background.offset_left = sidebar_width
 	update_shader()
@@ -45,14 +57,23 @@ func _on_window_resized() -> void:
 # --- Coordinate Space Math ---
 
 
+# Single source of truth: the rectangle the background shader actually renders
+# over. Overlays (units, labels) derive their screen positions from the SAME
+# rect, so they can never move at a different scale than the terrain.
+# `background` is a Control; .position/.size already account for the sidebar
+# offset_left set in _on_window_resized.
+func _map_origin() -> Vector2:
+	return background.position if background else Vector2(sidebar_width, 0)
+
+
 func get_map_size() -> Vector2:
-	return Vector2(size.x - sidebar_width, size.y)
+	return background.size if background else Vector2(size.x - sidebar_width, size.y)
 
 
 func screen_to_world_uv(screen_pos: Vector2) -> Vector2:
 	var map = get_map_size()
 	var aspect = map.x / map.y
-	var uv = (screen_pos - Vector2(sidebar_width, 0)) / map - Vector2(0.5, 0.5)
+	var uv = (screen_pos - _map_origin()) / map - Vector2(0.5, 0.5)
 	if aspect > 1.0:
 		uv.x *= aspect
 	else:
@@ -68,7 +89,7 @@ func world_uv_to_screen(world_uv: Vector2) -> Vector2:
 		uv.x /= aspect
 	else:
 		uv.y *= aspect
-	return (uv + Vector2(0.5, 0.5)) * map + Vector2(sidebar_width, 0)
+	return (uv + Vector2(0.5, 0.5)) * map + _map_origin()
 
 
 # --- Visual Updates ---
@@ -92,7 +113,7 @@ func toggle_shader(enabled: bool) -> void:
 func _reposition_units() -> void:
 	var unit_scale = 1.0 / zoom
 	for child in get_children():
-		if child is EMSUnit and child.has_meta("world_uv"):
+		if child is Unit and child.has_meta("world_uv"):
 			child.position = world_uv_to_screen(child.get_meta("world_uv"))
 			child.scale = Vector2(unit_scale, unit_scale)
 
@@ -103,18 +124,25 @@ func _clamp_offset() -> void:
 	offset.y = clamp(offset.y, -margin, margin)
 
 
+func _get_hover_radius_pixels() -> float:
+	# TODO: Implement for selection too?
+	return base_hover_radius * (1.0 / zoom)
+
+
 # --- Drag and Drop Logic ---
 
 
 func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 	if not (data is Dictionary and data.has("scene_path")):
 		return false
-
-	# Still reject sidebar drops
 	if at_position.x < sidebar_width:
 		return false
-
-	return data is Dictionary and data.has("scene_path")
+	# The map is world_uv ∈ [0,1]; outside that is the shader's void border.
+	# Reject drops there so units can't be placed off the map.
+	var world_uv := screen_to_world_uv(at_position)
+	if world_uv.x < 0.0 or world_uv.x > 1.0 or world_uv.y < 0.0 or world_uv.y > 1.0:
+		return false
+	return true
 
 
 func _drop_data(at_position: Vector2, data: Variant) -> void:
@@ -123,6 +151,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 		return
 
 	var unit := scene.instantiate()
+
 	if unit == null:
 		return
 
@@ -130,74 +159,84 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	unit.set_meta("world_uv", screen_to_world_uv(at_position))
 	unit.position = at_position
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
+	# Mark this unit as not saved to the scene file (instantiated at runtime).
+	unit.owner = null
+
+	# Apply pending attributes BEFORE add_child so the unit's _ready sees the
+	# user-typed unit_name and skips its UnitNameManager.get_next_name call.
+	# Pending attributes ride along in the drag payload — Sidebar attaches the
+	# snapshot via EntityCard. No reach into Sidebar from here.
+	var override: Dictionary = data.get("attributes_override", {})
+	for attr_name in override:
+		unit.set(attr_name, override[attr_name])
+
 	add_child(unit)
 
-	# Apply any pending attribute changes from the sidebar
-	if (
-		sidebar_node
-		and sidebar_node.pending_attributes
-		and sidebar_node.pending_attributes.size() > 0
-	):
-		var component: Node = null
-		for child in unit.get_children():
-			if child.name in ["Transceiver", "Jammer", "Sensor"]:
-				component = child
-				break
+	# Preserve main #61's UX: re-sim after placement so links reflect new geometry.
+	SimulationManager.simulate()
 
-		if component:
-			for attr_name in sidebar_node.pending_attributes:
-				component.set(attr_name, sidebar_node.pending_attributes[attr_name])
+	# Apply current visual settings (show/hide ranges)
+	_set_unit_show_range_visual(unit, show_signal_ranges)
 
-		sidebar_node.pending_attributes.clear()
-
-	# Connect the selection signal
 	_on_unit_placed(unit)
-	_on_unit_selected(unit)
+	# Newly-placed unit is treated as selected so its panel opens.
+	GameEvents.select(unit)
 
 	GameEvents.unit_placed.emit(unit)
 	GameEvents.units_changed.emit()
 
 
-func _on_unit_placed(unit: Node) -> void:
-	# Connect selection signals
-	if unit.has_signal("selected") and not unit.selected.is_connected(_on_unit_selected):
-		unit.selected.connect(_on_unit_selected)
-	if unit is EMSUnit:
-		var label = _get_or_create_attribute_label(unit)
-		if label:
-			label.visible = unit_attributes_visible
+func _on_unit_placed(unit: Unit) -> void:
+	var label = _get_or_create_attribute_label(unit)
+	if label:
+		label.visible = unit_attributes_visible
 
 
-# --- Selection Logic ---
+# --- Selection Logic (visual highlight only — state lives on GameEvents) ---
 
 
-func _on_unit_selected(unit: Node) -> void:
-	_deselect_current_unit()
-
-	currently_selected_unit = unit
-	_set_unit_selected_visual(unit, true)
-
-	var component := _get_unit_component(unit)
-	if component:
-		_show_attributes(component)
-
-
-func _deselect_current_unit() -> void:
-	if currently_selected_unit == null:
-		return
-	_set_unit_selected_visual(currently_selected_unit, false)
-	currently_selected_unit = null
-	# Reset sidebar to show placeholder
-	if sidebar_node:
-		sidebar_node.select_entity(sidebar_node.EntityType.NONE)
+func _on_selection_changed(unit: Node) -> void:
+	# Single-shot handler covers both new selection and re-selection. Since
+	# `selected_unit` is the source of truth, just diff with our last paint.
+	if _last_highlighted and _last_highlighted != unit:
+		_set_unit_selected_visual(_last_highlighted, false)
+	_last_highlighted = unit if unit is Unit else null
+	if _last_highlighted:
+		_set_unit_selected_visual(_last_highlighted, true)
 
 
-func _set_unit_selected_visual(unit: Node, selected: bool) -> void:
+func _set_unit_selected_visual(unit: Unit, selected: bool) -> void:
+	if unit and unit.unit_visual:
+		unit.unit_visual.set_selected(selected)
+
+
+# --- Sidebar button handlers ---
+
+
+func _set_unit_hover_visual(unit: Node, hovered: bool) -> void:
 	if unit == null:
 		return
-	var visual := unit.find_child("Visual")
-	if visual and visual.has_method("set_selected"):
-		visual.set_selected(selected)
+	for child in unit.get_children():
+		if child is UnitVisual:
+			child.set_hovered(hovered)
+			break
+
+
+func _set_unit_show_range_visual(unit: Node, enabled: bool) -> void:
+	if unit == null:
+		return
+	for child in unit.get_children():
+		if child is UnitVisual:
+			child.set_show_range(enabled)
+			break
+
+
+func toggle_signal_ranges(enabled: bool) -> void:
+	# Toggle display of signal ranges for all unit visuals
+	show_signal_ranges = enabled
+	for child in get_children():
+		if child is Unit:
+			_set_unit_show_range_visual(child, enabled)
 
 
 func _get_unit_component(unit: Node) -> Node:
@@ -210,30 +249,27 @@ func _get_unit_component(unit: Node) -> Node:
 	return null
 
 
-func _show_attributes(component: Node) -> void:
-	if sidebar_node == null or component == null:
-		return
+func _on_reset_requested() -> void:
+	# LinkRenderer also subscribes to reset_requested and clears its own visuals.
+	UnitNameManager.reset()
+	for group in [&"transceivers", &"jammers", &"sensors"]:
+		for unit in get_tree().get_nodes_in_group(group):
+			unit.queue_free()
+	GameEvents.clear_selection()
 
-	# Determine component type by node name and update Sidebar
-	match component.name:
-		"Transceiver":
-			sidebar_node.select_entity(
-				sidebar_node.EntityType.TRANSCEIVER, "Transceiver", component
-			)
-		"Jammer":
-			sidebar_node.select_entity(sidebar_node.EntityType.JAMMER, "Jammer", component)
-		"Sensor":
-			sidebar_node.select_entity(sidebar_node.EntityType.SENSOR, "Sensor", component)
+
+func _on_delete_requested(unit: Node) -> void:
+	# LinkRenderer's per-frame purge will drop links involving this unit
+	# once is_instance_valid returns false post-queue_free.
+	if unit:
+		unit.queue_free()
+	GameEvents.clear_selection()
 
 
 # --- Inputs (Camera Control) ---
 
 
 func _input(event: InputEvent) -> void:
-	# prevent gameplay after popup is open
-	if intro_popup_open:
-		return
-
 	if event is InputEventMouseButton:
 		if event.position.x < sidebar_width:
 			return
@@ -255,12 +291,29 @@ func _input(event: InputEvent) -> void:
 			_clamp_offset()
 			update_shader()
 
+	elif event is InputEventMouseMotion:
+		if dragging or event.position.x < sidebar_width:
+			return
+
+		var mouse_pos = get_global_mouse_position()
+		var new_hover: Node = null
+		for child in get_children():
+			if child is Unit:
+				var distance = child.global_position.distance_to(mouse_pos)
+				if distance < _get_hover_radius_pixels():  # hover radius (pixels)
+					new_hover = child
+					break
+
+		if new_hover != currently_hovered_unit:
+			if currently_hovered_unit:
+				_set_unit_hover_visual(currently_hovered_unit, false)
+			currently_hovered_unit = new_hover
+			if currently_hovered_unit:
+				_set_unit_hover_visual(currently_hovered_unit, true)
+	return
+
 
 func _unhandled_input(event: InputEvent) -> void:
-	# prevent map interaction when popup is active
-	if intro_popup_open:
-		return
-
 	if event is InputEventKey and event.pressed and not event.echo:
 		var focus_owner := get_viewport().gui_get_focus_owner()
 		if focus_owner is LineEdit or focus_owner is TextEdit:
@@ -276,28 +329,28 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 		if event.pressed:
-			# Check if click is on empty map (not on sidebar)
+			# Click on empty map (not on a unit) → deselect.
 			if event.position.x > sidebar_width:
-				# Check if any unit was clicked by seeing if any unit emits "selected"
-				# If no unit handles the input, we deselect
 				var mouse_pos = get_global_mouse_position()
-				var clicked_unit = false
-
-				# Check all units to see if one is under the cursor
+				var clicked_unit := false
 				for child in get_children():
-					if child is EMSUnit:
-						var distance = child.global_position.distance_to(mouse_pos)
-						if distance < 32:  # Matches the selection radius in EMSUnit.gd
-							clicked_unit = true
-							break
+					if (
+						child is Unit
+						and child.global_position.distance_to(mouse_pos) < Unit.SELECTION_RADIUS
+					):
+						clicked_unit = true
+						break
+				# Clicking on a unit hands off to the unit's own drag handler —
+				# don't engage map pan or the two thrash each other.
+				if clicked_unit:
+					return
 
-				# If no unit was clicked, deselect
-				if not clicked_unit:
-					_deselect_current_unit()
-					get_tree().root.set_input_as_handled()
+				GameEvents.clear_selection()
+				get_tree().root.set_input_as_handled()
 
 			dragging = true
 			last_mouse_pos = event.position
+
 		else:
 			dragging = false
 
@@ -310,6 +363,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		update_shader()
 
 
+func toggle_unit_details(enabled: bool) -> void:
+	unit_attributes_visible = enabled
+	_apply_unit_attribute_visibility()
+
+
 #show unit attribute helper function
 func _toggle_unit_attributes() -> void:
 	unit_attributes_visible = not unit_attributes_visible
@@ -318,36 +376,23 @@ func _toggle_unit_attributes() -> void:
 
 func _apply_unit_attribute_visibility() -> void:
 	for child in get_children():
-		if child is EMSUnit:
+		if child is Unit:
 			var label = _get_or_create_attribute_label(child)
 			if label:
 				label.visible = unit_attributes_visible
 
 
-func _get_or_create_attribute_label(unit: Node) -> UnitAttributesLabel:
+func _get_or_create_attribute_label(unit: Unit) -> UnitAttributesLabel:
 	var existing = unit.get_node_or_null("UnitAttributesLabel")
 	if existing:
 		return existing as UnitAttributesLabel
-
-	var component := _find_unit_component(unit)
-	if component == null:
+	if unit == null or unit.definition == null:
 		return null
 
 	var label := ATTRIBUTE_LABEL_SCRIPT.new()
 	label.name = "UnitAttributesLabel"
 	unit.add_child(label)
-	label.setup(unit, component)
+	# Pre-merge, attribute label took (wrapper, component); now they're the same node.
+	label.setup(unit, unit)
 	label.visible = unit_attributes_visible
 	return label
-
-
-func _find_unit_component(unit: Node) -> Node:
-	for child in unit.get_children():
-		if child is Transceiver or child is Jammer or child is Sensor:
-			return child
-
-		for grandchild in child.get_children():
-			if grandchild is Transceiver or grandchild is Jammer or grandchild is Sensor:
-				return grandchild
-
-	return null
