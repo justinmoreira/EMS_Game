@@ -315,10 +315,10 @@ func _update_sensor_visualizations(delta: float) -> void:
 		vis_data["closest_jammer_distance"] = closest_distance
 
 		# Create or update rings based on detection
-		_update_sensor_rings(sensor, vis_data, delta)
+		_update_sensor_rings(sensor, vis_data)
 
 
-func _update_sensor_rings(sensor: Node, vis_data: Dictionary, delta: float) -> void:
+func _update_sensor_rings(sensor: Node, vis_data: Dictionary) -> void:
 	var distance = vis_data["closest_jammer_distance"]
 	var ring_count = 3
 
