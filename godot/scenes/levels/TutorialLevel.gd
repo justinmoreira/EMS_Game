@@ -500,11 +500,6 @@ func _select_expected_unit_for_edit(attributes: Array) -> void:
 		_select_unit_for_edit(unit, attributes)
 
 
-# CHANGED: emit select first so Sidebar rebuilds rows for the correct unit,
-# then defer the filter so it lands after _on_selection_changed →
-# _refresh_attribute_panel completes. Sidebar.gd also reapplies
-# _tutorial_allowed_attributes after every rebuild via its own call_deferred,
-# so one emission here is sufficient.
 func _select_unit_for_edit(unit: Node, attributes: Array) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
@@ -519,9 +514,6 @@ func _finish_tutorial_selection_refresh() -> void:
 	_tutorial_selection_refreshing = false
 
 
-# CHANGED: single emission only. The triple call_deferred pattern was a
-# workaround for the race this fix eliminates. Sidebar.gd now owns the
-# reapply responsibility after each _refresh_attribute_panel rebuild.
 func _apply_attribute_filter(attributes: Array) -> void:
 	_lock_attributes(attributes)
 
