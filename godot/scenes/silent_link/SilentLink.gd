@@ -27,6 +27,7 @@ var _simulation_over := false
 var _player_units: Array = []
 var _enemy_units: Array = []
 var _transceivers: Array = []
+var _allowed_units: Array[StringName] = []
 var _scene_ready := false
 
 
@@ -52,6 +53,7 @@ func _ready() -> void:
 	var parts := file_name.split("-")
 
 	_current_level = int(parts[1]) if parts.size() > 1 else 1
+	_setup_level_restrictions()
 
 	var hud_nodes = get_tree().get_nodes_in_group("hud")
 	if hud_nodes.size() > 0:
@@ -63,6 +65,22 @@ func _ready() -> void:
 
 	_scene_ready = true
 	_start()
+
+
+func _setup_level_restrictions() -> void:
+	match _current_level:
+		1, 2, 3:
+			# Only transceivers allowed
+			_allowed_units = [&"transceiver"]
+		4, 5:
+			# Transceivers and sensors allowed (jammers are invisible)
+			_allowed_units = [&"transceiver", &"sensor"]
+		_:
+			# Default: all units
+			_allowed_units = [&"transceiver", &"jammer", &"sensor"]
+	
+	# Apply the restrictions to the sidebar
+	GameEvents.tutorial_filter_sidebar.emit(_allowed_units)
 
 
 func _exit_tree() -> void:
@@ -176,6 +194,7 @@ func _on_intro_closed() -> void:
 	_step = Step.PLANNING
 	_start_time = Time.get_ticks_msec() / 1000.0
 	_show_timer()
+	_setup_level_restrictions()
 
 
 func register_player_unit(unit: Node) -> void:
@@ -432,9 +451,8 @@ func _show_completion_screen() -> void:
 	var popup = SILENT_LINK_INTRO_POPUP.instantiate()
 	popup.title_string = "Silent Link Campaign Complete!"
 	popup.body_string = (
-		"[i]Congratulations![/i]\n\n"
-		+ "You have successfully completed all 5 levels of Silent Link Mode\n\n"
-		+ "[b]Well done![/b]\n\n"
+		"[b]Congratulations![/b]\n\n"
+		+ "You have successfully completed all 5 levels of Silent Link Mode\n"
 		+ "[i]Try out other game modes to learn more[/i]"
 	)
 	popup.button_string = "Return to Menu"
