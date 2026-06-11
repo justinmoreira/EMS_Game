@@ -78,7 +78,7 @@ func _setup_level_restrictions() -> void:
 		_:
 			# Default: all units
 			_allowed_units = [&"transceiver", &"jammer", &"sensor"]
-	
+
 	# Apply the restrictions to the sidebar
 	GameEvents.tutorial_filter_sidebar.emit(_allowed_units)
 
