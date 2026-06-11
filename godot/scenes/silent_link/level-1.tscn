@@ -40,7 +40,7 @@ custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 1
 size_flags_vertical = 1
 
-[node name="FriendlyTransciever" type="Node2D" parent="." index="3" unique_id=155165395]
+[node name="FriendlyTransceiver" type="Node2D" parent="." index="3" unique_id=155165395]
 position = Vector2(945, 640)
 script = ExtResource("4_1ghud")
 definition = ExtResource("5_sbe1m")
@@ -48,14 +48,14 @@ is_immovable = true
 is_removable = false
 
 [node name="EnemyJammer" type="Node2D" parent="." index="4" unique_id=897180373]
-position = Vector2(300, 870)
+position = Vector2(540, 870)
 script = ExtResource("4_1ghud")
 definition = ExtResource("6_sbe1m")
 is_immovable = true
 is_removable = false
 
 [node name="EnemySensor" type="Node2D" parent="." index="5" unique_id=1803114092]
-position = Vector2(750, 150)
+position = Vector2(900, 350)
 script = ExtResource("4_1ghud")
 definition = ExtResource("7_14gxw")
 is_immovable = true

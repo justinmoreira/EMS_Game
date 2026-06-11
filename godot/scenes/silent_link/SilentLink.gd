@@ -82,15 +82,11 @@ func _start() -> void:
 	_intro_popup_open = true
 
 	var popup := SILENT_LINK_INTRO_POPUP.instantiate()
-	popup.title_string = "Silent Link Mode - Level %d" % _current_level
-	popup.body_string = (
-		"Establish a connection between the two friendly transceivers\n"
-		+ "without being detected or jammed by the enemy!\n\n"
-		+ "[i]• Place your units and link carefully\n"
-		+ "• Avoid detection zones & jammers\n"
-		+ "• Adjust frequency: high for fast, low for stealth\n\n"
-		+ "Complete all 5 levels for a full spectrum of tactical challenges![/i]"
-	)
+	
+	# Set level-specific content based on current level
+	var level_content = _get_level_intro_content(_current_level)
+	popup.title_string = level_content["title"]
+	popup.body_string = level_content["body"]
 	popup.button_string = "Begin"
 
 	var cl := CanvasLayer.new()
@@ -100,6 +96,67 @@ func _start() -> void:
 
 	if popup.has_signal("continued"):
 		popup.continued.connect(_on_intro_closed)
+
+
+func _get_level_intro_content(level: int) -> Dictionary:
+	match level:
+		1:
+			return {
+				"title": "Silent Link Mode - Level 1",
+				"body": "Establish a connection between the two friendly transceivers\n"
+					+ "without being detected or jammed by the enemy!\n\n"
+					+ "[i]• Place your units and link carefully\n"
+					+ "• Avoid detection zones & jammers\n"
+					+ "• Adjust frequency: high for fast, low for stealth\n\n"
+					+ "Start with this basic challenge\n"
+					+ "One transceiver has been placed for you![/i]"
+			}
+		2:
+			return {
+				"title": "Silent Link Mode - Level 2",
+				"body": "Things are getting trickier!\n\n"
+					+ "[i]More enemy units are now on the field.\n"
+					+ "You'll need to plan your link route more carefully\n"
+					+ "to avoid their detection zones.\n\n"
+					+ "• Study the terrain\n"
+					+ "• Use natural barriers to your advantage\n"
+					+ "• Timing and frequency adjustment are key![/i]"
+			}
+		3:
+			return {
+				"title": "Silent Link Mode - Level 3",
+				"body": "The enemy has added more units!\n\n"
+					+ "[i]Advanced jammers and detection equipment\n"
+					+ "make this level significantly more challenging.\n\n"
+					+ "• Multiple overlapping detection zones\n"
+					+ "• Powerful jamming capabilities\n"
+					+ "• Be careful with your units![/i]"
+			}
+		4:
+			return {
+				"title": "Silent Link Mode - Level 4",
+				"body": "Hiiden units are on the map!\n\n"
+					+ "[i]The enemy now has invisible\n"
+					+ "jamming equipment.\n\n"
+					+ "• Only the most strategic placements will work\n"
+					+ "• Every frequency choice matters\n"
+					+ "• Use sensors to find hidden jammers![/i]"
+			}
+		5:
+			return {
+				"title": "Silent Link Mode - Level 5",
+				"body": "The final challenge awaits!\n\n"
+					+ "[i]This is the ultimate test of your skills.\n"
+					+ "Multiple hidden jammers have been placed.\n\n"
+					+ "• All your skills will be tested\n"
+					+ "• Make good use of your sensors\n"
+					+ "• Success here means you've mastered Silent Link![/i]"
+			}
+		_:
+			return {
+				"title": "Silent Link Mode",
+				"body": "Unknown level"
+			}
 
 
 func _on_intro_closed() -> void:
@@ -318,10 +375,7 @@ func _show_scoreboard(success: bool = true) -> void:
 	add_child(cl)
 	cl.add_child(popup)
 
-	if _current_level < MAX_LEVEL:
-		popup.continue_button.pressed.connect(_on_next_level_pressed)
-	else:
-		popup.continue_button.pressed.connect(_on_finish_pressed)
+	popup.continue_button.pressed.connect(_on_next_level_pressed)
 
 
 func _calculate_score(success: bool = true) -> int:
@@ -355,10 +409,30 @@ func _on_next_level_pressed() -> void:
 	set_physics_process(false)
 
 	if _current_level > MAX_LEVEL:
-		get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")
+		# Show completion screen for finishing Silent Link
+		_show_completion_screen()
 		return
 
 	get_tree().change_scene_to_file("res://scenes/silent_link/level-%d.tscn" % _current_level)
+
+
+func _show_completion_screen() -> void:
+	var popup = SILENT_LINK_INTRO_POPUP.instantiate()
+	popup.title_string = "Silent Link Campaign Complete!"
+	popup.body_string = (
+		"[i]Congratulations![/i]\n\n"
+		+ "You have successfully completed all 5 levels of Silent Link Mode\n\n"
+		+ "[b]Well done![/b]\n\n"
+		+ "[i]Try out other game modes to learn more[/i]"
+	)
+	popup.button_string = "Return to Menu"
+
+	var cl := CanvasLayer.new()
+	cl.layer = 101
+	add_child(cl)
+	cl.add_child(popup)
+
+	popup.continue_button.pressed.connect(_on_finish_pressed)
 
 
 func _on_finish_pressed() -> void:
