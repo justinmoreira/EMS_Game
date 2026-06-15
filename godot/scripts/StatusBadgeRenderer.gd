@@ -17,6 +17,12 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 			continue
 		var visual := _get_or_create_status_visual(tx)
 		visual.set_status(_compute_status(tx, link_results, detect_results))
+	
+	for tx in get_tree().get_nodes_in_group("jammers"):
+		if not is_instance_valid(tx):
+			continue
+		var visual := _get_or_create_status_visual(tx)
+		visual.set_status(_compute_status(tx, link_results, detect_results))
 
 
 func _get_or_create_status_visual(unit: Node) -> UnitStatusVisual:
@@ -39,7 +45,7 @@ func _compute_status(tx: Unit, link_results: Array, detect_results: Array) -> in
 			return UnitStatusVisual.Status.JAMMED
 
 	for d in detect_results:
-		if d.transceiver == tx and d.detected:
+		if d.target == tx and d.detected:
 			return UnitStatusVisual.Status.DETECTED
 
 	return UnitStatusVisual.Status.NONE
