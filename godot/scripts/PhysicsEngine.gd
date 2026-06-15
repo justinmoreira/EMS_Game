@@ -50,7 +50,8 @@ static func is_detected(
 	dis: float,
 	terrain_loss: float = 1,
 	z_tx: float = -1.0,
-	z_srx: float = -1.0
+	z_srx: float = -1.0,
+	interference: float = 0.0
 ) -> bool:
 	var frequency_diff = abs(tx.frequency - srx.tuning_frequency)
 	var bandwidth_half = BANDWIDTH_MHZ[srx.sensor_bandwidth] / 2.0
@@ -72,7 +73,10 @@ static func is_detected(
 	var received_power = calculate_received_power(
 		tx.power, h_tx, h_srx, tx.frequency, dis, terrain_loss
 	)
-	return SENSOR_BALANCE_RATIO * received_power > threshold
+	
+	if tx.is_in_group("jammers"):
+		return SENSOR_BALANCE_RATIO * received_power > threshold
+	return SENSOR_BALANCE_RATIO * received_power > threshold + interference
 
 
 static func calculate_received_power(
