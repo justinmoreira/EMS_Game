@@ -5,6 +5,7 @@ const SUGGESTIONS := {
 	SimulationManager.LinkState.FAILED_JAMMED: "Change frequency or reposition away from jammer.",
 	SimulationManager.LinkState.FREQUENCY_DIFF: "Align both units to the same frequency band.",
 	SimulationManager.LinkState.BANDWIDTH_PENALTY: "Upgrade bandwidth.",
+	SimulationManager.LinkState.TERRAIN_BLOCKED: "Move units so that they have direct line of sight. (Use TIF Heatmap in settings menu for help)",
 }
 
 const STATE_LABELS := {
@@ -13,6 +14,7 @@ const STATE_LABELS := {
 	SimulationManager.LinkState.FAILED_JAMMED: "Jammed",
 	SimulationManager.LinkState.FREQUENCY_DIFF: "Frequency mismatch",
 	SimulationManager.LinkState.BANDWIDTH_PENALTY: "Bandwidth limited",
+	SimulationManager.LinkState.TERRAIN_BLOCKED: "Blocked out by terrain",
 }
 
 @onready var title_label: Label = $VBox/TitleLabel
@@ -33,7 +35,7 @@ func _process(_delta: float) -> void:
 
 
 func _on_selection_changed(unit: Node) -> void:
-	if unit == null:
+	if unit == null or !unit.is_in_group("transceivers"):
 		_selected_unit = null
 		hide()
 		return
@@ -43,7 +45,7 @@ func _on_selection_changed(unit: Node) -> void:
 
 
 func _refresh(_link_results = null, _detect = null) -> void:
-	if _selected_unit:
+	if _selected_unit and _selected_unit.is_in_group("transceivers"):
 		_rebuild()
 
 
@@ -70,6 +72,9 @@ func _rebuild() -> void:
 		lines.append(line)
 
 	content_label.text = "\n\n".join(lines)
+	
+	await get_tree().process_frame
+	reset_size()
 
 
 func _reposition() -> void:
