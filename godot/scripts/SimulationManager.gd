@@ -178,16 +178,20 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 	)
 
 	var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
-
+	var link_state = null
+	
 	if terrain_loss > INTERFERENCE_THRESHOLD:
-		return LinkState.TERRAIN_BLOCKED
-	if !PhysicsEngine.range_check(received_power):
-		return LinkState.FAILED_OUT_OF_RANGE
-	if PhysicsEngine.bandwidth_penalty_check(received_power, bandwidth_penalty):
-		return LinkState.BANDWIDTH_PENALTY
-	if !PhysicsEngine.jamming_check(received_power, interference):
-		return LinkState.FAILED_JAMMED
-	return LinkState.SUCCESS
+		link_state = LinkState.TERRAIN_BLOCKED
+	elif !PhysicsEngine.range_check(received_power):
+		link_state = LinkState.FAILED_OUT_OF_RANGE
+	elif PhysicsEngine.bandwidth_penalty_check(received_power, bandwidth_penalty):
+		link_state = LinkState.BANDWIDTH_PENALTY
+	elif !PhysicsEngine.jamming_check(received_power, interference):
+		link_state = LinkState.FAILED_JAMMED
+	else:
+		link_state = LinkState.SUCCESS
+	
+	return link_state
 
 
 func calculate_detection(srx: Unit, tx: Unit, jammers: Array) -> Dictionary:
