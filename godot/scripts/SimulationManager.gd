@@ -15,8 +15,8 @@ func _ready() -> void:
 
 
 func _live_group(group_name: String) -> Array:
-	return get_tree().get_nodes_in_group(group_name).filter(func(node):
-		return is_instance_valid(node) and not node.is_queued_for_deletion()
+	return get_tree().get_nodes_in_group(group_name).filter(
+		func(node): return is_instance_valid(node) and not node.is_queued_for_deletion()
 	)
 
 

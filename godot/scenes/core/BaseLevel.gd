@@ -332,7 +332,6 @@ func _on_delete_requested(unit: Node) -> void:
 	GameEvents.clear_selection()
 
 
-
 # --- Inputs (Camera Control) ---
 
 
