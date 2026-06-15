@@ -5,7 +5,8 @@ const SUGGESTIONS := {
 	SimulationManager.LinkState.FAILED_JAMMED: "Change frequency or reposition away from jammer.",
 	SimulationManager.LinkState.FREQUENCY_DIFF: "Align both units to the same frequency band.",
 	SimulationManager.LinkState.BANDWIDTH_PENALTY: "Upgrade bandwidth.",
-	SimulationManager.LinkState.TERRAIN_BLOCKED: "Move units so that they have direct line of sight. (Use TIF Heatmap in settings menu for help)",
+	SimulationManager.LinkState.TERRAIN_BLOCKED:
+	"Move units so that they have direct line of sight. (Use TIF Heatmap in settings menu for help)",
 }
 
 const STATE_LABELS := {
@@ -72,7 +73,7 @@ func _rebuild() -> void:
 		lines.append(line)
 
 	content_label.text = "\n\n".join(lines)
-	
+
 	await get_tree().process_frame
 	reset_size()
 

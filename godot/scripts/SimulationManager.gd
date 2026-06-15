@@ -1,7 +1,13 @@
 extends Node2D
 
 enum LinkState {
-	CONNECTING, SUCCESS, FAILED_OUT_OF_RANGE, FAILED_JAMMED, FREQUENCY_DIFF, BANDWIDTH_PENALTY, TERRAIN_BLOCKED
+	CONNECTING,
+	SUCCESS,
+	FAILED_OUT_OF_RANGE,
+	FAILED_JAMMED,
+	FREQUENCY_DIFF,
+	BANDWIDTH_PENALTY,
+	TERRAIN_BLOCKED
 }
 
 # link_results: Array of {"source": Unit, "target": Unit, "state": int}
@@ -172,7 +178,7 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 	)
 
 	var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
-	
+
 	if terrain_loss > INTERFERENCE_THRESHOLD:
 		return LinkState.TERRAIN_BLOCKED
 	if !PhysicsEngine.range_check(received_power):
