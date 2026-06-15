@@ -1,16 +1,10 @@
 class_name UnitStatusVisual
 extends Node2D
 
-enum Status {
-	NONE,
-	JAMMED,
-	DETECTED,
-	OUT_OF_RANGE,
-}
+enum Status { NONE, JAMMED, DETECTED }
 
 const COLOR_JAMMED := Color(1.0, 0.2, 0.2, 0.95)
 const COLOR_DETECTED := Color(0.75, 0.4, 1.0, 0.95)
-const COLOR_OUT_OF_RANGE := Color(1.0, 0.55, 0.1, 0.95)
 
 const BASE_RADIUS := 28.0
 const RING_WIDTH := 4.0
@@ -57,8 +51,6 @@ func _draw() -> void:
 			_draw_jammed()
 		Status.DETECTED:
 			_draw_detected()
-		Status.OUT_OF_RANGE:
-			_draw_out_of_range()
 
 
 func _draw_jammed() -> void:
@@ -88,19 +80,6 @@ func _draw_detected() -> void:
 	)
 
 	_draw_status_label("Detected", COLOR_DETECTED)
-
-
-func _draw_out_of_range() -> void:
-	var radius := BASE_RADIUS
-
-	var segments := 16
-	for i in range(segments):
-		if i % 2 == 0:
-			var a0 := TAU * float(i) / float(segments)
-			var a1 := TAU * float(i + 1) / float(segments)
-			draw_arc(Vector2.ZERO, radius, a0, a1, 6, COLOR_OUT_OF_RANGE, RING_WIDTH, true)
-
-	_draw_status_label("Out of Range", COLOR_OUT_OF_RANGE)
 
 
 func _draw_status_label(text: String, color: Color) -> void:

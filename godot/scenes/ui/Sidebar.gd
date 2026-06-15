@@ -62,8 +62,15 @@ func _ready() -> void:
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
 	GameEvents.tutorial_filter_attributes.connect(_on_tutorial_filter_attributes)
 	GameEvents.selection_changed.connect(_on_selection_changed)
+	resized.connect(func(): GameEvents.sidebar_resized.emit(size.x))
 	_build_sidebar()
 	_refresh_attribute_panel()
+
+	# Publish initial size so listeners (BaseLevel) get a value before any resize.
+	GameEvents.sidebar_resized.emit.call_deferred(size.x)
+	_build_sidebar()
+	_refresh_attribute_panel()
+
 	# Publish the fixed design width to listeners (BaseLevel). Constant, not the
 	# live size.x, so attribute-panel growth doesn't recenter the map.
 	GameEvents.sidebar_resized.emit.call_deferred(SIDEBAR_WIDTH)

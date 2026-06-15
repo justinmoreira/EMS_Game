@@ -19,7 +19,7 @@ min_value = 0.0
 max_value = 10.0
 step = 1.0
 unit = "dBm"
-default_value = 3
+default_value = 5
 
 [sub_resource type="Resource" id="a_tuning"]
 script = ExtResource("spec")
@@ -64,7 +64,7 @@ id = &"sensor"
 display_name = "Sensor"
 group = &"sensors"
 letter = "S"
-color = Color(1, 0.36078432, 0.36078432, 1)
+color = Color(0.878, 0.6, 1, 1)
 sprite_path = "res://assets/sprites/sensor.png"
 animated_sprite_path = "res://assets/sprites/sensorAni.png"
 attributes = [SubResource("a_unit_name"), SubResource("a_sensitivity"), SubResource("a_tuning"), SubResource("a_height"), SubResource("a_bandwidth"), SubResource("a_scanning")]

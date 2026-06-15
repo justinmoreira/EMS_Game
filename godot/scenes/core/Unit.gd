@@ -17,6 +17,7 @@ var unit_visual: UnitVisual:
 
 var _selection_area: Area2D
 var _is_being_dragged: bool = false
+var _drag_cleared_links: bool = false
 var _drag_start_pos: Vector2 = Vector2.ZERO
 var _drag_distance: float = 0.0
 
@@ -99,25 +100,78 @@ func _spawn_visual() -> void:
 func update_ranges() -> void:
 	if _unit_visual == null:
 		return
+
 	var is_transceiver = is_in_group("transceivers")
+	var is_jammer = is_in_group("jammers")
+	var is_sensor = is_in_group("sensors")
 	var power: float = get_value(&"power", 0.0)
 	var height: float = get_value(&"height", 0.0)
 	var frequency: float = get_value(&"frequency", 1000.0)
 
-	var max_range = PhysicsEngine.calculate_signal_range(power, height, height, frequency)
-	_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
+	var ground_h: float = 0.0
+	var terrain = get_tree().get_first_node_in_group("terrain")
+	if terrain and terrain.has_method("get_ground_height_at_pos"):
+		ground_h = terrain.get_ground_height_at_pos(global_position)
 
 	if is_transceiver:
+		var max_range = PhysicsEngine.calculate_signal_range(
+			power,
+			ground_h + height,
+			ground_h + height,
+			frequency,
+			0.5,
+			PhysicsEngine.TRANSCEIVER_BALANCE_RATIO
+		)
+		_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
+
 		var bw_idx: int = get_value(&"transceiver_bandwidth", 0)
 		var bw_power: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
 		var bw_penalty: float = PhysicsEngine.bandwidth_penalty(bw_idx)
 		if bw_penalty > 0.0:
 			var strong_range = PhysicsEngine.calculate_signal_range(
-				power, height, height, frequency, PhysicsEngine.NOISE_FLOOR / bw_power
+				power,
+				ground_h + height,
+				ground_h + height,
+				frequency,
+				PhysicsEngine.NOISE_FLOOR / bw_power,
+				PhysicsEngine.TRANSCEIVER_BALANCE_RATIO
 			)
 			_unit_visual.set_ring("strong_range", min(strong_range, max_range), "STRONG SIGNAL")
 		else:
 			_unit_visual.remove_ring("strong_range")
+
+	elif is_jammer:
+		var bw_idx: int = get_value(&"jammer_bandwidth", 0)
+		var bw_power: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
+		var max_range := PhysicsEngine.calculate_signal_range(
+			power,
+			ground_h + height,
+			ground_h + height,
+			frequency,
+			PhysicsEngine.NOISE_FLOOR,
+			bw_power * PhysicsEngine.JAMMER_BALANCE_RATIO
+		)
+		_unit_visual.set_ring("max_range", max_range, "JAM RANGE")
+		_unit_visual.remove_ring("strong_range")
+
+	elif is_sensor:
+		var sensitivity: float = get_value(&"sensitivity", 3.0)
+		var tuning_frequency: float = get_value(&"tuning_frequency", 1000.0)
+		var bw_idx: int = get_value(&"sensor_bandwidth", 1)
+		var threshold := (
+			lerpf(3.0, PhysicsEngine.NOISE_FLOOR, sensitivity / 10.0)
+			+ PhysicsEngine.bandwidth_penalty(bw_idx)
+		)
+
+		var detection_range := PhysicsEngine.calculate_signal_range(
+			5.0,
+			ground_h + height,
+			ground_h + height,
+			tuning_frequency,
+			threshold,
+			PhysicsEngine.SENSOR_BALANCE_RATIO
+		)
+		_unit_visual.set_ring("detection", detection_range, "DETECTION RANGE")
 
 
 # ── Interaction (drag / click select) ────────────────────────────────
@@ -144,10 +198,10 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 	# _input so they keep working when the cursor leaves the shape mid-drag.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		# Preserve main #61's UX: clear stale link visuals on drag-press.
-		GameEvents.links_clear_requested.emit()
 		_is_being_dragged = true
 		_drag_start_pos = get_global_mouse_position()
 		_drag_distance = 0.0
+		_drag_cleared_links = false
 		get_tree().root.set_input_as_handled()
 
 
@@ -186,6 +240,9 @@ func _input(event: InputEvent) -> void:
 
 		global_position = base_level.world_uv_to_screen(clamped)
 		_drag_distance = _drag_start_pos.distance_to(global_position)
+		if _drag_distance >= CLICK_DRAG_THRESHOLD_PX and not _drag_cleared_links:
+			GameEvents.links_clear_requested.emit()
+			_drag_cleared_links = true
 		get_tree().root.set_input_as_handled()
 
 

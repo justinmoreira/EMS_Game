@@ -7,15 +7,16 @@ const TUTORIAL_FREQUENCY := 1000.0
 const FREQUENCY_TOLERANCE := 5.0
 const PLACEMENT_TOLERANCE := 75.0
 const MOVE_TARGET_TOLERANCE := 50.0
-const FIRST_TRANSCEIVER_POS := Vector2(550, 260)
-const FIRST_TRANSCEIVER_GREEN_POS := Vector2(650, 260)
-const SECOND_TRANSCEIVER_POS := Vector2(950, 260)
-const SENSOR_POS := Vector2(600, 370)
-const JAMMER_POS := Vector2(690, 180)
+const FIRST_TRANSCEIVER_POS := Vector2(600, 780)
+const FIRST_TRANSCEIVER_GREEN_POS := Vector2(690, 780)
+const SECOND_TRANSCEIVER_POS := Vector2(850, 780)
+const SENSOR_POS := Vector2(680, 960)
+const JAMMER_POS := Vector2(690, 700)
 const UNIT_ID_TRANSCEIVER := &"transceiver"
 const UNIT_ID_SENSOR := &"sensor"
 const UNIT_ID_JAMMER := &"jammer"
 const LOCK_ALL_ATTRIBUTES := "__lock_all__"
+
 enum TutorialStep {
 	WELCOME,
 	INTRO_MAP,
@@ -53,11 +54,12 @@ enum TutorialStep {
 	VIEW_UNIT_RANGE,
 	TRY_UNIT_DETAILS_TOGGLE,
 	TRY_SUGGESTIONS_TOGGLE,
-	TRY_BIDIRECTIONAL_LINK_LINES_TOGGLE,
+	TRY_TERRAIN_HEATMAP_TOGGLE,
 	EXPLAIN_HEIGHTMAP_AND_GRID,
 	DISPLAY_SETTINGS_COMPLETE,
 	COMPLETE
 }
+
 var _tutorial_step: TutorialStep = TutorialStep.WELCOME
 var _first_transceiver: Node = null
 var _second_transceiver: Node = null

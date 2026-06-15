@@ -4,11 +4,11 @@ const UNIT_ID_TRANSCEIVER := &"transceiver"
 const UNIT_ID_SENSOR := &"sensor"
 const UNIT_ID_JAMMER := &"jammer"
 
-const FIRST_TRANSCEIVER_POS := Vector2(550, 260)
-const FIRST_TRANSCEIVER_GREEN_POS := Vector2(650, 260)
-const SECOND_TRANSCEIVER_POS := Vector2(950, 260)
-const SENSOR_POS := Vector2(600, 370)
-const JAMMER_POS := Vector2(690, 180)
+const FIRST_TRANSCEIVER_POS := Vector2(600, 780)
+const FIRST_TRANSCEIVER_GREEN_POS := Vector2(690, 780)
+const SECOND_TRANSCEIVER_POS := Vector2(850, 780)
+const SENSOR_POS := Vector2(680, 960)
+const JAMMER_POS := Vector2(690, 690)
 
 enum TutorialStep {
 	WELCOME,
@@ -47,7 +47,7 @@ enum TutorialStep {
 	VIEW_UNIT_RANGE,
 	TRY_UNIT_DETAILS_TOGGLE,
 	TRY_SUGGESTIONS_TOGGLE,
-	TRY_BIDIRECTIONAL_LINK_LINES_TOGGLE,
+	TRY_TERRAIN_HEATMAP_TOGGLE,
 	EXPLAIN_HEIGHTMAP_AND_GRID,
 	DISPLAY_SETTINGS_COMPLETE,
 	COMPLETE
@@ -329,7 +329,7 @@ static func step_data(step: int) -> Dictionary:
 				_text(
 					[
 						"The Jammer is tuned to the same frequency as the Transceivers.\n\n",
-						"Move the Jammer frequency below 995 or above 1005,, then press Confirm."
+						"Move the Jammer frequency below 995 or above 1005, then press Confirm."
 					]
 				)
 			)
@@ -387,13 +387,15 @@ static func step_data(step: int) -> Dictionary:
 				"Toggle Suggestions.\n\nThis turns guidance hints or visual aids on and off."
 			)
 
-		TutorialStep.TRY_BIDIRECTIONAL_LINK_LINES_TOGGLE:
+		TutorialStep.TRY_TERRAIN_HEATMAP_TOGGLE:
 			return _step(
 				_text(
 					[
-						"Toggle Bidirectional Link Lines.\n\n",
-						"This controls whether both directions of a Transceiver link ",
-						"are shown."
+						"Toggle Terrain Interference Heatmap.\n\n",
+						"This visualizes where terrain may weaken signal paths. Hills, ",
+						"elevation changes, and blocked paths can make communication ",
+						"less reliable, so the heatmap helps explain why a link may be ",
+						"stronger in one area and weaker in another."
 					]
 				)
 			)
@@ -521,8 +523,8 @@ static func display_setting_key_for_step(step: int) -> String:
 			return "unit_details"
 		TutorialStep.TRY_SUGGESTIONS_TOGGLE:
 			return "suggestions"
-		TutorialStep.TRY_BIDIRECTIONAL_LINK_LINES_TOGGLE:
-			return "bidirectional_link_lines"
+		TutorialStep.TRY_TERRAIN_HEATMAP_TOGGLE:
+			return "terrain_heatmap"
 		_:
 			return ""
 
@@ -537,8 +539,14 @@ static func display_toggle_node_names(setting_key: String) -> Array[String]:
 			return ["UnitDetailsToggle", "DetailsToggle"]
 		"suggestions":
 			return ["SuggestionsToggle", "SuggestionToggle"]
-		"bidirectional_link_lines":
-			return ["BidirectionalLinkLinesToggle", "BidirectionalToggle"]
+		"terrain_heatmap":
+			return [
+				"TerrainInterferenceHeatmapToggle",
+				"TerrainHeatmapToggle",
+				"InterferenceHeatmapToggle",
+				"HeatmapToggle",
+				"TerrainToggle"
+			]
 		"heightmap_shader":
 			return ["HeightmapShaderToggle", "ShaderToggle", "Toggle"]
 		"grid":
@@ -567,11 +575,17 @@ static func display_setting_result(setting_key: String) -> Dictionary:
 		"suggestions":
 			return _step(
 				"Good. Suggestions can provide extra guidance.",
-				TutorialStep.TRY_BIDIRECTIONAL_LINK_LINES_TOGGLE
+				TutorialStep.TRY_TERRAIN_HEATMAP_TOGGLE
 			)
-		"bidirectional_link_lines":
+		"terrain_heatmap":
 			return _step(
-				"Good. Bidirectional Link Lines show both directions.",
+				_text(
+					[
+						"Good. The Terrain Interference Heatmap helps show where ",
+						"terrain may weaken or block signal paths. Use it when you ",
+						"want to understand why a link is weaker in one area than another."
+					]
+				),
 				TutorialStep.EXPLAIN_HEIGHTMAP_AND_GRID
 			)
 		_:
