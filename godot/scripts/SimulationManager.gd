@@ -41,11 +41,21 @@ func simulate() -> void:
 	for sensor in sensors:
 		for tx in transceivers:
 			detect_results.append(
-				{"sensor": sensor, "target": tx, "target_type": "transceiver", "detected": calculate_detection(sensor, tx)}
+				{
+					"sensor": sensor,
+					"target": tx,
+					"target_type": "transceiver",
+					"detected": calculate_detection(sensor, tx)
+				}
 			)
 		for tx in jammers:
 			detect_results.append(
-				{"sensor": sensor, "target": tx, "target_type": "jammer", "detected": calculate_detection(sensor, tx)}
+				{
+					"sensor": sensor,
+					"target": tx,
+					"target_type": "jammer",
+					"detected": calculate_detection(sensor, tx)
+				}
 			)
 	print(detect_results)
 	GameEvents.simulation_complete.emit(link_results, detect_results)
