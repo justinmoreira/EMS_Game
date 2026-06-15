@@ -24,7 +24,7 @@ func simulate() -> void:
 	var jammers = get_tree().get_nodes_in_group("jammers")
 	var sensors = get_tree().get_nodes_in_group("sensors")
 	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
-	
+
 	var jammer_descs: Array = []
 	for jammer_node in jammers:
 		var jammer_px: Vector2
@@ -49,7 +49,7 @@ func simulate() -> void:
 				}
 			)
 		)
-		
+
 	for i in range(transceivers.size()):
 		var unit_a = transceivers[i] as Unit
 		for j in range(transceivers.size()):
@@ -213,7 +213,7 @@ func calculate_detection(srx: Unit, tx: Unit, jammers: Array) -> Dictionary:
 		terrain_loss = PhysicsEngine.compute_terrain_loss(
 			tx_px, srx_px, z_tx, z_rx, terrain.height_grid, terrain.map_origin, terrain.map_scale
 		)
-	
+
 	var interference = PhysicsEngine.calculate_interference(
 		srx.tuning_frequency,
 		z_rx,
@@ -224,16 +224,15 @@ func calculate_detection(srx: Unit, tx: Unit, jammers: Array) -> Dictionary:
 		terrain.map_scale if terrain != null else Vector2()
 	)
 
-	var is_detected = PhysicsEngine.is_detected(tx, srx, dist, terrain_loss, z_tx, z_rx, interference)
+	var is_detected = PhysicsEngine.is_detected(
+		tx, srx, dist, terrain_loss, z_tx, z_rx, interference
+	)
 	var is_jammed = interference > PhysicsEngine.NOISE_FLOOR
-	
+
 	if srx.is_in_group("sensors"):
 		print(is_jammed)
-	
-	return {
-		"detected": is_detected,
-		"jammed": is_jammed
-	}
+
+	return {"detected": is_detected, "jammed": is_jammed}
 
 
 func _update_all_unit_ranges() -> void:

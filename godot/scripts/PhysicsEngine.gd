@@ -73,7 +73,7 @@ static func is_detected(
 	var received_power = calculate_received_power(
 		tx.power, h_tx, h_srx, tx.frequency, dis, terrain_loss
 	)
-	
+
 	if tx.is_in_group("jammers"):
 		return SENSOR_BALANCE_RATIO * received_power > threshold
 	return SENSOR_BALANCE_RATIO * received_power > threshold + interference

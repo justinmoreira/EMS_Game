@@ -50,7 +50,7 @@ func _compute_status(unit: Unit, link_results: Array, detect_results: Array) -> 
 					detected_something = true
 				if d.get("sensor_jammed", false):
 					is_jammed = true
-					
+
 		if is_jammed and not detected_something:
 			return UnitStatusVisual.Status.JAMMED
 
