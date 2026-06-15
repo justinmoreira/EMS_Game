@@ -235,9 +235,6 @@ func calculate_detection(srx: Unit, tx: Unit, jammers: Array) -> Dictionary:
 	)
 	var is_jammed = interference > PhysicsEngine.NOISE_FLOOR
 
-	if srx.is_in_group("sensors"):
-		print(is_jammed)
-
 	return {"detected": is_detected, "jammed": is_jammed}
 
 
