@@ -14,15 +14,21 @@ func _ready() -> void:
 	call_deferred("simulate")
 
 
+func _live_group(group_name: String) -> Array:
+	return get_tree().get_nodes_in_group(group_name).filter(func(node):
+		return is_instance_valid(node) and not node.is_queued_for_deletion()
+	)
+
+
 func simulate() -> void:
 	link_results.clear()
 	detect_results.clear()
 
 	_update_all_unit_ranges()
 
-	var transceivers = get_tree().get_nodes_in_group("transceivers")
-	var jammers = get_tree().get_nodes_in_group("jammers")
-	var sensors = get_tree().get_nodes_in_group("sensors")
+	var transceivers = _live_group("transceivers")
+	var jammers = _live_group("jammers")
+	var sensors = _live_group("sensors")
 	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
 
 	var jammer_descs: Array = []
@@ -237,5 +243,5 @@ func calculate_detection(srx: Unit, tx: Unit, jammers: Array) -> Dictionary:
 
 func _update_all_unit_ranges() -> void:
 	for group in [&"transceivers", &"jammers", &"sensors"]:
-		for unit in get_tree().get_nodes_in_group(group):
+		for unit in _live_group(group):
 			unit.update_ranges()
