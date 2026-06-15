@@ -150,7 +150,7 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 
 	# Is the unit out of max possible range?
 	# TODO: calculate max range for every unit on sim() and store it
-	var tx_max_range = PhysicsEngine.calculate_signal_range(tx.power, z_tx, z_rx, tx.frequency)
+	var tx_max_range = PhysicsEngine.calculate_signal_range(tx.power, z_tx, z_rx, tx.frequency, PhysicsEngine.NOISE_FLOOR, PhysicsEngine.TRANSCEIVER_BALANCE_RATIO)
 	if dist > tx_max_range:
 		return LinkState.FAILED_OUT_OF_RANGE
 
