@@ -12,22 +12,6 @@ var _step: Step = Step.WELCOME
 var _intro_popup_open := false
 
 
-func _ready() -> void:
-	# Render above all 2D content.
-	layer = 100
-
-	GameEvents.units_changed.connect(_on_units_changed)
-
-	if _is_tutorial_complete():
-		_step = Step.DONE
-	else:
-		_start()
-
-	if OS.has_feature("web"):
-		# Reset hook from the web UI's "Tutorial" button.
-		JavaScriptBridge.eval("if(window.initTutorialListener) window.initTutorialListener()")
-
-
 func _is_tutorial_complete() -> bool:
 	if not OS.has_feature("web"):
 		return false

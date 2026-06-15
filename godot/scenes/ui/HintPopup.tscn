@@ -1,8 +1,8 @@
-[gd_scene format=3 uid="uid://bfwdayxgf4vlr"]
+[gd_scene format=3 uid="uid://cqtrocn7ufcl"]
 
-[ext_resource type="Script" uid="uid://dm0a0gh03j46t" path="res://scenes/ui/HintPopup.gd" id="1_03jcs"]
+[ext_resource type="Script" uid="uid://dm0a0gh03j46t" path="res://scenes/ui/TutorialHintPopup.gd" id="1"]
 
-[node name="HintPopup" type="Control" unique_id=358065979]
+[node name="TutorialHintPopup" type="Control" unique_id=1770501051]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,7 +11,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_03jcs")
 
-[node name="Dim" type="ColorRect" parent="." unique_id=88532597]
+[node name="Dim" type="ColorRect" parent="." unique_id=470090597]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -20,7 +20,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 0.4)
 
-[node name="CenterContainer" type="CenterContainer" parent="." unique_id=763966915]
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=822377855]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -28,29 +28,29 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Panel" type="PanelContainer" parent="CenterContainer" unique_id=1423112912]
+[node name="Panel" type="PanelContainer" parent="CenterContainer" unique_id=2113041030]
 custom_minimum_size = Vector2(500, 180)
 layout_mode = 2
 
-[node name="Margin" type="MarginContainer" parent="CenterContainer/Panel" unique_id=1983411627]
+[node name="Margin" type="MarginContainer" parent="CenterContainer/Panel" unique_id=1598550414]
 layout_mode = 2
 theme_override_constants/margin_left = 24
 theme_override_constants/margin_top = 20
 theme_override_constants/margin_right = 24
 theme_override_constants/margin_bottom = 20
 
-[node name="VBox" type="VBoxContainer" parent="CenterContainer/Panel/Margin" unique_id=1100194010]
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/Panel/Margin" unique_id=609024659]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="HintLabel" type="RichTextLabel" parent="CenterContainer/Panel/Margin/VBox" unique_id=787488538]
+[node name="HintLabel" type="RichTextLabel" parent="CenterContainer/Panel/Margin/VBox" unique_id=1918015643]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
 
-[node name="OkButton" type="Button" parent="CenterContainer/Panel/Margin/VBox" unique_id=1095834845]
+[node name="OkButton" type="Button" parent="CenterContainer/Panel/Margin/VBox" unique_id=1129309963]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2

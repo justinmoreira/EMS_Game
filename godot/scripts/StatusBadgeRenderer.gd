@@ -1,7 +1,7 @@
 extends Node
 
 # Owns the per-unit UnitStatusVisual lifecycle. Reacts to simulation_complete,
-# computes status (jammed/detected/out-of-range), drives the badge.
+# computes status (jammed/detected), drives the badge.
 
 const STATUS_VISUAL_SCRIPT := preload("res://scripts/UnitStatusVisual.gd")
 const STATUS_VISUAL_NODE_NAME := "UnitStatusVisual"
