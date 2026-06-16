@@ -46,13 +46,13 @@ const C_BTN_TEXT := Color(0.90, 0.90, 0.90, 1.0)
 const C_BTN_DISABLED := Color(0.10, 0.10, 0.10, 0.5)
 const C_TXT_DISABLED := Color(0.40, 0.40, 0.40, 0.8)
 
-enum _State { IDLE, SCANNING, COMPLETE }
+enum SensorState { IDLE, SCANNING, COMPLETE }
 
 var scan_lo: float = FREQ_MIN
 var scan_hi: float = FREQ_MAX
 
 var _sensor: Node = null
-var _state: _State = _State.IDLE
+var _state: SensorState = SensorState.IDLE
 var _elapsed: float = 0.0
 var _duration: float = 0.0
 var _progress: float = 0.0
@@ -92,7 +92,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_noise_t += delta
 
-	if _state == _State.SCANNING:
+	if _state == SensorState.SCANNING:
 		_elapsed += delta
 		var new_prog := clampf(_elapsed / _duration, 0.0, 1.0)
 		var old_s := int(_progress * TRACE_SAMPLES)
@@ -106,7 +106,7 @@ func _process(delta: float) -> void:
 
 		_progress = new_prog
 		if _progress >= 1.0:
-			_state = _State.COMPLETE
+			_state = SensorState.COMPLETE
 			scan_complete.emit()
 
 	queue_redraw()
@@ -131,13 +131,13 @@ func configure(sensor: Node) -> void:
 
 
 func start_scan() -> void:
-	if _state == _State.SCANNING or _sensor == null:
+	if _state == SensorState.SCANNING or _sensor == null:
 		return
 
 	_rebuild_sources()
 	_reset_scan()
 	_duration = maxf(SCAN_MIN_DURATION, (scan_hi - scan_lo) * SECONDS_PER_MHZ)
-	_state = _State.SCANNING
+	_state = SensorState.SCANNING
 	scan_started.emit(scan_lo, scan_hi)
 
 
@@ -147,7 +147,7 @@ func start_scan() -> void:
 
 
 func _reset_scan() -> void:
-	_state = _State.IDLE
+	_state = SensorState.IDLE
 	_elapsed = 0.0
 	_progress = 0.0
 	_spectrum.fill(0.0)
@@ -360,7 +360,7 @@ func _draw_grid(pr: Rect2) -> void:
 
 
 func _draw_spectrum(pr: Rect2) -> void:
-	if _state == _State.IDLE:
+	if _state == SensorState.IDLE:
 		return
 	var revealed := int(_progress * TRACE_SAMPLES)
 	if revealed < 2:
@@ -382,7 +382,7 @@ func _draw_spectrum(pr: Rect2) -> void:
 
 
 func _draw_sweep_cursor(pr: Rect2) -> void:
-	if _state != _State.SCANNING:
+	if _state != SensorState.SCANNING:
 		return
 	var sy := _sweep_y()
 	draw_line(Vector2(pr.position.x, sy), Vector2(pr.position.x + pr.size.x, sy), C_SWEEP, 2.0)
@@ -415,7 +415,7 @@ func _draw_one_handle(y: float, left: float, right: float, is_lo: bool, hot: boo
 func _draw_header() -> void:
 	var btn_rect = _get_btn_rect()
 	var can_scan := _sensor != null
-	var scanning := _state == _State.SCANNING
+	var scanning := _state == SensorState.SCANNING
 
 	var btn_col: Color
 	var text_col: Color
@@ -476,12 +476,12 @@ func _gui_input(event: InputEvent) -> void:
 
 		if _drag_lo:
 			scan_lo = clampf(_y_to_freq(my), FREQ_MIN, scan_hi - 10.0)
-			if _state != _State.IDLE:
+			if _state != SensorState.IDLE:
 				_reset_scan()
 			accept_event()
 		elif _drag_hi:
 			scan_hi = clampf(_y_to_freq(my), scan_lo + 10.0, FREQ_MAX)
-			if _state != _State.IDLE:
+			if _state != SensorState.IDLE:
 				_reset_scan()
 			accept_event()
 
@@ -521,7 +521,6 @@ func _nice_step(rough: float) -> float:
 	var ratio := rough / mag
 	if ratio < 2.0:
 		return mag
-	elif ratio < 5.0:
+	if ratio < 5.0:
 		return 2.0 * mag
-	else:
-		return 5.0 * mag
+	return 5.0 * mag
