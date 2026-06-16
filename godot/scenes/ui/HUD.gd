@@ -132,7 +132,7 @@ func _on_suggestions_toggled(is_pressed: bool):
 	var level = get_tree().current_scene
 	if level.has_method("toggle_suggestions"):
 		level.toggle_suggestions(is_pressed)
-		
+
 
 func _on_spectrum_toggled(is_pressed: bool):
 	settings["spectrum"] = is_pressed
@@ -189,9 +189,9 @@ func _load_settings() -> void:
 		LinkRenderer.links_visible = settings["link_lines"]
 		LinkRenderer.focus_mode = settings["focus_link_lines"]
 	%FocusLinkLinesToggle.disabled = not settings["link_lines"]
-	
+
 	var level = get_tree().current_scene
 	if level and level.has_method("toggle_spectrum"):
 		level.toggle_spectrum(settings["spectrum"])
-	
+
 	SimulationManager.simulate()

@@ -39,7 +39,6 @@ var _last_highlighted: Unit = null
 var unit_attributes_visible: bool = false
 var terrain_heatmap_enabled: bool = false
 
-
 @onready var background := $BackgroundTexture
 
 # --- Initialization ---
@@ -53,7 +52,7 @@ func _ready():
 	GameEvents.delete_requested.connect(_on_delete_requested)
 	GameEvents.sidebar_resized.connect(_on_sidebar_resized)
 	_on_window_resized()
-	
+
 	spectrum_analyzer = get_tree().get_root().find_child("SpectrumAnalyzer", true, false)
 
 	toggle_suggestions(suggestions_enabled)
@@ -238,7 +237,7 @@ func _on_selection_changed(unit: Node) -> void:
 	var focused: Unit = unit if unit is Unit else null
 	LinkRenderer.set_focused_unit(focused)
 	SimulationManager.simulate()
-	
+
 	if spectrum_analyzer:
 		if unit and unit.is_in_group("sensors"):
 			spectrum_analyzer.configure(unit)
@@ -292,14 +291,13 @@ func toggle_suggestions(enabled: bool) -> void:
 			suggestions_panel = null
 
 	call_deferred("_refresh_suggestions_ui")
-	
+
 
 func toggle_spectrum(enabled: bool) -> void:
 	spectrum_enabled = enabled
-	
+
 	if spectrum_analyzer:
 		spectrum_analyzer.visible = enabled
-	
 
 
 func _refresh_suggestions_ui() -> void:
