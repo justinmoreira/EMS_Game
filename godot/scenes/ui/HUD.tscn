@@ -2,6 +2,7 @@
 
 [ext_resource type="Texture2D" uid="uid://c7d0o05hl4s8p" path="res://assets/gear_icon.png" id="2_atyv1"]
 [ext_resource type="Script" uid="uid://crq4tqakx02qk" path="res://scenes/ui/HUD.gd" id="2_settings_icon"]
+[ext_resource type="Script" uid="uid://d2hf4t1142y50" path="res://scenes/ui/SpectrumAnalyzer.gd" id="3_6ll6g"]
 
 [node name="HUD" type="CanvasLayer" unique_id=437482512]
 layer = 10
@@ -32,7 +33,7 @@ anchor_bottom = 1.0
 offset_left = 4.0
 offset_top = 4.0
 offset_right = 284.0
-offset_bottom = 397.0
+offset_bottom = 362.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -77,6 +78,11 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Terrain Interference Heatmap"
 
+[node name="SpectrumToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1072627871]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Sensor Spectrum Analyzer"
+
 [node name="Separator2" type="HSeparator" parent="SettingsPopup/SettingsContainer" unique_id=1137264128]
 custom_minimum_size = Vector2(0, 10)
 layout_mode = 2
@@ -108,3 +114,14 @@ text = "RANGE"
 [node name="Panel_Margin_VBox#HeatmapToggle" type="CheckButton" parent="." unique_id=1141549058]
 unique_name_in_owner = true
 text = "TERRAIN HEATMAP"
+
+[node name="SpectrumAnalyzer" type="Control" parent="." unique_id=2018716424]
+unique_name_in_owner = true
+visible = false
+layout_mode = 3
+anchors_preset = 0
+offset_left = 1676.0
+offset_top = 383.0
+offset_right = 1816.0
+offset_bottom = 803.0
+script = ExtResource("3_6ll6g")

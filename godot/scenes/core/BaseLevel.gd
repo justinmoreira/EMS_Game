@@ -24,6 +24,11 @@ var suggestions_panel: Control = null
 @export var base_hover_radius: float = 32.0
 @export var show_signal_ranges: bool = false
 @export var suggestions_enabled: bool = false
+
+@export var spectrum_enabled: bool = false
+
+var spectrum_analyzer: SpectrumAnalyzer
+
 # Sidebar layout — populated via signal, no global find_child reach.
 # Width is the live x-size of the sidebar; 0 if no sidebar in this scene.
 var sidebar_width: float = 0.0
@@ -33,6 +38,7 @@ var sidebar_width: float = 0.0
 var _last_highlighted: Unit = null
 var unit_attributes_visible: bool = false
 var terrain_heatmap_enabled: bool = false
+
 
 @onready var background := $BackgroundTexture
 
@@ -47,6 +53,8 @@ func _ready():
 	GameEvents.delete_requested.connect(_on_delete_requested)
 	GameEvents.sidebar_resized.connect(_on_sidebar_resized)
 	_on_window_resized()
+	
+	spectrum_analyzer = get_tree().get_root().find_child("SpectrumAnalyzer", true, false)
 
 	toggle_suggestions(suggestions_enabled)
 
@@ -230,6 +238,12 @@ func _on_selection_changed(unit: Node) -> void:
 	var focused: Unit = unit if unit is Unit else null
 	LinkRenderer.set_focused_unit(focused)
 	SimulationManager.simulate()
+	
+	if spectrum_analyzer:
+		if unit and unit.is_in_group("sensors"):
+			spectrum_analyzer.configure(unit)
+		else:
+			spectrum_analyzer.configure(null)
 
 
 func _set_unit_selected_visual(unit: Unit, selected: bool) -> void:
@@ -278,6 +292,14 @@ func toggle_suggestions(enabled: bool) -> void:
 			suggestions_panel = null
 
 	call_deferred("_refresh_suggestions_ui")
+	
+
+func toggle_spectrum(enabled: bool) -> void:
+	spectrum_enabled = enabled
+	
+	if spectrum_analyzer:
+		spectrum_analyzer.visible = enabled
+	
 
 
 func _refresh_suggestions_ui() -> void:

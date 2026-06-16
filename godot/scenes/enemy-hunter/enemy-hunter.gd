@@ -1,4 +1,4 @@
-extends ContourDemo
+extends ContourGen
 
 # Enemy Hunter Mode Controller - Event-driven state machine matching TutorialController structure
 
@@ -42,7 +42,14 @@ class _DetectionHintOverlay:
 	const SEGMENTS := 48
 
 	var _time: float = 0.0
+	
+	func _ready():
+		var hud = get_tree().get_root().find_child("HUD", true, false)
 
+		if hud and hud.has_method("set_spectrum_enabled"):
+			hud.set_spectrum_enabled(true)
+		
+	
 	func _process(delta: float) -> void:
 		_time += delta
 		queue_redraw()
