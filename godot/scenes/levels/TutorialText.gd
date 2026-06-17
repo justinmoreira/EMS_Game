@@ -4,8 +4,8 @@ const UNIT_ID_TRANSCEIVER := &"transceiver"
 const UNIT_ID_SENSOR := &"sensor"
 const UNIT_ID_JAMMER := &"jammer"
 
-const FIRST_TRANSCEIVER_POS := Vector2(600, 780)
-const FIRST_TRANSCEIVER_GREEN_POS := Vector2(690, 780)
+const FIRST_TRANSCEIVER_POS := Vector2(580, 780)
+const FIRST_TRANSCEIVER_GREEN_POS := Vector2(650, 780)
 const SECOND_TRANSCEIVER_POS := Vector2(850, 780)
 const SENSOR_POS := Vector2(680, 910)
 const JAMMER_POS := Vector2(690, 690)

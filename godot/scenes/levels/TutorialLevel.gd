@@ -7,8 +7,8 @@ const TUTORIAL_FREQUENCY := 1000.0
 const FREQUENCY_TOLERANCE := 5.0
 const PLACEMENT_TOLERANCE := 75.0
 const MOVE_TARGET_TOLERANCE := 50.0
-const FIRST_TRANSCEIVER_POS := Vector2(600, 780)
-const FIRST_TRANSCEIVER_GREEN_POS := Vector2(690, 780)
+const FIRST_TRANSCEIVER_POS := Vector2(580, 780)
+const FIRST_TRANSCEIVER_GREEN_POS := Vector2(650, 780)
 const SECOND_TRANSCEIVER_POS := Vector2(850, 780)
 const SENSOR_POS := Vector2(680, 910)
 const JAMMER_POS := Vector2(690, 700)
@@ -17,9 +17,9 @@ const UNIT_ID_SENSOR := &"sensor"
 const UNIT_ID_JAMMER := &"jammer"
 const LOCK_ALL_ATTRIBUTES := "__lock_all__"
 
-const TutorialStep = TUTORIAL_TEXT.TutorialStep
+const TUTORIAL_STEP = TUTORIAL_TEXT.TutorialStep
 
-var _tutorial_step: int = TutorialStep.WELCOME
+var _tutorial_step: int = TUTORIAL_STEP.WELCOME
 var _first_transceiver: Node = null
 var _second_transceiver: Node = null
 var _sensor: Node = null
@@ -75,7 +75,7 @@ func _connect_tutorial_signals() -> void:
 func _start_tutorial() -> void:
 	_remove_sandbox_intro_popups()
 	intro_popup_open = false
-	_enter_step(TutorialStep.WELCOME)
+	_enter_step(TUTORIAL_STEP.WELCOME)
 
 
 func _process(_delta: float) -> void:
@@ -122,7 +122,7 @@ func _enter_step(step: int) -> void:
 	_waiting_display_setting_key = ""
 	_waiting_display_setting_original = null
 
-	if step == TutorialStep.COMPLETE:
+	if step == TUTORIAL_STEP.COMPLETE:
 		_setup()
 		_current_instruction_text = ""
 		_update_repeat_instruction_button_visibility()
@@ -132,7 +132,7 @@ func _enter_step(step: int) -> void:
 	if TUTORIAL_TEXT.should_run_simulation_on_enter(step):
 		_run_simulation_if_possible()
 
-	if step == TutorialStep.MOVE_FIRST_TRANSCEIVER_CLOSER:
+	if step == TUTORIAL_STEP.MOVE_FIRST_TRANSCEIVER_CLOSER:
 		_unlock_unit(_first_transceiver)
 
 	_apply_step_start_side_effects(step)
@@ -167,17 +167,12 @@ func _restore_current_edit_state() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	if refresh_generation != _edit_refresh_generation:
-		return
-	if requested_step != _tutorial_step:
+	if _edit_refresh_is_stale(refresh_generation, requested_step):
 		return
 
 	var unit := _expected_edit_unit_for_current_step()
 	var attributes := _attributes_for_current_step()
-
-	if unit == null or not is_instance_valid(unit):
-		return
-	if attributes.is_empty():
+	if not _can_restore_edit_state(unit, attributes):
 		return
 
 	_tutorial_selection_refreshing = true
@@ -187,13 +182,10 @@ func _restore_current_edit_state() -> void:
 	GameEvents.clear_selection()
 	await get_tree().process_frame
 
-	if refresh_generation != _edit_refresh_generation:
+	if _edit_refresh_is_stale(refresh_generation, requested_step):
 		_tutorial_selection_refreshing = false
 		return
-	if requested_step != _tutorial_step:
-		_tutorial_selection_refreshing = false
-		return
-	if unit == null or not is_instance_valid(unit):
+	if not _can_restore_edit_state(unit, attributes):
 		_tutorial_selection_refreshing = false
 		return
 
@@ -211,26 +203,34 @@ func _restore_current_edit_state() -> void:
 	_tutorial_selection_refreshing = false
 
 
+func _edit_refresh_is_stale(refresh_generation: int, requested_step: int) -> bool:
+	return refresh_generation != _edit_refresh_generation or requested_step != _tutorial_step
+
+
+func _can_restore_edit_state(unit: Node, attributes: Array) -> bool:
+	return unit != null and is_instance_valid(unit) and not attributes.is_empty()
+
+
 func _apply_step_start_side_effects(step: int) -> void:
 	match step:
-		TutorialStep.EXPLAIN_FREQUENCY:
+		TUTORIAL_STEP.EXPLAIN_FREQUENCY:
 			_frequency_went_outside_range = false
 			_lock_transceiver_frequency = false
 			_lock_transceiver_frequencies()
 			_run_simulation_if_possible()
-		TutorialStep.EXPLAIN_POWER:
+		TUTORIAL_STEP.EXPLAIN_POWER:
 			_original_power = _read_number_from_unit(_first_transceiver, ["power"], 10.0)
-		TutorialStep.EXPLAIN_HEIGHT:
+		TUTORIAL_STEP.EXPLAIN_HEIGHT:
 			_original_height = _read_number_from_unit(_first_transceiver, ["height"], 10.0)
-		TutorialStep.EXPLAIN_SENSOR_SENSITIVITY:
+		TUTORIAL_STEP.EXPLAIN_SENSOR_SENSITIVITY:
 			_original_sensor_sensitivity = _read_number_from_unit(
 				_sensor, ["sensitivity", "detection_sensitivity"], 10.0
 			)
-		TutorialStep.EXPLAIN_SENSOR_TUNING:
+		TUTORIAL_STEP.EXPLAIN_SENSOR_TUNING:
 			_original_sensor_tuning = _read_number_from_unit(
 				_sensor, ["tuning_frequency"], TUTORIAL_FREQUENCY
 			)
-		TutorialStep.CHANGE_JAMMER_FREQUENCY_AWAY:
+		TUTORIAL_STEP.CHANGE_JAMMER_FREQUENCY_AWAY:
 			_lock_jammer_frequency = false
 			_set_number_on_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
 			_run_simulation_if_possible()
@@ -250,13 +250,13 @@ func _on_tutorial_unit_placed(unit: Node) -> void:
 
 func _placement_target_for_current_step(unit: Node) -> Variant:
 	match _tutorial_step:
-		TutorialStep.PLACE_FIRST_TRANSCEIVER:
+		TUTORIAL_STEP.PLACE_FIRST_TRANSCEIVER:
 			return FIRST_TRANSCEIVER_POS if _is_transceiver(unit) else null
-		TutorialStep.PLACE_SECOND_TRANSCEIVER:
+		TUTORIAL_STEP.PLACE_SECOND_TRANSCEIVER:
 			return SECOND_TRANSCEIVER_POS if _is_transceiver(unit) else null
-		TutorialStep.PLACE_SENSOR:
+		TUTORIAL_STEP.PLACE_SENSOR:
 			return SENSOR_POS if _is_sensor(unit) else null
-		TutorialStep.PLACE_JAMMER:
+		TUTORIAL_STEP.PLACE_JAMMER:
 			return JAMMER_POS if _is_jammer(unit) else null
 		_:
 			return null
@@ -293,7 +293,7 @@ func _check_pending_placement() -> void:
 func _check_transceiver_move_target() -> void:
 	if intro_popup_open:
 		return
-	if _tutorial_step != TutorialStep.MOVE_FIRST_TRANSCEIVER_CLOSER:
+	if _tutorial_step != TUTORIAL_STEP.MOVE_FIRST_TRANSCEIVER_CLOSER:
 		return
 	if _first_transceiver == null or not is_instance_valid(_first_transceiver):
 		return
@@ -301,7 +301,7 @@ func _check_transceiver_move_target() -> void:
 		_snap_unit_to_local_pos(_first_transceiver, FIRST_TRANSCEIVER_GREEN_POS)
 		_lock_unit_to(_first_transceiver, FIRST_TRANSCEIVER_GREEN_POS)
 		_run_simulation_if_possible()
-		_enter_step(TutorialStep.EXPLAIN_SUCCESSFUL_LINK)
+		_enter_step(TUTORIAL_STEP.EXPLAIN_SUCCESSFUL_LINK)
 
 
 func _accept_placement(unit: Node) -> void:
@@ -309,26 +309,26 @@ func _accept_placement(unit: Node) -> void:
 	_wrong_placement_popup_open = false
 	_clear_placement_marker()
 	match _tutorial_step:
-		TutorialStep.PLACE_FIRST_TRANSCEIVER:
+		TUTORIAL_STEP.PLACE_FIRST_TRANSCEIVER:
 			_first_transceiver = unit
 			_lock_unit_to(unit, FIRST_TRANSCEIVER_POS)
 			_run_simulation_if_possible()
-			_enter_step(TutorialStep.FIRST_TRANSCEIVER_PLACED)
-		TutorialStep.PLACE_SECOND_TRANSCEIVER:
+			_enter_step(TUTORIAL_STEP.FIRST_TRANSCEIVER_PLACED)
+		TUTORIAL_STEP.PLACE_SECOND_TRANSCEIVER:
 			_second_transceiver = unit
 			_lock_unit_to(unit, SECOND_TRANSCEIVER_POS)
 			_run_simulation_if_possible()
-			_enter_step(TutorialStep.EXPLAIN_LINK)
-		TutorialStep.PLACE_SENSOR:
+			_enter_step(TUTORIAL_STEP.EXPLAIN_LINK)
+		TUTORIAL_STEP.PLACE_SENSOR:
 			_sensor = unit
 			_lock_unit_to(unit, SENSOR_POS)
 			_run_simulation_if_possible()
-			_enter_step(TutorialStep.EXPLAIN_SENSOR_SENSITIVITY)
-		TutorialStep.PLACE_JAMMER:
+			_enter_step(TUTORIAL_STEP.EXPLAIN_SENSOR_SENSITIVITY)
+		TUTORIAL_STEP.PLACE_JAMMER:
 			_jammer = unit
 			_lock_unit_to(unit, JAMMER_POS)
 			_run_simulation_if_possible()
-			_enter_step(TutorialStep.CHANGE_JAMMER_FREQUENCY_AWAY)
+			_enter_step(TUTORIAL_STEP.CHANGE_JAMMER_FREQUENCY_AWAY)
 
 
 func _on_tutorial_unit_selected(unit: Node) -> void:
@@ -336,24 +336,24 @@ func _on_tutorial_unit_selected(unit: Node) -> void:
 		return
 	if unit == null or not is_instance_valid(unit):
 		return
-	if _tutorial_step == TutorialStep.SELECT_TRANSCEIVER:
+	if _tutorial_step == TUTORIAL_STEP.SELECT_TRANSCEIVER:
 		if unit == _first_transceiver:
-			_enter_step(TutorialStep.EXPLAIN_FREQUENCY)
+			_enter_step(TUTORIAL_STEP.EXPLAIN_FREQUENCY)
 		elif _is_transceiver(unit):
 			_lock_all_attributes()
 		return
-	if _tutorial_step == TutorialStep.VIEW_UNIT_RANGE:
+	if _tutorial_step == TUTORIAL_STEP.VIEW_UNIT_RANGE:
 		if _is_tutorial_map_unit(unit):
 			_selected_tutorial_unit = unit
 			_lock_all_attributes()
-			_say([TUTORIAL_TEXT.unit_range_selected_text()], TutorialStep.TRY_UNIT_DETAILS_TOGGLE)
+			_say([TUTORIAL_TEXT.unit_range_selected_text()], TUTORIAL_STEP.TRY_UNIT_DETAILS_TOGGLE)
 		return
 
-	if _tutorial_step == TutorialStep.SELECT_UNIT_FOR_HEATMAP:
+	if _tutorial_step == TUTORIAL_STEP.SELECT_UNIT_FOR_HEATMAP:
 		if _is_tutorial_map_unit(unit):
 			_selected_tutorial_unit = unit
 			_lock_all_attributes()
-			_say([TUTORIAL_TEXT.heatmap_selected_text()], TutorialStep.EXPLAIN_HEIGHTMAP_AND_GRID)
+			_say([TUTORIAL_TEXT.heatmap_selected_text()], TUTORIAL_STEP.EXPLAIN_HEIGHTMAP_AND_GRID)
 		return
 
 	var expected_unit := _expected_edit_unit_for_current_step()
@@ -369,15 +369,15 @@ func _on_tutorial_unit_selected(unit: Node) -> void:
 
 func _on_tutorial_confirm_pressed() -> void:
 	match _tutorial_step:
-		TutorialStep.CHANGE_FREQUENCY_AWAY:
+		TUTORIAL_STEP.CHANGE_FREQUENCY_AWAY:
 			var value := _read_number_from_unit(
 				_first_transceiver, ["frequency"], TUTORIAL_FREQUENCY
 			)
 			if _outside_match_range(value):
 				_frequency_went_outside_range = true
 				_run_simulation_if_possible()
-				_say([TUTORIAL_TEXT.frequency_outside_text()], TutorialStep.CHANGE_FREQUENCY_BACK)
-		TutorialStep.CHANGE_FREQUENCY_BACK:
+				_say([TUTORIAL_TEXT.frequency_outside_text()], TUTORIAL_STEP.CHANGE_FREQUENCY_BACK)
+		TUTORIAL_STEP.CHANGE_FREQUENCY_BACK:
 			var value := _read_number_from_unit(
 				_first_transceiver, ["frequency"], TUTORIAL_FREQUENCY
 			)
@@ -385,58 +385,58 @@ func _on_tutorial_confirm_pressed() -> void:
 				_lock_transceiver_frequencies()
 				_lock_transceiver_frequency = true
 				_run_simulation_if_possible()
-				_say([TUTORIAL_TEXT.frequency_restored_text()], TutorialStep.EXPLAIN_POWER)
-		TutorialStep.LOWER_POWER:
+				_say([TUTORIAL_TEXT.frequency_restored_text()], TUTORIAL_STEP.EXPLAIN_POWER)
+		TUTORIAL_STEP.LOWER_POWER:
 			_confirm_number_less(
-				_first_transceiver, ["power"], _original_power, TutorialStep.RAISE_POWER
+				_first_transceiver, ["power"], _original_power, TUTORIAL_STEP.RAISE_POWER
 			)
-		TutorialStep.RAISE_POWER:
+		TUTORIAL_STEP.RAISE_POWER:
 			_confirm_number_at_least(
 				_first_transceiver,
 				["power"],
 				_original_power,
 				[TUTORIAL_TEXT.power_restored_text()],
-				TutorialStep.EXPLAIN_HEIGHT
+				TUTORIAL_STEP.EXPLAIN_HEIGHT
 			)
-		TutorialStep.INCREASE_HEIGHT:
+		TUTORIAL_STEP.INCREASE_HEIGHT:
 			_confirm_number_greater(
 				_first_transceiver,
 				["height"],
 				_original_height,
 				[TUTORIAL_TEXT.height_increased_text()],
-				TutorialStep.INTRO_SENSOR
+				TUTORIAL_STEP.INTRO_SENSOR
 			)
-		TutorialStep.LOWER_SENSOR_SENSITIVITY:
+		TUTORIAL_STEP.LOWER_SENSOR_SENSITIVITY:
 			_confirm_number_less(
 				_sensor,
 				["sensitivity", "detection_sensitivity"],
 				_original_sensor_sensitivity,
-				TutorialStep.EXPLAIN_SENSOR_TUNING,
+				TUTORIAL_STEP.EXPLAIN_SENSOR_TUNING,
 				[TUTORIAL_TEXT.sensitivity_lowered_text()]
 			)
-		TutorialStep.CHANGE_SENSOR_TUNING_AWAY:
+		TUTORIAL_STEP.CHANGE_SENSOR_TUNING_AWAY:
 			var tuning := _read_number_from_unit(_sensor, ["tuning_frequency"], TUTORIAL_FREQUENCY)
 			if abs(tuning - _original_sensor_tuning) >= FREQUENCY_TOLERANCE:
 				_run_simulation_if_possible()
-				_say([TUTORIAL_TEXT.sensor_tuning_changed_text()], TutorialStep.EXPLAIN_BANDWIDTH)
-		TutorialStep.INCREASE_BANDWIDTH:
+				_say([TUTORIAL_TEXT.sensor_tuning_changed_text()], TUTORIAL_STEP.EXPLAIN_BANDWIDTH)
+		TUTORIAL_STEP.INCREASE_BANDWIDTH:
 			_run_simulation_if_possible()
-			_say([TUTORIAL_TEXT.bandwidth_increased_text()], TutorialStep.INTRO_JAMMER)
-		TutorialStep.CHANGE_JAMMER_FREQUENCY_AWAY:
+			_say([TUTORIAL_TEXT.bandwidth_increased_text()], TUTORIAL_STEP.INTRO_JAMMER)
+		TUTORIAL_STEP.CHANGE_JAMMER_FREQUENCY_AWAY:
 			var value := _read_number_from_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
 			if _outside_match_range(value):
 				_run_simulation_if_possible()
 				_say(
 					[TUTORIAL_TEXT.jammer_moved_away_text()],
-					TutorialStep.CHANGE_JAMMER_FREQUENCY_BACK
+					TUTORIAL_STEP.CHANGE_JAMMER_FREQUENCY_BACK
 				)
-		TutorialStep.CHANGE_JAMMER_FREQUENCY_BACK:
+		TUTORIAL_STEP.CHANGE_JAMMER_FREQUENCY_BACK:
 			var value := _read_number_from_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
 			if _inside_match_range(value):
 				_lock_jammer_frequency = true
 				_set_number_on_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
 				_run_simulation_if_possible()
-				_say([TUTORIAL_TEXT.jammer_restored_text()], TutorialStep.INTRO_DISPLAY_SETTINGS)
+				_say([TUTORIAL_TEXT.jammer_restored_text()], TUTORIAL_STEP.INTRO_DISPLAY_SETTINGS)
 
 
 func _confirm_number_less(
@@ -573,7 +573,7 @@ func _update_repeat_instruction_button_visibility() -> void:
 		return
 
 	var has_instruction := not _current_instruction_text.strip_edges().is_empty()
-	var tutorial_finished := _tutorial_step == TutorialStep.COMPLETE
+	var tutorial_finished := _tutorial_step == TUTORIAL_STEP.COMPLETE
 	_repeat_instruction_button.visible = (
 		has_instruction and not intro_popup_open and not tutorial_finished
 	)
