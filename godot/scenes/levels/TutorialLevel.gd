@@ -10,57 +10,16 @@ const MOVE_TARGET_TOLERANCE := 50.0
 const FIRST_TRANSCEIVER_POS := Vector2(600, 780)
 const FIRST_TRANSCEIVER_GREEN_POS := Vector2(690, 780)
 const SECOND_TRANSCEIVER_POS := Vector2(850, 780)
-const SENSOR_POS := Vector2(680, 960)
+const SENSOR_POS := Vector2(680, 910)
 const JAMMER_POS := Vector2(690, 700)
 const UNIT_ID_TRANSCEIVER := &"transceiver"
 const UNIT_ID_SENSOR := &"sensor"
 const UNIT_ID_JAMMER := &"jammer"
 const LOCK_ALL_ATTRIBUTES := "__lock_all__"
 
-enum TutorialStep {
-	WELCOME,
-	INTRO_MAP,
-	PLACE_FIRST_TRANSCEIVER,
-	FIRST_TRANSCEIVER_PLACED,
-	PLACE_SECOND_TRANSCEIVER,
-	EXPLAIN_LINK,
-	EXPLAIN_BANDWIDTH_PENALTY,
-	MOVE_FIRST_TRANSCEIVER_CLOSER,
-	EXPLAIN_SUCCESSFUL_LINK,
-	SELECT_TRANSCEIVER,
-	EXPLAIN_FREQUENCY,
-	CHANGE_FREQUENCY_AWAY,
-	CHANGE_FREQUENCY_BACK,
-	EXPLAIN_POWER,
-	LOWER_POWER,
-	RAISE_POWER,
-	EXPLAIN_HEIGHT,
-	INCREASE_HEIGHT,
-	INTRO_SENSOR,
-	PLACE_SENSOR,
-	EXPLAIN_SENSOR_SENSITIVITY,
-	LOWER_SENSOR_SENSITIVITY,
-	EXPLAIN_SENSOR_TUNING,
-	CHANGE_SENSOR_TUNING_AWAY,
-	EXPLAIN_BANDWIDTH,
-	INCREASE_BANDWIDTH,
-	INTRO_JAMMER,
-	PLACE_JAMMER,
-	CHANGE_JAMMER_FREQUENCY_AWAY,
-	CHANGE_JAMMER_FREQUENCY_BACK,
-	INTRO_DISPLAY_SETTINGS,
-	TRY_LINK_LINES_TOGGLE,
-	TRY_UNIT_RANGES_TOGGLE,
-	VIEW_UNIT_RANGE,
-	TRY_UNIT_DETAILS_TOGGLE,
-	TRY_SUGGESTIONS_TOGGLE,
-	TRY_TERRAIN_HEATMAP_TOGGLE,
-	EXPLAIN_HEIGHTMAP_AND_GRID,
-	DISPLAY_SETTINGS_COMPLETE,
-	COMPLETE
-}
+const TutorialStep = TUTORIAL_TEXT.TutorialStep
 
-var _tutorial_step: TutorialStep = TutorialStep.WELCOME
+var _tutorial_step: int = TutorialStep.WELCOME
 var _first_transceiver: Node = null
 var _second_transceiver: Node = null
 var _sensor: Node = null
@@ -86,6 +45,7 @@ var _lock_jammer_frequency := false
 var _locked_unit_targets: Dictionary = {}
 var _waiting_display_setting_key := ""
 var _waiting_display_setting_original: Variant = null
+var _edit_refresh_generation := 0
 
 
 func _ready() -> void:
@@ -156,11 +116,12 @@ func _generate_terrain(w: int, h: int) -> Array:
 	return grid
 
 
-func _enter_step(step: TutorialStep) -> void:
+func _enter_step(step: int) -> void:
 	_remove_sandbox_intro_popups()
 	_tutorial_step = step
 	_waiting_display_setting_key = ""
 	_waiting_display_setting_original = null
+
 	if step == TutorialStep.COMPLETE:
 		_setup()
 		_current_instruction_text = ""
@@ -170,12 +131,9 @@ func _enter_step(step: TutorialStep) -> void:
 
 	if TUTORIAL_TEXT.should_run_simulation_on_enter(step):
 		_run_simulation_if_possible()
+
 	if step == TutorialStep.MOVE_FIRST_TRANSCEIVER_CLOSER:
 		_unlock_unit(_first_transceiver)
-
-	var attributes := TUTORIAL_TEXT.attributes_for_step(step)
-	if not attributes.is_empty():
-		_select_expected_unit_for_edit(attributes)
 
 	_apply_step_start_side_effects(step)
 
@@ -184,18 +142,76 @@ func _enter_step(step: TutorialStep) -> void:
 		_begin_display_setting_trial(display_key)
 
 	var data := _step_data(step)
+	var attributes := TUTORIAL_TEXT.attributes_for_step(step)
 	_current_instruction_text = str(data.get("text", ""))
-	_setup(
-		data.get("sidebar", []),
-		data.get("attributes", []),
-		data.get("marker", null),
-		data.get("label", "")
-	)
+
+	# Store the new step's attribute filter before selecting the unit.
+	# This prevents the Sidebar from rebuilding with the previous step's lock.
+	_setup(data.get("sidebar", []), attributes, data.get("marker", null), data.get("label", ""))
+
+	# Selection rebuilds the attribute panel. Restore the edit state after
+	# deferred Sidebar updates have finished.
+	if not attributes.is_empty():
+		call_deferred("_restore_current_edit_state")
+
 	_update_repeat_instruction_button_visibility()
 	_say([data.get("text", "")], int(data.get("next", -1)))
 
 
-func _apply_step_start_side_effects(step: TutorialStep) -> void:
+func _restore_current_edit_state() -> void:
+	_edit_refresh_generation += 1
+	var refresh_generation := _edit_refresh_generation
+	var requested_step := _tutorial_step
+
+	# Let the popup close and let any Sidebar deferred work finish first.
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	if refresh_generation != _edit_refresh_generation:
+		return
+	if requested_step != _tutorial_step:
+		return
+
+	var unit := _expected_edit_unit_for_current_step()
+	var attributes := _attributes_for_current_step()
+
+	if unit == null or not is_instance_valid(unit):
+		return
+	if attributes.is_empty():
+		return
+
+	_tutorial_selection_refreshing = true
+
+	# Selecting the same unit again may not emit selection_changed. Clear the
+	# selection first so the Sidebar is forced to rebuild for this exact unit.
+	GameEvents.clear_selection()
+	await get_tree().process_frame
+
+	if refresh_generation != _edit_refresh_generation:
+		_tutorial_selection_refreshing = false
+		return
+	if requested_step != _tutorial_step:
+		_tutorial_selection_refreshing = false
+		return
+	if unit == null or not is_instance_valid(unit):
+		_tutorial_selection_refreshing = false
+		return
+
+	_selected_tutorial_unit = unit
+	_apply_attribute_filter(attributes)
+	GameEvents.select(unit)
+
+	# Reapply after the Sidebar creates its new rows. Do this for two frames
+	# because queue_free() and the row rebuild are both deferred.
+	await get_tree().process_frame
+	_apply_attribute_filter(_attributes_for_current_step())
+	await get_tree().process_frame
+	_apply_attribute_filter(_attributes_for_current_step())
+
+	_tutorial_selection_refreshing = false
+
+
+func _apply_step_start_side_effects(step: int) -> void:
 	match step:
 		TutorialStep.EXPLAIN_FREQUENCY:
 			_frequency_went_outside_range = false
@@ -222,7 +238,7 @@ func _apply_step_start_side_effects(step: TutorialStep) -> void:
 			pass
 
 
-func _step_data(step: TutorialStep) -> Dictionary:
+func _step_data(step: int) -> Dictionary:
 	return TUTORIAL_TEXT.step_data(step)
 
 
@@ -330,11 +346,16 @@ func _on_tutorial_unit_selected(unit: Node) -> void:
 		if _is_tutorial_map_unit(unit):
 			_selected_tutorial_unit = unit
 			_lock_all_attributes()
-			_say(
-				["Good. Selecting a unit lets you inspect its range circle."],
-				TutorialStep.TRY_UNIT_DETAILS_TOGGLE
-			)
+			_say([TUTORIAL_TEXT.unit_range_selected_text()], TutorialStep.TRY_UNIT_DETAILS_TOGGLE)
 		return
+
+	if _tutorial_step == TutorialStep.SELECT_UNIT_FOR_HEATMAP:
+		if _is_tutorial_map_unit(unit):
+			_selected_tutorial_unit = unit
+			_lock_all_attributes()
+			_say([TUTORIAL_TEXT.heatmap_selected_text()], TutorialStep.EXPLAIN_HEIGHTMAP_AND_GRID)
+		return
+
 	var expected_unit := _expected_edit_unit_for_current_step()
 	if expected_unit == null:
 		return
@@ -355,15 +376,7 @@ func _on_tutorial_confirm_pressed() -> void:
 			if _outside_match_range(value):
 				_frequency_went_outside_range = true
 				_run_simulation_if_possible()
-				_say(
-					[
-						(
-							"Good. Transceiver 1 is outside the matching range.\n\n"
-							+ "Now move the frequency back between 995 and 1005."
-						)
-					],
-					TutorialStep.CHANGE_FREQUENCY_BACK
-				)
+				_say([TUTORIAL_TEXT.frequency_outside_text()], TutorialStep.CHANGE_FREQUENCY_BACK)
 		TutorialStep.CHANGE_FREQUENCY_BACK:
 			var value := _read_number_from_unit(
 				_first_transceiver, ["frequency"], TUTORIAL_FREQUENCY
@@ -372,10 +385,7 @@ func _on_tutorial_confirm_pressed() -> void:
 				_lock_transceiver_frequencies()
 				_lock_transceiver_frequency = true
 				_run_simulation_if_possible()
-				_say(
-					["Good. The Transceivers are back inside the matching range."],
-					TutorialStep.EXPLAIN_POWER
-				)
+				_say([TUTORIAL_TEXT.frequency_restored_text()], TutorialStep.EXPLAIN_POWER)
 		TutorialStep.LOWER_POWER:
 			_confirm_number_less(
 				_first_transceiver, ["power"], _original_power, TutorialStep.RAISE_POWER
@@ -385,7 +395,7 @@ func _on_tutorial_confirm_pressed() -> void:
 				_first_transceiver,
 				["power"],
 				_original_power,
-				["Good. Increasing power helped restore the link."],
+				[TUTORIAL_TEXT.power_restored_text()],
 				TutorialStep.EXPLAIN_HEIGHT
 			)
 		TutorialStep.INCREASE_HEIGHT:
@@ -393,7 +403,7 @@ func _on_tutorial_confirm_pressed() -> void:
 				_first_transceiver,
 				["height"],
 				_original_height,
-				["Good. Increasing height can improve communication."],
+				[TUTORIAL_TEXT.height_increased_text()],
 				TutorialStep.INTRO_SENSOR
 			)
 		TutorialStep.LOWER_SENSOR_SENSITIVITY:
@@ -402,38 +412,22 @@ func _on_tutorial_confirm_pressed() -> void:
 				["sensitivity", "detection_sensitivity"],
 				_original_sensor_sensitivity,
 				TutorialStep.EXPLAIN_SENSOR_TUNING,
-				["Good. Lowering sensitivity makes detection less likely."]
+				[TUTORIAL_TEXT.sensitivity_lowered_text()]
 			)
 		TutorialStep.CHANGE_SENSOR_TUNING_AWAY:
 			var tuning := _read_number_from_unit(_sensor, ["tuning_frequency"], TUTORIAL_FREQUENCY)
 			if abs(tuning - _original_sensor_tuning) >= FREQUENCY_TOLERANCE:
 				_run_simulation_if_possible()
-				_say(
-					[
-						(
-							"The Sensor can no longer detect the signal.\n\n"
-							+ "This shows how frequency affects detection."
-						)
-					],
-					TutorialStep.EXPLAIN_BANDWIDTH
-				)
+				_say([TUTORIAL_TEXT.sensor_tuning_changed_text()], TutorialStep.EXPLAIN_BANDWIDTH)
 		TutorialStep.INCREASE_BANDWIDTH:
 			_run_simulation_if_possible()
-			_say(
-				["Good. A wider bandwidth makes detection more flexible."],
-				TutorialStep.INTRO_JAMMER
-			)
+			_say([TUTORIAL_TEXT.bandwidth_increased_text()], TutorialStep.INTRO_JAMMER)
 		TutorialStep.CHANGE_JAMMER_FREQUENCY_AWAY:
 			var value := _read_number_from_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
 			if _outside_match_range(value):
 				_run_simulation_if_possible()
 				_say(
-					[
-						(
-							"The link recovered because the Jammer moved away "
-							+ "from the correct frequency."
-						)
-					],
+					[TUTORIAL_TEXT.jammer_moved_away_text()],
 					TutorialStep.CHANGE_JAMMER_FREQUENCY_BACK
 				)
 		TutorialStep.CHANGE_JAMMER_FREQUENCY_BACK:
@@ -442,10 +436,7 @@ func _on_tutorial_confirm_pressed() -> void:
 				_lock_jammer_frequency = true
 				_set_number_on_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
 				_run_simulation_if_possible()
-				_say(
-					["Good. The Jammer is locked back to 1000."],
-					TutorialStep.INTRO_DISPLAY_SETTINGS
-				)
+				_say([TUTORIAL_TEXT.jammer_restored_text()], TutorialStep.INTRO_DISPLAY_SETTINGS)
 
 
 func _confirm_number_less(
@@ -492,28 +483,25 @@ func _setup(
 		_clear_placement_marker()
 
 
-func _select_primary_transceiver_for_edit(attributes: Array) -> void:
-	_select_unit_for_edit(_first_transceiver, attributes)
-
-
-func _select_expected_unit_for_edit(attributes: Array) -> void:
-	var unit := _expected_edit_unit_for_current_step()
-	if unit != null:
-		_select_unit_for_edit(unit, attributes)
-
-
 func _select_unit_for_edit(unit: Node, attributes: Array) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
+	if attributes.is_empty():
+		return
+
 	_selected_tutorial_unit = unit
-	_tutorial_selection_refreshing = true
-	GameEvents.select(unit)
-	call_deferred("_apply_attribute_filter", attributes)
-	call_deferred("_finish_tutorial_selection_refresh")
+	call_deferred("_restore_current_edit_state")
 
 
-func _finish_tutorial_selection_refresh() -> void:
-	_tutorial_selection_refreshing = false
+func _reapply_current_step_attribute_filter() -> void:
+	var expected_unit := _expected_edit_unit_for_current_step()
+	if expected_unit == null or not is_instance_valid(expected_unit):
+		return
+
+	if _selected_tutorial_unit != expected_unit:
+		return
+
+	_apply_attribute_filter(_attributes_for_current_step())
 
 
 func _apply_attribute_filter(attributes: Array) -> void:
@@ -682,8 +670,15 @@ func _on_popup_next_requested() -> void:
 		return
 	var entry: Dictionary = _popup_history[_popup_history_index]
 	var next_step := int(entry.get("next_step", -1))
+
 	if next_step != -1:
 		call_deferred("_enter_step", next_step)
+		return
+
+	# Action steps use next_step = -1. Force a clear-then-select refresh so
+	# the Sidebar cannot remain dimmed on the already selected unit.
+	if not _attributes_for_current_step().is_empty():
+		call_deferred("_restore_current_edit_state")
 
 
 func _has_tutorial_popup_open() -> bool:
@@ -942,13 +937,23 @@ func _begin_display_setting_trial(setting_key: String) -> void:
 func _check_display_setting_change() -> void:
 	if intro_popup_open or _waiting_display_setting_key == "":
 		return
+
 	var current_value = _read_hud_setting(_waiting_display_setting_key, null)
-	if current_value == null or current_value == _waiting_display_setting_original:
+	if current_value == null:
 		return
+
+	var target_value = TUTORIAL_TEXT.display_setting_target_for_step(_tutorial_step)
+	if target_value != null:
+		if bool(current_value) != bool(target_value):
+			return
+	elif current_value == _waiting_display_setting_original:
+		return
+
 	var completed_key := _waiting_display_setting_key
 	_waiting_display_setting_key = ""
 	_waiting_display_setting_original = null
-	var result := TUTORIAL_TEXT.display_setting_result(completed_key)
+
+	var result := TUTORIAL_TEXT.display_setting_result(completed_key, _tutorial_step)
 	_say([result.get("text", "Good. That display setting changed.")], result.get("next", -1))
 
 
@@ -989,11 +994,4 @@ func _show_wrong_placement_popup() -> void:
 	if _wrong_placement_popup_open:
 		return
 	_wrong_placement_popup_open = true
-	_say(
-		[
-			(
-				"That unit is not in the correct spot yet.\n\n"
-				+ "Move it into the highlighted area on the map."
-			)
-		]
-	)
+	_say([TUTORIAL_TEXT.wrong_placement_text()])

@@ -62,12 +62,7 @@ func _ready() -> void:
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
 	GameEvents.tutorial_filter_attributes.connect(_on_tutorial_filter_attributes)
 	GameEvents.selection_changed.connect(_on_selection_changed)
-	resized.connect(func(): GameEvents.sidebar_resized.emit(size.x))
-	_build_sidebar()
-	_refresh_attribute_panel()
-
-	# Publish initial size so listeners (BaseLevel) get a value before any resize.
-	GameEvents.sidebar_resized.emit.call_deferred(size.x)
+	resized.connect(func(): GameEvents.sidebar_resized.emit(SIDEBAR_WIDTH))
 	_build_sidebar()
 	_refresh_attribute_panel()
 
@@ -399,7 +394,11 @@ func _refresh_attribute_panel() -> void:
 	# queue_free() is deferred, so we defer this too to run after the
 	# new rows are fully added to the scene tree.
 	if not _tutorial_allowed_attributes.is_empty():
-		call_deferred("_on_tutorial_filter_attributes", _tutorial_allowed_attributes)
+		call_deferred("_reapply_current_tutorial_attribute_filter")
+
+
+func _reapply_current_tutorial_attribute_filter() -> void:
+	_on_tutorial_filter_attributes(_tutorial_allowed_attributes.duplicate())
 
 
 func _definition_for(t: EntityType) -> UnitDefinition:

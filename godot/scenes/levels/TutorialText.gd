@@ -7,7 +7,7 @@ const UNIT_ID_JAMMER := &"jammer"
 const FIRST_TRANSCEIVER_POS := Vector2(600, 780)
 const FIRST_TRANSCEIVER_GREEN_POS := Vector2(690, 780)
 const SECOND_TRANSCEIVER_POS := Vector2(850, 780)
-const SENSOR_POS := Vector2(680, 960)
+const SENSOR_POS := Vector2(680, 910)
 const JAMMER_POS := Vector2(690, 690)
 
 enum TutorialStep {
@@ -46,8 +46,11 @@ enum TutorialStep {
 	TRY_UNIT_RANGES_TOGGLE,
 	VIEW_UNIT_RANGE,
 	TRY_UNIT_DETAILS_TOGGLE,
+	TURN_OFF_UNIT_DETAILS,
 	TRY_SUGGESTIONS_TOGGLE,
+	TURN_OFF_SUGGESTIONS,
 	TRY_TERRAIN_HEATMAP_TOGGLE,
+	SELECT_UNIT_FOR_HEATMAP,
 	EXPLAIN_HEIGHTMAP_AND_GRID,
 	DISPLAY_SETTINGS_COMPLETE,
 	COMPLETE
@@ -378,13 +381,29 @@ static func step_data(step: int) -> Dictionary:
 			)
 
 		TutorialStep.TRY_UNIT_DETAILS_TOGGLE:
+			return _step("Turn on Unit Details.\n\nThis shows extra unit information on the map.")
+
+		TutorialStep.TURN_OFF_UNIT_DETAILS:
 			return _step(
-				"Toggle Unit Details.\n\nThis shows or hides extra unit information on the map."
+				_text(
+					[
+						"Now turn Unit Details back off.\n\n",
+						"This keeps the interface clear before moving to the next display setting."
+					]
+				)
 			)
 
 		TutorialStep.TRY_SUGGESTIONS_TOGGLE:
+			return _step("Turn on Suggestions.\n\nThis displays guidance hints or visual aids.")
+
+		TutorialStep.TURN_OFF_SUGGESTIONS:
 			return _step(
-				"Toggle Suggestions.\n\nThis turns guidance hints or visual aids on and off."
+				_text(
+					[
+						"Now turn Suggestions back off.\n\n",
+						"This removes the extra guidance and leaves a cleaner interface to work with."
+					]
+				)
 			)
 
 		TutorialStep.TRY_TERRAIN_HEATMAP_TOGGLE:
@@ -396,6 +415,16 @@ static func step_data(step: int) -> Dictionary:
 						"elevation changes, and blocked paths can make communication ",
 						"less reliable, so the heatmap helps explain why a link may be ",
 						"stronger in one area and weaker in another."
+					]
+				)
+			)
+
+		TutorialStep.SELECT_UNIT_FOR_HEATMAP:
+			return _step(
+				_text(
+					[
+						"Now click any unit on the map to display that unit's terrain ",
+						"interference heatmap."
 					]
 				)
 			)
@@ -521,12 +550,30 @@ static func display_setting_key_for_step(step: int) -> String:
 			return "unit_ranges"
 		TutorialStep.TRY_UNIT_DETAILS_TOGGLE:
 			return "unit_details"
+		TutorialStep.TURN_OFF_UNIT_DETAILS:
+			return "unit_details"
 		TutorialStep.TRY_SUGGESTIONS_TOGGLE:
+			return "suggestions"
+		TutorialStep.TURN_OFF_SUGGESTIONS:
 			return "suggestions"
 		TutorialStep.TRY_TERRAIN_HEATMAP_TOGGLE:
 			return "terrain_heatmap"
 		_:
 			return ""
+
+
+static func display_setting_target_for_step(step: int) -> Variant:
+	match step:
+		TutorialStep.TRY_UNIT_DETAILS_TOGGLE:
+			return true
+		TutorialStep.TURN_OFF_UNIT_DETAILS:
+			return false
+		TutorialStep.TRY_SUGGESTIONS_TOGGLE:
+			return true
+		TutorialStep.TURN_OFF_SUGGESTIONS:
+			return false
+		_:
+			return null
 
 
 static func display_toggle_node_names(setting_key: String) -> Array[String]:
@@ -555,7 +602,7 @@ static func display_toggle_node_names(setting_key: String) -> Array[String]:
 			return []
 
 
-static func display_setting_result(setting_key: String) -> Dictionary:
+static func display_setting_result(setting_key: String, step: int = -1) -> Dictionary:
 	match setting_key:
 		"link_lines":
 			return _step(
@@ -568,28 +615,109 @@ static func display_setting_result(setting_key: String) -> Dictionary:
 				TutorialStep.VIEW_UNIT_RANGE
 			)
 		"unit_details":
+			if step == TutorialStep.TRY_UNIT_DETAILS_TOGGLE:
+				return _step(
+					"Good. Unit Details are now visible.", TutorialStep.TURN_OFF_UNIT_DETAILS
+				)
 			return _step(
-				"Good. Unit Details add or remove extra map labels.",
+				"Good. Unit Details are off again, leaving a cleaner map.",
 				TutorialStep.TRY_SUGGESTIONS_TOGGLE
 			)
 		"suggestions":
+			if step == TutorialStep.TRY_SUGGESTIONS_TOGGLE:
+				return _step(
+					"Good. Suggestions are now visible.", TutorialStep.TURN_OFF_SUGGESTIONS
+				)
 			return _step(
-				"Good. Suggestions can provide extra guidance.",
+				"Good. Suggestions are off again, so the interface is clear.",
 				TutorialStep.TRY_TERRAIN_HEATMAP_TOGGLE
 			)
 		"terrain_heatmap":
 			return _step(
 				_text(
 					[
-						"Good. The Terrain Interference Heatmap helps show where ",
-						"terrain may weaken or block signal paths. Use it when you ",
-						"want to understand why a link is weaker in one area than another."
+						"Good. The Terrain Interference Heatmap is now enabled.\n\n",
+						"Next, select a unit so the map can show terrain visibility ",
+						"from that unit's position."
 					]
 				),
-				TutorialStep.EXPLAIN_HEIGHTMAP_AND_GRID
+				TutorialStep.SELECT_UNIT_FOR_HEATMAP
 			)
 		_:
 			return _step("Good. That display setting changed.")
+
+
+static func unit_range_selected_text() -> String:
+	return "Good. Selecting a unit lets you inspect its range circle."
+
+
+static func heatmap_selected_text() -> String:
+	return _text(
+		[
+			"The heatmap is now centered on the selected unit.\n\n",
+			"Green areas show locations where the unit has the clearest ",
+			"view and the least terrain interference. Yellow and orange ",
+			"areas show weaker visibility, while red areas show locations ",
+			"where terrain makes it difficult for the unit to see or reach."
+		]
+	)
+
+
+static func frequency_outside_text() -> String:
+	return _text(
+		[
+			"Good. Transceiver 1 is outside the matching range.\n\n",
+			"Now move the frequency back between 995 and 1005."
+		]
+	)
+
+
+static func frequency_restored_text() -> String:
+	return "Good. The Transceivers are back inside the matching range."
+
+
+static func power_restored_text() -> String:
+	return "Good. Increasing power helped restore the link."
+
+
+static func height_increased_text() -> String:
+	return "Good. Increasing height can improve communication."
+
+
+static func sensitivity_lowered_text() -> String:
+	return "Good. Lowering sensitivity makes detection less likely."
+
+
+static func sensor_tuning_changed_text() -> String:
+	return _text(
+		[
+			"The Sensor can no longer detect the signal.\n\n",
+			"This shows how frequency affects detection."
+		]
+	)
+
+
+static func bandwidth_increased_text() -> String:
+	return "Good. A wider bandwidth makes detection more flexible."
+
+
+static func jammer_moved_away_text() -> String:
+	return _text(
+		["The link recovered because the Jammer moved away ", "from the correct frequency."]
+	)
+
+
+static func jammer_restored_text() -> String:
+	return "Good. The Jammer is locked back to 1000."
+
+
+static func wrong_placement_text() -> String:
+	return _text(
+		[
+			"That unit is not in the correct spot yet.\n\n",
+			"Move it into the highlighted area on the map."
+		]
+	)
 
 
 static func _step(
