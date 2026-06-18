@@ -1,7 +1,13 @@
 extends Node2D
 
 enum LinkState {
-	CONNECTING, SUCCESS, FAILED_OUT_OF_RANGE, FAILED_JAMMED, FREQUENCY_DIFF, BANDWIDTH_PENALTY
+	CONNECTING,
+	SUCCESS,
+	FAILED_OUT_OF_RANGE,
+	FAILED_JAMMED,
+	FREQUENCY_DIFF,
+	BANDWIDTH_PENALTY,
+	TERRAIN_BLOCKED
 }
 
 # link_results: Array of {"source": Unit, "target": Unit, "state": int}
@@ -9,9 +15,17 @@ enum LinkState {
 var link_results: Array[Dictionary] = []
 var detect_results: Array[Dictionary] = []
 
+const INTERFERENCE_THRESHOLD := 100.0
+
 
 func _ready() -> void:
 	call_deferred("simulate")
+
+
+func _live_group(group_name: String) -> Array:
+	return get_tree().get_nodes_in_group(group_name).filter(
+		func(node): return is_instance_valid(node) and not node.is_queued_for_deletion()
+	)
 
 
 func simulate() -> void:
@@ -20,9 +34,35 @@ func simulate() -> void:
 
 	_update_all_unit_ranges()
 
-	var transceivers = get_tree().get_nodes_in_group("transceivers")
-	var jammers = get_tree().get_nodes_in_group("jammers")
-	var sensors = get_tree().get_nodes_in_group("sensors")
+	var transceivers = _live_group("transceivers")
+	var jammers = _live_group("jammers")
+	var sensors = _live_group("sensors")
+	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
+
+	var jammer_descs: Array = []
+	for jammer_node in jammers:
+		var jammer_px: Vector2
+		if terrain != null:
+			var jam_uv: Vector2 = (
+				jammer_node.get_meta("world_uv")
+				if jammer_node.has_meta("world_uv")
+				else terrain.screen_to_world_uv(jammer_node.global_position)
+			)
+			jammer_px = terrain.world_uv_to_terrain_px(jam_uv)
+		else:
+			jammer_px = jammer_node.global_position
+		(
+			jammer_descs
+			. append(
+				{
+					"terrain_px": jammer_px,
+					"power": jammer_node.get("power"),
+					"frequency": jammer_node.get("frequency"),
+					"jammer_bandwidth": jammer_node.get("jammer_bandwidth"),
+					"height": jammer_node.get("height"),
+				}
+			)
+		)
 
 	for i in range(transceivers.size()):
 		var unit_a = transceivers[i] as Unit
@@ -34,12 +74,13 @@ func simulate() -> void:
 				{
 					"source": unit_a,
 					"target": unit_b,
-					"state": calculate_link(unit_a, unit_b, jammers)
+					"state": calculate_link(unit_a, unit_b, jammer_descs)
 				}
 			)
 
 	for sensor in sensors:
 		for tx in transceivers:
+<<<<<<< HEAD
 			var result = calculate_detection(sensor, tx)
 			detect_results.append(
 				{
@@ -47,9 +88,29 @@ func simulate() -> void:
 					"transceiver": tx,
 					"detected": result.detected,
 					"fully_detected": result.fully_detected
+=======
+			var result = calculate_detection(sensor, tx, jammer_descs)
+			detect_results.append(
+				{
+					"sensor": sensor,
+					"target": tx,
+					"target_type": "transceiver",
+					"detected": result.detected,
+					"sensor_jammed": result.jammed
 				}
 			)
-
+		for tx in jammers:
+			var result = calculate_detection(sensor, tx, jammer_descs)
+			detect_results.append(
+				{
+					"sensor": sensor,
+					"target": tx,
+					"target_type": "jammer",
+					"detected": result.detected,
+					"sensor_jammed": result.jammed
+>>>>>>> unit-fixes
+				}
+			)
 	GameEvents.simulation_complete.emit(link_results, detect_results)
 
 
@@ -99,7 +160,14 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 
 	# Is the unit out of max possible range?
 	# TODO: calculate max range for every unit on sim() and store it
-	var tx_max_range = PhysicsEngine.calculate_signal_range(tx.power, z_tx, z_rx, tx.frequency)
+	var tx_max_range = PhysicsEngine.calculate_signal_range(
+		tx.power,
+		z_tx,
+		z_rx,
+		tx.frequency,
+		PhysicsEngine.NOISE_FLOOR,
+		PhysicsEngine.TRANSCEIVER_BALANCE_RATIO
+	)
 	if dist > tx_max_range:
 		return LinkState.FAILED_OUT_OF_RANGE
 
@@ -116,53 +184,38 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 		)
 	)
 
-	var jammer_descs: Array = []
-	for jammer_node in jammers:
-		var jammer_px: Vector2
-		if terrain != null:
-			var jam_uv: Vector2 = (
-				jammer_node.get_meta("world_uv")
-				if jammer_node.has_meta("world_uv")
-				else terrain.screen_to_world_uv(jammer_node.global_position)
-			)
-			jammer_px = terrain.world_uv_to_terrain_px(jam_uv)
-		else:
-			jammer_px = jammer_node.global_position
-		(
-			jammer_descs
-			. append(
-				{
-					"terrain_px": jammer_px,
-					"power": jammer_node.get("power"),
-					"frequency": jammer_node.get("frequency"),
-					"jammer_bandwidth": jammer_node.get("jammer_bandwidth"),
-					"height": jammer_node.get("height"),
-				}
-			)
-		)
-
 	var interference = PhysicsEngine.calculate_interference(
 		rx.frequency,
 		z_rx,
 		rx_px,
-		jammer_descs,
+		jammers,
 		terrain.height_grid if terrain != null else [],
 		terrain.map_origin if terrain != null else Vector2(),
 		terrain.map_scale if terrain != null else Vector2()
 	)
 
 	var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
+	var link_state = null
 
-	if !PhysicsEngine.range_check(received_power):
-		return LinkState.FAILED_OUT_OF_RANGE
-	if PhysicsEngine.bandwidth_penalty_check(received_power, bandwidth_penalty):
-		return LinkState.BANDWIDTH_PENALTY
-	if !PhysicsEngine.jamming_check(received_power, interference):
-		return LinkState.FAILED_JAMMED
-	return LinkState.SUCCESS
+	if terrain_loss > INTERFERENCE_THRESHOLD:
+		link_state = LinkState.TERRAIN_BLOCKED
+	elif !PhysicsEngine.range_check(received_power):
+		link_state = LinkState.FAILED_OUT_OF_RANGE
+	elif PhysicsEngine.bandwidth_penalty_check(received_power, bandwidth_penalty):
+		link_state = LinkState.BANDWIDTH_PENALTY
+	elif !PhysicsEngine.jamming_check(received_power, interference):
+		link_state = LinkState.FAILED_JAMMED
+	else:
+		link_state = LinkState.SUCCESS
+
+	return link_state
 
 
+<<<<<<< HEAD
 func calculate_detection(srx: Unit, tx: Unit) -> Dictionary:
+=======
+func calculate_detection(srx: Unit, tx: Unit, jammers: Array) -> Dictionary:
+>>>>>>> unit-fixes
 	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
 	var tx_px: Vector2
 	var srx_px: Vector2
@@ -201,10 +254,26 @@ func calculate_detection(srx: Unit, tx: Unit) -> Dictionary:
 		terrain_loss = PhysicsEngine.compute_terrain_loss(
 			tx_px, srx_px, z_tx, z_rx, terrain.height_grid, terrain.map_origin, terrain.map_scale
 		)
-	return PhysicsEngine.is_detected(tx, srx, dist, terrain_loss, z_tx, z_rx)
+
+	var interference = PhysicsEngine.calculate_interference(
+		srx.tuning_frequency,
+		z_rx,
+		srx_px,
+		jammers,
+		terrain.height_grid if terrain != null else [],
+		terrain.map_origin if terrain != null else Vector2(),
+		terrain.map_scale if terrain != null else Vector2()
+	)
+
+	var is_detected = PhysicsEngine.is_detected(
+		tx, srx, dist, terrain_loss, z_tx, z_rx, interference
+	)
+	var is_jammed = interference > PhysicsEngine.NOISE_FLOOR
+
+	return {"detected": is_detected, "jammed": is_jammed}
 
 
 func _update_all_unit_ranges() -> void:
 	for group in [&"transceivers", &"jammers", &"sensors"]:
-		for unit in get_tree().get_nodes_in_group(group):
+		for unit in _live_group(group):
 			unit.update_ranges()

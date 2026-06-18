@@ -48,16 +48,16 @@ func test_sensor_detection():
 
 	print("\n")
 
-	var detected = manager.calculate_detection(sensor, transceiver1)
-	assert_true(detected, "Detection success case.")
+	var detected = manager.calculate_detection(sensor, transceiver1, [])
+	assert_true(detected.detected, "Detection success case.")
 
-	var detected2 = manager.calculate_detection(sensor, transceiver2)
-	assert_false(detected2, "Detection fail case.")
+	var detected2 = manager.calculate_detection(sensor, transceiver2, [])
+	assert_false(detected2.detected, "Detection fail case.")
 
 	transceiver1.set_value(&"power", 1)
 	sensor.set_value(&"sensitivity", 2)
-	var detected3 = manager.calculate_detection(sensor, transceiver1)
-	assert_false(detected3, "Detection fail case.")
+	var detected3 = manager.calculate_detection(sensor, transceiver1, [])
+	assert_false(detected3.detected, "Detection fail case.")
 
 	print("\n")
 
