@@ -24,6 +24,8 @@ UnitNameManager="*res://scripts/UnitNameManager.gd"
 TutorialController="*res://scripts/TutorialController.gd"
 LinkRenderer="*res://scripts/LinkRenderer.gd"
 StatusBadgeRenderer="*res://scripts/StatusBadgeRenderer.gd"
+MessageRelay="*res://scripts/MessageRelay.gd"
+MessageRenderer="*res://scripts/MessageRenderer.gd"
 
 [display]
 

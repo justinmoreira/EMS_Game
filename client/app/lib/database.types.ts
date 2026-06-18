@@ -34,6 +34,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      keep_alive: {
+        Row: {
+          id: number
+          last_ping: string
+        }
+        Insert: {
+          id: number
+          last_ping?: string
+        }
+        Update: {
+          id?: number
+          last_ping?: string
+        }
+        Relationships: []
+      }
+      sandbox_states: {
+        Row: {
+          created_at: string
+          gamemode: string
+          name: string
+          slot_id: string
+          state_json: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          gamemode?: string
+          name?: string
+          slot_id: string
+          state_json: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          gamemode?: string
+          name?: string
+          slot_id?: string
+          state_json?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_progress: {
         Row: {
           created_at: string
