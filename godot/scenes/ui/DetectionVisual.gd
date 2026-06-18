@@ -15,37 +15,36 @@ const SEGMENTS := 48
 
 var _time: float = 0.0
 
+
 func _ready():
 	var hud = get_tree().get_root().find_child("HUD", true, false)
 
 	if hud and hud.has_method("set_spectrum_enabled"):
 		hud.set_spectrum_enabled(true)
 
+
 func _process(delta: float) -> void:
 	_time += delta
 	queue_redraw()
 
+
 func _draw() -> void:
-		for h in hints:
-			var pulse := sin(_time * PULSE_SPEED) * PULSE_AMPLITUDE
+	for h in hints:
+		var pulse := sin(_time * PULSE_SPEED) * PULSE_AMPLITUDE
 
-			var blue_r := PRESENCE_RADIUS1 + pulse
-			var blue_c := Color(0.30, 0.70, 1.00, 1.00)
+		var blue_r := PRESENCE_RADIUS1 + pulse
+		var blue_c := Color(0.30, 0.70, 1.00, 1.00)
 
-			_draw_ring(h.sensor_pos, blue_r, blue_c, CIRCLE_WIDTH)
-			_draw_ripples(h.sensor_pos, PRESENCE_RADIUS1, blue_c)
+		_draw_ring(h.sensor_pos, blue_r, blue_c, CIRCLE_WIDTH)
+		_draw_ripples(h.sensor_pos, PRESENCE_RADIUS1, blue_c)
 
-			# Always directional now
-			var dir: Vector2 = (h.transceiver_pos - h.sensor_pos).normalized()
+		# Always directional now
+		var dir: Vector2 = (h.transceiver_pos - h.sensor_pos).normalized()
 
-			var orange_c := Color(1.0, 0.55, 0.05, 1.0)
+		var orange_c := Color(1.0, 0.55, 0.05, 1.0)
 
-			_draw_directional_ripples(
-				h.sensor_pos,
-				dir,
-				orange_c,
-				h.tx_id
-			)
+		_draw_directional_ripples(h.sensor_pos, dir, orange_c, h.tx_id)
+
 
 func set_hint(sensor_pos: Vector2, transceiver_pos: Vector2, tx_id: int) -> void:
 	for h in hints:
@@ -55,15 +54,19 @@ func set_hint(sensor_pos: Vector2, transceiver_pos: Vector2, tx_id: int) -> void
 			queue_redraw()
 			return
 
-	hints.append(
-		{
-			"tx_id": tx_id,
-			"sensor_pos": sensor_pos,
-			"transceiver_pos": transceiver_pos,
-		}
+	(
+		hints
+		. append(
+			{
+				"tx_id": tx_id,
+				"sensor_pos": sensor_pos,
+				"transceiver_pos": transceiver_pos,
+			}
+		)
 	)
 
 	queue_redraw()
+
 
 func retain_only(detected_tx_ids: Array[int]) -> void:
 	var before := hints.size()
@@ -71,9 +74,11 @@ func retain_only(detected_tx_ids: Array[int]) -> void:
 	if hints.size() != before:
 		queue_redraw()
 
+
 func remove_hints_for(transceiver_pos: Vector2) -> void:
 	hints = hints.filter(func(h): return h.transceiver_pos.distance_to(transceiver_pos) >= 4.0)
 	queue_redraw()
+
 
 # Solid full circle ring
 func _draw_ring(center: Vector2, radius: float, color: Color, width: float) -> void:
@@ -87,14 +92,10 @@ func _draw_ring(center: Vector2, radius: float, color: Color, width: float) -> v
 			width
 		)
 
+
 # Solid arc spanning ±half_span_rad around base_angle
 func _draw_arc(
-	center: Vector2,
-	radius: float,
-	base_angle: float,
-	half_span: float,
-	color: Color,
-	width: float
+	center: Vector2, radius: float, base_angle: float, half_span: float, color: Color, width: float
 ) -> void:
 	var steps := int(SEGMENTS * (half_span * 2.0 / TAU)) + 2
 	steps = max(steps, 4)
@@ -109,6 +110,7 @@ func _draw_arc(
 			color,
 			width
 		)
+
 
 func _draw_directional_ripples(center: Vector2, dir: Vector2, color: Color, tx_id: int) -> void:
 	var base_angle := dir.angle()
@@ -126,6 +128,7 @@ func _draw_directional_ripples(center: Vector2, dir: Vector2, color: Color, tx_i
 		var width := lerpf(CIRCLE_WIDTH, 0.8, t)
 		var arc_c := Color(color.r, color.g, color.b, 1.0)
 		_draw_arc(center, r, base_angle, half_span, arc_c, width)
+
 
 # Staggered full-circle ripples
 func _draw_ripples(center: Vector2, base_radius: float, color: Color) -> void:

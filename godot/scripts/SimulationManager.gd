@@ -42,7 +42,12 @@ func simulate() -> void:
 		for tx in transceivers:
 			var result = calculate_detection(sensor, tx)
 			detect_results.append(
-				{"sensor": sensor, "transceiver": tx, "detected": result.detected, "fully_detected": result.fully_detected}
+				{
+					"sensor": sensor,
+					"transceiver": tx,
+					"detected": result.detected,
+					"fully_detected": result.fully_detected
+				}
 			)
 
 	GameEvents.simulation_complete.emit(link_results, detect_results)

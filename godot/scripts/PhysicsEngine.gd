@@ -73,7 +73,10 @@ static func is_detected(
 		tx.power, h_tx, h_srx, tx.frequency, dis, terrain_loss
 	)
 
-	return {"detected": SENSOR_BALANCE_RATIO * received_power > PhysicsEngine.NOISE_FLOOR, "fully_detected": SENSOR_BALANCE_RATIO * received_power > threshold}
+	return {
+		"detected": SENSOR_BALANCE_RATIO * received_power > PhysicsEngine.NOISE_FLOOR,
+		"fully_detected": SENSOR_BALANCE_RATIO * received_power > threshold
+	}
 
 
 static func calculate_received_power(

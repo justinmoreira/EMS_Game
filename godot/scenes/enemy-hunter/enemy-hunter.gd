@@ -25,6 +25,7 @@ var _current_level: int = 1
 # Overlay node that draws direction arrows and range rings
 var _hint_overlay: DetectionVisual = null
 
+
 func _ready() -> void:
 	super._ready()
 
@@ -266,11 +267,7 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 		var detected: bool = detect_result.get("detected", false)
 
 		if detected:
-			_hint_overlay.set_hint(
-				sensor.global_position,
-				transceiver.global_position,
-				tx_id
-			)
+			_hint_overlay.set_hint(sensor.global_position, transceiver.global_position, tx_id)
 
 			hinted_this_sim.append(tx_id)
 
@@ -283,9 +280,7 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 		if fully_detected and tx_id not in _detected_transceivers:
 			_detected_transceivers.append(tx_id)
 
-			_hint_overlay.remove_hints_for(
-				transceiver.global_position
-			)
+			_hint_overlay.remove_hints_for(transceiver.global_position)
 
 			_reveal_transceiver(transceiver)
 
@@ -299,7 +294,7 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 
 		var state: int = result.get("state", 0)
 
-		if state != 3: # FAILED_JAMMED
+		if state != 3:  # FAILED_JAMMED
 			continue
 
 		for tx in [result.get("source"), result.get("target")]:
