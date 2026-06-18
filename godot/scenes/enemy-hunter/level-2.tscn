@@ -42,24 +42,18 @@ size_flags_vertical = 1
 
 [node name="TransceiverUnit" parent="." index="3" unique_id=2117697803 instance=ExtResource("4_gr5br")]
 visible = false
-position = Vector2(1491, 155)
+position = Vector2(1380, 200)
+frequency = 500.0
 is_immovable = true
 is_removable = false
 
 [node name="TransceiverUnit2" parent="." index="4" unique_id=1393893384 instance=ExtResource("4_gr5br")]
 visible = false
 position = Vector2(1300, 136)
+frequency = 500.0
 is_immovable = true
 is_removable = false
 
 [node name="JammerUnit" parent="." index="5" unique_id=1423769516 instance=ExtResource("5_5dc48")]
 visible = false
 position = Vector2(1150, 535)
-is_immovable = true
-is_removable = false
-
-[node name="JammerUnit2" parent="." index="6" unique_id=460800876 instance=ExtResource("5_5dc48")]
-visible = false
-position = Vector2(824, 543)
-is_immovable = true
-is_removable = false

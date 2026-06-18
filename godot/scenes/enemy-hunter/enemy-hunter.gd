@@ -11,7 +11,7 @@ enum Step { WELCOME, HUNTING, COMPLETE }
 
 var _step: Step = Step.WELCOME
 var _intro_popup_open := false
-var _detected_transceivers: Array[int] = []  # fully revealed
+var _detected_emitters: Array[int] = []  # fully revealed
 var _hinted_transceivers: Array[int] = []  # hints revealed
 var _jammed_transceivers: Array[int] = []
 var _start_time: float = 0.0
@@ -164,8 +164,8 @@ func _on_reveal_pressed() -> void:
 	for transceiver in get_tree().get_nodes_in_group("transceivers"):
 		var tx_id: int = transceiver.get_instance_id()
 
-		if tx_id not in _detected_transceivers:
-			_detected_transceivers.append(tx_id)
+		if tx_id not in _detected_emitters:
+			_detected_emitters.append(tx_id)
 
 		_hint_overlay.remove_hints_for(transceiver.global_position)
 
@@ -256,18 +256,19 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 			continue
 
 		var sensor = detect_result.get("sensor")
-		var transceiver = detect_result.get("transceiver")
+		var target = detect_result.get("target")
+		var target_type = detect_result.get("target_type")
 
-		if not sensor or not transceiver:
+		if not sensor or not target:
 			continue
 
-		var tx_id: int = transceiver.get_instance_id()
+		var tx_id: int = target.get_instance_id()
 
 		# Signal exists above noise floor
 		var detected: bool = detect_result.get("detected", false)
 
 		if detected:
-			_hint_overlay.set_hint(sensor.global_position, transceiver.global_position, tx_id)
+			_hint_overlay.set_hint(sensor.global_position, target.global_position, tx_id)
 
 			hinted_this_sim.append(tx_id)
 
@@ -277,12 +278,12 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 		# Fully resolved transceiver
 		var fully_detected: bool = detect_result.get("fully_detected", false)
 
-		if fully_detected and tx_id not in _detected_transceivers:
-			_detected_transceivers.append(tx_id)
+		if fully_detected:
+			_detected_emitters.append(tx_id)
 
-			_hint_overlay.remove_hints_for(transceiver.global_position)
+			_hint_overlay.remove_hints_for(target.global_position)
 
-			_reveal_transceiver(transceiver)
+			_reveal_transceiver(target)
 
 	# Remove stale hints
 	_hint_overlay.retain_only(hinted_this_sim)
