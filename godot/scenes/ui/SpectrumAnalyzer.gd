@@ -1,34 +1,26 @@
 class_name SpectrumAnalyzer extends Control
-## Vertical, barebones spectrum analyzer panel for sensor units.
-## Computes actual physical received power and jammer interference.
 
 signal scan_started(lo: float, hi: float)
 signal scan_complete
 
-# ── Frequency axis ─────────────────────────────────────────────────────────
 const FREQ_MIN := 30.0
 const FREQ_MAX := 3000.0
 
-# ── Scan timing ────────────────────────────────────────────────────────────
 const SECONDS_PER_MHZ := 0.01
 const SCAN_MIN_DURATION := 0.4
 
-# ── Layout ─────────────────────────────────────────────────────────────────
 const HEADER_H := 40.0
 const FOOTER_H := 10.0
 const LEFT_MARGIN := 45.0
 
-# ── Signal rendering ───────────────────────────────────────────────────────
 const TRACE_SAMPLES := 512
 const SIGMA_BASE_MHZ := 25.0
 const SIGMA_POWER := 5.0
 const MAX_POWER := 8.0
 
-# ── Handle interaction ─────────────────────────────────────────────────────
 const HANDLE_GRAB_PX := 12.0
 
-# ── Palette ────────────────────────────────────────────────────────────────
-const C_BG := Color(0.05, 0.05, 0.05, 0.95)
+const C_BG := Color(0.0, 0.0, 0.0, 0.0)
 const C_PLOT := Color(0.08, 0.08, 0.08, 1.0)
 const C_GRID := Color(0.30, 0.30, 0.30, 0.4)
 const C_SCAN_RANGE := Color(0.20, 0.40, 0.80, 0.1)
@@ -38,7 +30,6 @@ const C_HANDLE := Color(0.50, 0.50, 0.50, 0.8)
 const C_HANDLE_HOT := Color(0.80, 0.80, 0.80, 1.0)
 const C_LABEL := Color(0.60, 0.60, 0.60, 1.0)
 
-# Button Colors
 const C_BTN := Color(0.15, 0.15, 0.15, 1.0)
 const C_BTN_HOT := Color(0.25, 0.25, 0.25, 1.0)
 const C_BTN_ACTIVE := Color(0.10, 0.30, 0.60, 1.0)
@@ -46,7 +37,9 @@ const C_BTN_TEXT := Color(0.90, 0.90, 0.90, 1.0)
 const C_BTN_DISABLED := Color(0.10, 0.10, 0.10, 0.5)
 const C_TXT_DISABLED := Color(0.40, 0.40, 0.40, 0.8)
 
-enum SensorState { IDLE, SCANNING, COMPLETE }
+const PLOT_OFFSET_Y = 100.0
+
+enum SensorState { IDLE, SCANNING, COMPLETE, PAUSED }
 
 var scan_lo: float = FREQ_MIN
 var scan_hi: float = FREQ_MAX
@@ -67,16 +60,12 @@ var _drag_hi: bool = false
 var _hover_lo: bool = false
 var _hover_hi: bool = false
 
-# Visual button states
-var _btn_hover: bool = false
-var _btn_down: bool = false
+var _btn_hover_left: bool = false
+var _btn_down_left: bool = false
+var _btn_hover_right: bool = false
+var _btn_down_right: bool = false
 
 var _font: Font
-
-# ==========================================================================
-# Lifecycle
-# ==========================================================================
-
 
 func _ready() -> void:
 	_font = ThemeDB.fallback_font
@@ -112,22 +101,47 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
-# ==========================================================================
-# Public API
-# ==========================================================================
-
-
 func configure(sensor: Node) -> void:
-	# CRITICAL FIX: If the main game loop calls this every frame,
-	# it won't interrupt an ongoing scan anymore.
 	if _sensor == sensor:
 		return
 
+	_save_current_state()
+
 	_sensor = sensor
-	_reset_scan()
-	if is_inside_tree() and _sensor != null:
+	if _sensor != null:
+		_load_current_state()
 		_rebuild_sources()
+	else:
+		_reset_scan()
+		
 	queue_redraw()
+
+
+func _save_current_state() -> void:
+	if _sensor != null and is_instance_valid(_sensor):
+		_sensor.set_meta("analyzer_state", {
+			"state": _state,
+			"elapsed": _elapsed,
+			"progress": _progress,
+			"spectrum": _spectrum.duplicate(),
+			"scan_lo": scan_lo,
+			"scan_hi": scan_hi,
+			"duration": _duration
+		})
+
+
+func _load_current_state() -> void:
+	if _sensor.has_meta("analyzer_state"):
+		var data = _sensor.get_meta("analyzer_state")
+		_state = data.state
+		_elapsed = data.elapsed
+		_progress = data.progress
+		_spectrum = data.spectrum.duplicate()
+		scan_lo = data.scan_lo
+		scan_hi = data.scan_hi
+		_duration = data.duration
+	else:
+		_reset_scan()
 
 
 func start_scan() -> void:
@@ -139,11 +153,6 @@ func start_scan() -> void:
 	_duration = maxf(SCAN_MIN_DURATION, (scan_hi - scan_lo) * SECONDS_PER_MHZ)
 	_state = SensorState.SCANNING
 	scan_started.emit(scan_lo, scan_hi)
-
-
-# ==========================================================================
-# Signal Math & Physics Engine Integration
-# ==========================================================================
 
 
 func _reset_scan() -> void:
@@ -191,7 +200,6 @@ func _rebuild_sources() -> void:
 		return
 
 	var terrain = get_tree().get_first_node_in_group("terrain")
-	# Safely access terrain properties
 	var height_grid: Array = terrain.get("height_grid") if terrain else []
 	if height_grid == null:
 		height_grid = []
@@ -202,7 +210,6 @@ func _rebuild_sources() -> void:
 	var srx_px: Vector2 = srx_data.px
 	var z_rx: float = srx_data.z
 
-	# 1. Transceivers
 	for tx in get_tree().get_nodes_in_group("transceivers"):
 		var tx_data = _get_unit_spatial_data(tx, terrain)
 		var tx_px = tx_data.px
@@ -220,15 +227,14 @@ func _rebuild_sources() -> void:
 			)
 
 		var rx_power = (
-			PhysicsEngine.SENSOR_BALANCE_RATIO
-			* PhysicsEngine.calculate_received_power(power, z_tx, z_rx, freq, dist, terrain_loss)
+			PhysicsEngine.TRANSCEIVER_BALANCE_RATIO *
+			PhysicsEngine.calculate_received_power(power, z_tx, z_rx, freq, dist, terrain_loss)
 		)
 
 		if rx_power >= 0.01:
 			var sigma: float = SIGMA_BASE_MHZ + rx_power * SIGMA_POWER
 			_sources.append({"freq": freq, "rx": rx_power, "two_s2": 2.0 * sigma * sigma})
 
-	# 2. Jammers
 	for jammer in get_tree().get_nodes_in_group("jammers"):
 		var j_data = _get_unit_spatial_data(jammer, terrain)
 		var j_px = j_data.px
@@ -237,7 +243,6 @@ func _rebuild_sources() -> void:
 		var freq = _safe_get(jammer, "frequency", 1000.0)
 		var power = _safe_get(jammer, "power", 0.0)
 
-		# CRITICAL FIX: Clamp array index so physics bounds won't crash the scanner loop
 		var max_bw_idx = PhysicsEngine.BANDWIDTH_POWER.size() - 1
 		var bw_idx = clampi(int(_safe_get(jammer, "jammer_bandwidth", 0.0)), 0, max_bw_idx)
 
@@ -251,6 +256,7 @@ func _rebuild_sources() -> void:
 		var rx_power = PhysicsEngine.calculate_received_power(
 			power, z_j, z_rx, freq, dist, terrain_loss
 		)
+		
 		var jammer_power_at_rx = (
 			PhysicsEngine.JAMMER_BALANCE_RATIO * rx_power * PhysicsEngine.BANDWIDTH_POWER[bw_idx]
 		)
@@ -275,32 +281,34 @@ func _sample_at(freq: float) -> float:
 
 func _noise_at(freq: float) -> float:
 	var sens = _safe_get(_sensor, "sensitivity", 5.0)
-	var base_threshold = lerpf(3.0, PhysicsEngine.NOISE_FLOOR, sens / 10.0)
+	var sens_norm = clampf(sens / 10.0, 0.0, 1.0)
+	var noise_floor_base = lerpf(4.0, 0.1, pow(sens_norm, 0.5))
+	
 	var drift := sin(_noise_t * 5.0 + freq * 0.01) * 0.05
-	var base_noise = maxf(0.01, (base_threshold * 0.15) + drift)
+	var base_noise = maxf(0.01, noise_floor_base + drift)
+	
+	var floor_jitter := randf_range(0.5, 1.0)
+	var final_baseline = base_noise * floor_jitter
 
 	var jammer_noise := 0.0
 	for j in _jammers_rx:
-		if abs(freq - j.freq) <= j.bw_half:
-			jammer_noise += j.power
+		var d: float = freq - j.freq
+		var jammer_width_scaler := 6.0
+		var j_sigma = maxf(10.0, j.bw_half * jammer_width_scaler)
+		var j_two_s2 = 2.0 * j_sigma * j_sigma
+		var curve = exp(-(d * d) / j_two_s2)
+		
+		jammer_noise += (j.power * curve)
 
-	var total_noise = base_noise + jammer_noise
-	var static_jitter := randf_range(0.2, 1.0)
-	return total_noise * static_jitter
-
-
-# ==========================================================================
-# Coordinate mapping
-# ==========================================================================
+	return final_baseline + jammer_noise
 
 
 func _get_btn_rect() -> Rect2:
-	# Single source of truth for the button boundary
 	return Rect2(5.0, 5.0, maxf(10.0, size.x - 10.0), HEADER_H - 10.0)
 
 
 func _plot_rect() -> Rect2:
-	return Rect2(LEFT_MARGIN, HEADER_H, size.x - LEFT_MARGIN, size.y - HEADER_H - FOOTER_H)
+	return Rect2(40.0, PLOT_OFFSET_Y, size.x - 50.0, size.y - PLOT_OFFSET_Y - 10.0)
 
 
 func _freq_to_y(f: float) -> float:
@@ -317,11 +325,6 @@ func _y_to_freq(y: float) -> float:
 
 func _sweep_y() -> float:
 	return lerpf(_freq_to_y(scan_lo), _freq_to_y(scan_hi), _progress)
-
-
-# ==========================================================================
-# Drawing
-# ==========================================================================
 
 
 func _draw() -> void:
@@ -352,7 +355,11 @@ func _draw_grid(pr: Rect2) -> void:
 	var f: float = ceil(FREQ_MIN / step) * step
 	while f <= FREQ_MAX:
 		var y := _freq_to_y(f)
-		draw_line(Vector2(pr.position.x, y), Vector2(size.x, y), C_GRID)
+		draw_line(
+			Vector2(pr.position.x, y),
+			Vector2(pr.position.x + pr.size.x, y),
+			C_GRID
+		)
 		draw_string(
 			_font, Vector2(5.0, y + 4.0), "%.0f" % f, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, C_LABEL
 		)
@@ -382,7 +389,7 @@ func _draw_spectrum(pr: Rect2) -> void:
 
 
 func _draw_sweep_cursor(pr: Rect2) -> void:
-	if _state != SensorState.SCANNING:
+	if _state not in [SensorState.SCANNING, SensorState.PAUSED]:
 		return
 	var sy := _sweep_y()
 	draw_line(Vector2(pr.position.x, sy), Vector2(pr.position.x + pr.size.x, sy), C_SWEEP, 2.0)
@@ -412,53 +419,114 @@ func _draw_one_handle(y: float, left: float, right: float, is_lo: bool, hot: boo
 	)
 
 
+func _get_btn_left_rect() -> Rect2:
+	return Rect2(size.x - 150.0, 5.0, 70.0, HEADER_H - 10.0)
+
+func _get_btn_right_rect() -> Rect2:
+	return Rect2(size.x - 75.0, 5.0, 70.0, HEADER_H - 10.0)
+
 func _draw_header() -> void:
-	var btn_rect = _get_btn_rect()
 	var can_scan := _sensor != null
-	var scanning := _state == SensorState.SCANNING
+	var status_y: float
+	var line_y: float
+	var btn_1_rect := Rect2()
+	var btn_2_rect := Rect2()
 
-	var btn_col: Color
-	var text_col: Color
-	var text: String
+	if can_scan:
+		status_y = 14.0
+		line_y = 28.0
 
-	if not can_scan:
-		btn_col = C_BTN_DISABLED
-		text_col = C_TXT_DISABLED
-		text = "START SCAN"
-	elif scanning:
-		btn_col = C_BTN_ACTIVE
-		text_col = C_BTN_TEXT
-		text = "SCANNING... %d%%" % int(_progress * 100.0)  # Feedback!
-	elif _btn_down:
-		btn_col = C_BTN_ACTIVE.lerp(Color.BLACK, 0.3)
-		text_col = C_BTN_TEXT
-		text = "START SCAN"
+		btn_1_rect = Rect2(10.0, 34.0, 130.0, 25.0)
+		btn_2_rect = Rect2(10.0, 64.0, 130.0, 25.0)
 	else:
-		btn_col = C_BTN_HOT if _btn_hover else C_BTN
-		text_col = C_BTN_TEXT
-		text = "START SCAN"
+		status_y = 82.0
+	
+	var status_text = "STATUS: NO SENSOR"
 
-	draw_rect(btn_rect, btn_col)
+	if can_scan:
+		match _state:
+			SensorState.IDLE:
+				status_text = "STATUS: READY"
+
+			SensorState.SCANNING:
+				status_text = "SCANNING: %d%%" % int(_progress * 100.0)
+
+			SensorState.PAUSED:
+				status_text = "PAUSED: %d%%" % int(_progress * 100.0)
+
+			SensorState.COMPLETE:
+				status_text = "STATUS: COMPLETE"
+
 	draw_string(
 		_font,
-		Vector2(btn_rect.position.x + 10.0, btn_rect.position.y + 18.0),
-		text,
+		Vector2(10.0, status_y),
+		status_text,
 		HORIZONTAL_ALIGNMENT_LEFT,
-		-1,
+		130.0,
 		12,
-		text_col
+		Color.WHITE
+	)
+	
+	if not can_scan:
+		return
+
+	draw_line(
+		Vector2(5.0, line_y),
+		Vector2(145.0, line_y),
+		Color(0.5, 0.5, 0.5, 0.5),
+		1.0
 	)
 
+	if _state == SensorState.IDLE:
+		_draw_button(btn_1_rect, "START", true, _btn_hover_left, _btn_down_left, false)
 
-# ==========================================================================
-# Input
-# ==========================================================================
+	elif _state == SensorState.SCANNING:
+		_draw_button(btn_1_rect, "PAUSE", true, _btn_hover_left, _btn_down_left, false)
+		_draw_button(btn_2_rect, "CANCEL", true, _btn_hover_right, _btn_down_right, false)
+
+	elif _state == SensorState.PAUSED:
+		_draw_button(btn_1_rect, "RESUME", true, _btn_hover_left, _btn_down_left, true)
+		_draw_button(btn_2_rect, "CANCEL", true, _btn_hover_right, _btn_down_right, false)
+
+	elif _state == SensorState.COMPLETE:
+		_draw_button(btn_1_rect, "RESTART", true, _btn_hover_left, _btn_down_left, false)
+
+
+func _draw_button(rect: Rect2, text: String, enabled: bool, hover: bool, pressed: bool, active: bool) -> void:
+	var btn_col: Color
+	var text_col: Color
+	
+	if not enabled:
+		btn_col = C_BTN_DISABLED
+		text_col = C_TXT_DISABLED
+	elif pressed:
+		btn_col = C_BTN_ACTIVE.lerp(Color.BLACK, 0.3)
+		text_col = C_BTN_TEXT
+	elif active:
+		btn_col = C_BTN_ACTIVE
+		text_col = C_BTN_TEXT
+	elif hover:
+		btn_col = C_BTN_HOT
+		text_col = C_BTN_TEXT
+	else:
+		btn_col = C_BTN
+		text_col = C_BTN_TEXT
+		
+	draw_rect(rect, btn_col)
+	
+	var str_size = _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12)
+	var tx = rect.position.x + (rect.size.x - str_size.x) / 2.0
+	var ty = rect.position.y + (rect.size.y + str_size.y) / 2.0 - 2.0
+	draw_string(_font, Vector2(tx, ty), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, text_col)
 
 
 func _gui_input(event: InputEvent) -> void:
 	var pr := _plot_rect()
 	var lo_y := _freq_to_y(scan_lo)
 	var hi_y := _freq_to_y(scan_hi)
+	
+	var btn_rect_1 = Rect2(10.0, 34.0, 130.0, 25.0)
+	var btn_rect_2 = Rect2(10.0, 64.0, 130.0, 25.0)
 
 	if event is InputEventMouseMotion:
 		var my: float = event.position.y
@@ -467,32 +535,46 @@ func _gui_input(event: InputEvent) -> void:
 		_hover_lo = in_plot and abs(my - lo_y) <= HANDLE_GRAB_PX and not _drag_hi
 		_hover_hi = in_plot and abs(my - hi_y) <= HANDLE_GRAB_PX and not _drag_lo
 
-		var was_hover = _btn_hover
-		_btn_hover = _get_btn_rect().has_point(event.position)
+		var was_h_L = _btn_hover_left
+		var was_h_R = _btn_hover_right
+		
+		_btn_hover_left = btn_rect_1.has_point(event.position)
+		_btn_hover_right = btn_rect_2.has_point(event.position)
 
-		# Redraw if hover states shift
-		if was_hover != _btn_hover or in_plot:
+		if was_h_L != _btn_hover_left or was_h_R != _btn_hover_right or in_plot:
 			queue_redraw()
 
 		if _drag_lo:
 			scan_lo = clampf(_y_to_freq(my), FREQ_MIN, scan_hi - 10.0)
-			if _state != SensorState.IDLE:
-				_reset_scan()
+			if _state != SensorState.IDLE: _reset_scan()
 			accept_event()
 		elif _drag_hi:
 			scan_hi = clampf(_y_to_freq(my), scan_lo + 10.0, FREQ_MAX)
-			if _state != SensorState.IDLE:
-				_reset_scan()
+			if _state != SensorState.IDLE: _reset_scan()
 			accept_event()
 
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
-			if _get_btn_rect().has_point(event.position):
-				_btn_down = true
-				queue_redraw()
-				if _sensor != null:
+			if btn_rect_1.has_point(event.position) and _sensor != null:
+				_btn_down_left = true
+				if _state == SensorState.SCANNING:
+					_state = SensorState.PAUSED
+				elif _state == SensorState.PAUSED:
+					_state = SensorState.SCANNING
+				elif _state in [SensorState.IDLE, SensorState.COMPLETE]:
 					start_scan()
+				queue_redraw()
 				accept_event()
+				
+			elif btn_rect_2.has_point(event.position) and _sensor != null:
+				_btn_down_right = true
+				if _state in [SensorState.SCANNING, SensorState.PAUSED]:
+					_reset_scan()
+				elif _state == SensorState.COMPLETE:
+					start_scan()
+				queue_redraw()
+				accept_event()
+
 			elif pr.has_point(event.position):
 				var my: float = event.position.y
 				if abs(my - lo_y) <= HANDLE_GRAB_PX and not _drag_hi:
@@ -502,16 +584,11 @@ func _gui_input(event: InputEvent) -> void:
 					_drag_hi = true
 					accept_event()
 		else:
-			if _btn_down:
-				_btn_down = false
-				queue_redraw()
+			_btn_down_left = false
+			_btn_down_right = false
 			_drag_lo = false
 			_drag_hi = false
-
-
-# ==========================================================================
-# Utilities
-# ==========================================================================
+			queue_redraw()
 
 
 func _nice_step(rough: float) -> float:
