@@ -8,14 +8,10 @@ import { BASE_URL } from "@/utils";
   transition:persist
 >
   <div class="relative flex items-center justify-between px-6 h-12">
-    <a href={`${BASE_URL}/`} class="text-sm font-bold tracking-wide">
-      GEMS
-    </a>
-    <div
-      class="absolute left-1/2 -translate-x-1/2 flex items-center gap-6"
-    >
+    <a href={`${BASE_URL}/`} class="text-sm font-bold tracking-wide"> GEMS </a>
+    <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
       <a
-        href={`${BASE_URL}/play`}
+        href={`${BASE_URL}/singleplayer`}
         class="text-sm font-medium hover:text-white text-neutral-300 transition-colors"
       >
         Singleplayer
@@ -40,8 +36,7 @@ import { BASE_URL } from "@/utils";
     <script is:inline>
       try {
         var n = localStorage.getItem("account_display_name");
-        if (n)
-          document.getElementById("account-placeholder").textContent = n;
+        if (n) document.getElementById("account-placeholder").textContent = n;
         else
           document.getElementById("account-placeholder").textContent =
             "Account";
