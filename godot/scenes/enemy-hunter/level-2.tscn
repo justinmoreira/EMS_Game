@@ -58,3 +58,5 @@ is_removable = false
 visible = false
 position = Vector2(1150, 535)
 frequency = 1200.0
+is_immovable = true
+is_removable = false
