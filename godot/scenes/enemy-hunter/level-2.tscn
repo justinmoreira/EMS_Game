@@ -57,3 +57,4 @@ is_removable = false
 [node name="JammerUnit" parent="." index="5" unique_id=1423769516 instance=ExtResource("5_5dc48")]
 visible = false
 position = Vector2(1150, 535)
+frequency = 1200.0
