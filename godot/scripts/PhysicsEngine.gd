@@ -80,10 +80,7 @@ static func is_detected(
 	if !tx.is_in_group("jammers"):
 		fully_detected = SENSOR_BALANCE_RATIO * received_power > threshold + interference
 
-	return {
-		"detected": detected,
-		"fully_detected": fully_detected
-	}
+	return {"detected": detected, "fully_detected": fully_detected}
 
 
 static func calculate_received_power(
