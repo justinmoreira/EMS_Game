@@ -534,13 +534,13 @@ func _gui_input(event: InputEvent) -> void:
 		_hover_lo = in_plot and abs(my - lo_y) <= HANDLE_GRAB_PX and not _drag_hi
 		_hover_hi = in_plot and abs(my - hi_y) <= HANDLE_GRAB_PX and not _drag_lo
 
-		var hover_L = _btn_hover_left
-		var hover_R = _btn_hover_right
+		var hover_left = _btn_hover_left
+		var hover_right = _btn_hover_right
 
 		_btn_hover_left = btn_rect_1.has_point(event.position)
 		_btn_hover_right = btn_rect_2.has_point(event.position)
 
-		if hover_L != _btn_hover_left or hover_R != _btn_hover_right or in_plot:
+		if hover_left != _btn_hover_left or hover_right != _btn_hover_right or in_plot:
 			queue_redraw()
 
 		if _drag_lo:
