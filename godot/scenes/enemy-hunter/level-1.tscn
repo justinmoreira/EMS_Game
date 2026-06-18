@@ -41,24 +41,12 @@ size_flags_vertical = 1
 
 [node name="TransceiverUnit" parent="." index="3" unique_id=2117697803 instance=ExtResource("4_q1cip")]
 visible = false
-position = Vector2(901, 589)
+position = Vector2(1158, 759)
 is_immovable = true
 is_removable = false
 
 [node name="TransceiverUnit2" parent="." index="4" unique_id=1393893384 instance=ExtResource("4_q1cip")]
 visible = false
-position = Vector2(766, 565)
-is_immovable = true
-is_removable = false
-
-[node name="TransceiverUnit3" parent="." index="5" unique_id=24006139 instance=ExtResource("4_q1cip")]
-visible = false
-position = Vector2(1625, 337)
-is_immovable = true
-is_removable = false
-
-[node name="TransceiverUnit4" parent="." index="6" unique_id=1386293706 instance=ExtResource("4_q1cip")]
-visible = false
-position = Vector2(1286, 280)
+position = Vector2(997, 609)
 is_immovable = true
 is_removable = false

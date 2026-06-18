@@ -40,8 +40,9 @@ func simulate() -> void:
 
 	for sensor in sensors:
 		for tx in transceivers:
+			var result = calculate_detection(sensor, tx)
 			detect_results.append(
-				{"sensor": sensor, "transceiver": tx, "detected": calculate_detection(sensor, tx)}
+				{"sensor": sensor, "transceiver": tx, "detected": result.detected, "fully_detected": result.fully_detected}
 			)
 
 	GameEvents.simulation_complete.emit(link_results, detect_results)
@@ -156,7 +157,7 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 	return LinkState.SUCCESS
 
 
-func calculate_detection(srx: Unit, tx: Unit) -> bool:
+func calculate_detection(srx: Unit, tx: Unit) -> Dictionary:
 	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
 	var tx_px: Vector2
 	var srx_px: Vector2

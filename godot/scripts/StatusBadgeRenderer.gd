@@ -39,7 +39,7 @@ func _compute_status(tx: Unit, link_results: Array, detect_results: Array) -> in
 			return UnitStatusVisual.Status.JAMMED
 
 	for d in detect_results:
-		if d.transceiver == tx and d.detected:
+		if d.transceiver == tx and d.fully_detected:
 			return UnitStatusVisual.Status.DETECTED
 
 	return UnitStatusVisual.Status.NONE
