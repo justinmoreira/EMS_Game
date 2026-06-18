@@ -55,7 +55,7 @@ func test_sensor_detection():
 	assert_false(detected2, "Detection fail case.")
 
 	transceiver1.set_value(&"power", 1)
-	sensor.set_value(&"sensitivity", 8)
+	sensor.set_value(&"sensitivity", 2)
 	var detected3 = manager.calculate_detection(sensor, transceiver1)
 	assert_false(detected3, "Detection fail case.")
 

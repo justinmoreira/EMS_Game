@@ -1,7 +1,7 @@
 extends Node
 
 # Owns the per-unit UnitStatusVisual lifecycle. Reacts to simulation_complete,
-# computes status (jammed/detected/out-of-range), drives the badge.
+# computes status (jammed/detected), drives the badge.
 
 const STATUS_VISUAL_SCRIPT := preload("res://scripts/UnitStatusVisual.gd")
 const STATUS_VISUAL_NODE_NAME := "UnitStatusVisual"
@@ -31,21 +31,15 @@ func _get_or_create_status_visual(unit: Node) -> UnitStatusVisual:
 
 
 func _compute_status(tx: Unit, link_results: Array, detect_results: Array) -> int:
-	var has_out_of_range := false
-	# Jammed/out-of-range applies only to the RECEIVER of a failed link.
+	# Jammed applies only to the RECEIVER of a failed link.
 	for r in link_results:
 		if r.target != tx:
 			continue
 		if r.state == SimulationManager.LinkState.FAILED_JAMMED:
 			return UnitStatusVisual.Status.JAMMED
-		if r.state == SimulationManager.LinkState.FAILED_OUT_OF_RANGE:
-			has_out_of_range = true
 
 	for d in detect_results:
 		if d.transceiver == tx and d.detected:
 			return UnitStatusVisual.Status.DETECTED
-
-	if has_out_of_range:
-		return UnitStatusVisual.Status.OUT_OF_RANGE
 
 	return UnitStatusVisual.Status.NONE
