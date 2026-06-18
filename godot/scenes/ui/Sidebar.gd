@@ -158,6 +158,25 @@ func _populate_header(panel: PanelContainer) -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(spacer)
 
+	# SAVES — only meaningful on web export (where JS bridge exists).
+	if OS.has_feature("web"):
+		var saves_btn := Button.new()
+		saves_btn.text = "SAVES"
+		saves_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		saves_btn.add_theme_font_size_override("font_size", 13)
+		saves_btn.add_theme_color_override("font_color", C_BG_DARK)
+		saves_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var saves_style := StyleBoxFlat.new()
+		saves_style.bg_color = C_BLUE
+		saves_style.corner_radius_top_left = 3
+		saves_style.corner_radius_top_right = 3
+		saves_style.corner_radius_bottom_left = 3
+		saves_style.corner_radius_bottom_right = 3
+		saves_style.set_content_margin_all(8)
+		saves_btn.add_theme_stylebox_override("normal", saves_style)
+		saves_btn.pressed.connect(_on_saves_pressed)
+		hbox.add_child(saves_btn)
+
 	var reset_btn := Button.new()
 	reset_btn.text = "RESET"
 	reset_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -179,6 +198,13 @@ func _populate_header(panel: PanelContainer) -> void:
 	_reset_btn = reset_btn
 
 	_update_reset_button()
+
+
+func _on_saves_pressed() -> void:
+	# Hands off to the SavesPicker Preact island mounted on /play, which
+	# subscribes to window.openSavesPicker (see SavesPicker.tsx).
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.openSavesPicker && window.openSavesPicker()")
 
 
 func _populate_tray(panel: PanelContainer) -> void:

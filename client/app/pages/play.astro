@@ -1,4 +1,5 @@
 ---
+import SavesPicker from "@/components/SavesPicker";
 import Base from "@/layouts/Base.astro";
 import { BASE_URL } from "@/utils";
 ---
@@ -10,6 +11,13 @@ import { BASE_URL } from "@/utils";
   </Fragment>
 
   <script is:inline src={`${BASE_URL}/godot-bridge.js`}></script>
+  <!-- Side-effect import: hooks sandbox-saved → Dexie/Supabase so live
+       Godot saves get to durable storage while playing. -->
+  <script>
+    import "@/lib/sandbox";
+  </script>
+  <!-- Modal picker — Godot calls window.openSavesPicker() to show it. -->
+  <SavesPicker client:only="preact" />
   <!-- Game canvas -->
   <canvas
     id="canvas"

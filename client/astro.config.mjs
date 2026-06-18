@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { watchFile } from 'node:fs';
 import { defineConfig } from 'astro/config';
 import preact from '@astrojs/preact';
 import AstroPWA from '@vite-pwa/astro';
@@ -14,6 +15,29 @@ function crossOriginIsolation() {
         res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
         res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
         next();
+      });
+    },
+  };
+}
+
+// HMR for the Godot build: server-side watches public/godot/index.pck and
+// pushes Vite's full-reload over its existing HMR WebSocket on rebuild.
+// Replaces the client-side setInterval that was HEAD-polling index.pck every
+// 2s from every page — no browser ping, just one WS message per rebuild.
+// watchFile() polls (1s) on the server rather than using fs.watch/inotify
+// because the dev tree on WSL lives under /mnt/c, where inotify isn't reliable
+// (same reason Justfile's watchexec runs with --poll).
+function godotHmr() {
+  return {
+    name: 'godot-hmr',
+    configureServer(server) {
+      const pck = fileURLToPath(
+        new URL('./public/godot/index.pck', import.meta.url),
+      );
+      watchFile(pck, { interval: 1000 }, (curr, prev) => {
+        if (curr.mtimeMs !== prev.mtimeMs) {
+          server.ws.send({ type: 'full-reload', path: '*' });
+        }
       });
     },
   };
@@ -36,14 +60,19 @@ export default defineConfig({
           '**/*.{js,wasm,pck,css,html,svg,png,ico,woff2,json}',
         ],
         navigateFallback: '/',
+        // Don't let the SW intercept navigations to the game routes — it
+        // would otherwise serve `/` and the canvas never mounts.
+        navigateFallbackDenylist: [/^\/play\//, /^\/godot\//],
         maximumFileSizeToCacheInBytes: 50 * 1024 * 1024,
+        clientsClaim: false,
+        skipWaiting: false,
       },
       devOptions: { enabled: false },
     }),
   ],
   vite: {
     envPrefix: ['PUBLIC_'],
-    plugins: [tailwindcss(), crossOriginIsolation()],
+    plugins: [tailwindcss(), crossOriginIsolation(), godotHmr()],
     server: {
       watch: {
         usePolling: true,
