@@ -87,6 +87,7 @@ func simulate() -> void:
 					"target": tx,
 					"target_type": "transceiver",
 					"detected": result.detected,
+					"fully_detected": result.fully_detected,
 					"sensor_jammed": result.jammed
 				}
 			)
@@ -98,6 +99,7 @@ func simulate() -> void:
 					"target": tx,
 					"target_type": "jammer",
 					"detected": result.detected,
+					"fully_detected": result.fully_detected,
 					"sensor_jammed": result.jammed
 				}
 			)
@@ -256,7 +258,7 @@ func calculate_detection(srx: Unit, tx: Unit, jammers: Array) -> Dictionary:
 	)
 	var is_jammed = interference > PhysicsEngine.NOISE_FLOOR
 
-	return {"detected": is_detected, "jammed": is_jammed}
+	return {"detected": is_detected.detected, "fully_detected": is_detected.fully_detected, "jammed": is_jammed}
 
 
 func _update_all_unit_ranges() -> void:
