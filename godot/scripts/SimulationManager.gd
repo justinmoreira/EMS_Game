@@ -199,7 +199,7 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 		link_state = LinkState.FAILED_JAMMED
 	else:
 		link_state = LinkState.SUCCESS
-	
+
 	return link_state
 
 
