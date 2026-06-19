@@ -70,7 +70,6 @@ func _ready() -> void:
 
 	# Publish initial size so listeners (BaseLevel) get a value before any resize.
 	GameEvents.sidebar_resized.emit.call_deferred(size.x)
-	_build_sidebar()
 	_refresh_attribute_panel()
 
 	# Publish the fixed design width to listeners (BaseLevel). Constant, not the
@@ -431,6 +430,12 @@ func _refresh_attribute_panel() -> void:
 	# dependent transmission delay. Only meaningful for placed units.
 	if selected_node is Unit and def.id == &"transceiver":
 		_add_send_message_button(def.color)
+	
+	if selected_node and "is_removable" in selected_node:
+		var is_locked = not selected_node.is_removable
+		_lock_all_attributes(is_locked)
+	else:
+		_lock_all_attributes(false)
 
 
 func _add_send_message_button(accent: Color) -> void:
@@ -800,6 +805,12 @@ func _on_tutorial_filter(allowed_ids: Array) -> void:
 			child.mouse_filter = (
 				Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
 			)
+
+
+func _lock_all_attributes(is_locked: bool) -> void:
+	_attr_content.modulate.a = 0.3 if is_locked else 1.0
+	_set_interactivity(_attr_content, not is_locked)
+	_attr_content.mouse_default_cursor_shape = Control.CURSOR_FORBIDDEN if is_locked else Control.CURSOR_ARROW
 
 
 func _set_interactivity(node: Control, enabled: bool) -> void:
