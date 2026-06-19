@@ -2,8 +2,8 @@ extends BaseLevel
 
 const HEIGHTMAP_SIZE := 512
 const PIXELS_PER_KM := 100.0
-const HEIGHTMAP_SIZE_KM := HEIGHTMAP_SIZE / PIXELS_PER_KM
-const GRID_CELL_UV := 1.0 / HEIGHTMAP_SIZE_KM
+const MAP_SIZE_KM := HEIGHTMAP_SIZE / PIXELS_PER_KM
+const GRID_CELL_UV := 1.0 / MAP_SIZE_KM
 
 var height_data: Image
 var grid_overlay: ColorRect
@@ -73,8 +73,8 @@ func _resize_grid():
 
 
 func get_height_at(world_pos: Vector2) -> float:
-	var uv_x = world_pos.x / (HEIGHTMAP_SIZE_KM * PIXELS_PER_KM)
-	var uv_y = world_pos.y / (HEIGHTMAP_SIZE_KM * PIXELS_PER_KM)
+	var uv_x = world_pos.x / (MAP_SIZE_KM * PIXELS_PER_KM)
+	var uv_y = world_pos.y / (MAP_SIZE_KM * PIXELS_PER_KM)
 	var px = clamp(int(uv_x * HEIGHTMAP_SIZE), 0, HEIGHTMAP_SIZE - 1)
 	var py = clamp(int(uv_y * HEIGHTMAP_SIZE), 0, HEIGHTMAP_SIZE - 1)
 	return height_data.get_pixel(px, py).r

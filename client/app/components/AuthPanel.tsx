@@ -6,8 +6,13 @@ import { setProgress, syncStatus } from "@/lib/progress";
 import { supabase } from "@/lib/supabase";
 import { BASE_URL } from "@/utils";
 
-function LoginForm() {
-  const [mode, setMode] = useState<"login" | "signup">("login");
+function LoginForm({
+  mode,
+  setMode,
+}: {
+  mode: "login" | "signup";
+  setMode: (m: "login" | "signup") => void;
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -232,10 +237,18 @@ function getCachedName(): string {
 export default function AccountModal() {
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
+  const [mode, setMode] = useState<"login" | "signup">("login");
   useEffect(() => {
     setReady(true);
     const el = document.getElementById("account-placeholder");
     if (el) el.style.display = "none";
+  }, []);
+  // Other components (e.g. the in-game saves picker when the user isn't
+  // signed in) can prompt sign-in by dispatching `open-auth-modal`.
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("open-auth-modal", onOpen);
+    return () => window.removeEventListener("open-auth-modal", onOpen);
   }, []);
   useEffect(() => {
     if (!open) return;
@@ -287,14 +300,14 @@ export default function AccountModal() {
                 &times;
               </button>
               <h2 class="text-xl font-bold mb-6">
-                {user ? "Account" : "Sign In"}
+                {user ? "Account" : mode === "signup" ? "Sign Up" : "Sign In"}
               </h2>
               {authLoading.value ? (
                 <div class="text-neutral-500">Loading...</div>
               ) : user ? (
                 <ProfileView user={user} />
               ) : (
-                <LoginForm />
+                <LoginForm mode={mode} setMode={setMode} />
               )}
               <button
                 type="button"

@@ -11,6 +11,14 @@ const SUGGESTIONS_PANEL_SCENE := preload("res://scenes/ui/SuggestionsDialog.tscn
 const MAP_SIZE = Vector2(1080, 1080)
 const MAP_ORIGIN = Vector2(570, 0)
 
+# definition.id → unit scene to instantiate when reconstructing the level
+# from a snapshot. Lookup table for serialize/deserialize_units below.
+const _UNIT_SCENES := {
+	&"transceiver": preload("res://scenes/core/units/TransceiverUnit.tscn"),
+	&"jammer": preload("res://scenes/core/units/JammerUnit.tscn"),
+	&"sensor": preload("res://scenes/core/units/SensorUnit.tscn"),
+}
+
 # Camera / Viewport State
 var zoom := 1.0
 var offset := Vector2.ZERO
@@ -130,8 +138,8 @@ func toggle_shader(enabled: bool) -> void:
 func _reposition_units() -> void:
 	var unit_scale = 1.0 / zoom
 	for child in get_children():
-		if child is Unit and child.has_meta("world_uv"):
-			child.position = world_uv_to_screen(child.get_meta("world_uv"))
+		if child is Unit and child.get_value(&"world_uv") != null:
+			child.position = world_uv_to_screen(child.get_value(&"world_uv"))
 			child.scale = Vector2(unit_scale, unit_scale)
 
 
@@ -174,7 +182,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 		return
 
 	# Set position and scale based on current camera zoom/offset
-	unit.set_meta("world_uv", screen_to_world_uv(at_position))
+	unit.set_value(&"world_uv", screen_to_world_uv(at_position))
 	unit.position = at_position
 	unit.scale = Vector2(1.0 / zoom, 1.0 / zoom)
 
@@ -191,10 +199,10 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 
 	add_child(unit)
 
-	# Preserve main #61's UX: re-sim after placement so links reflect new geometry.
-	SimulationManager.simulate()
+	# Auto-sim on place (preserves main's #61 UX via round-8's event-bus pattern).
+	GameEvents.simulation_requested.emit()
 
-	# Apply current visual settings (show/hide ranges)
+	# Apply current visual settings (show/hide ranges) from #74.
 	_set_unit_show_range_visual(unit, show_signal_ranges)
 
 	_on_unit_placed(unit)
@@ -474,3 +482,66 @@ func _get_or_create_attribute_label(unit: Unit) -> UnitAttributesLabel:
 	label.setup(unit, unit)
 	label.visible = unit_attributes_visible
 	return label
+
+
+# --- Unit serialization (pure utilities) ---------------------------------
+#
+# These produce / consume a JSON-friendly snapshot of the level's units.
+# They have NO side effects beyond the unit tree itself — no auto-saving,
+# no event emission besides the explicit simulation_requested at the end of
+# deserialize_units. A persister Node (e.g., ScenePersister.gd) decides
+# when/where to call these for any given level.
+#
+# Snapshot shape:  Array of { "type": StringName id, "state": Dictionary }
+# `state` is the unit's physical_state.duplicate(), with any Vector2 entries
+# (currently just world_uv) split into {"x", "y"} for JSON friendliness.
+
+
+func serialize_units() -> Array:
+	var out: Array = []
+	for child in get_children():
+		if not (child is Unit and child.definition):
+			continue
+		var state: Dictionary = child.physical_state.duplicate()
+		var uv = state.get(&"world_uv", null)
+		if uv is Vector2:
+			state[&"world_uv"] = {"x": uv.x, "y": uv.y}
+		out.append({"type": String(child.definition.id), "state": state})
+	return out
+
+
+func deserialize_units(snapshot: Array) -> void:
+	# Wipe the current scene before instantiating from the snapshot. queue_free
+	# is deferred so we wait a frame before adding the replacements; otherwise
+	# the new units race with the doomed ones and units_changed double-fires.
+	for group in [&"transceivers", &"jammers", &"sensors"]:
+		for u in get_tree().get_nodes_in_group(group):
+			u.queue_free()
+	await get_tree().process_frame
+
+	for entry in snapshot:
+		if not (entry is Dictionary):
+			continue
+		var type_id := StringName(String(entry.get("type", "")))
+		var scene: PackedScene = _UNIT_SCENES.get(type_id)
+		if scene == null:
+			continue
+		var state: Dictionary = entry.get("state", {})
+		var world_uv := Vector2.ZERO
+		var uv_raw = state.get("world_uv", null)
+		if uv_raw is Dictionary:
+			world_uv = Vector2(float(uv_raw.get("x", 0.0)), float(uv_raw.get("y", 0.0)))
+
+		var unit: Unit = scene.instantiate()
+		unit.owner = null
+		# Seed physical_state BEFORE add_child so _ready sees the user's saved
+		# values and skips the auto-name fallback.
+		for k in state:
+			if String(k) == "world_uv":
+				continue
+			unit.set(k, state[k])
+		add_child(unit)
+		unit.set_value(&"world_uv", world_uv)
+		unit.global_position = world_uv_to_screen(world_uv)
+
+	GameEvents.simulation_requested.emit()

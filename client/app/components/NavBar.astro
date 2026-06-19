@@ -5,7 +5,6 @@ import { BASE_URL } from "@/utils";
 
 <nav
   class="fixed top-0 left-0 right-0 z-50 bg-neutral-900/80 backdrop-blur-sm border-b border-neutral-700"
-  transition:persist
 >
   <div class="relative flex items-center justify-between px-6 h-12">
     <a href={`${BASE_URL}/`} class="text-sm font-bold tracking-wide"> GEMS </a>
@@ -42,6 +41,7 @@ import { BASE_URL } from "@/utils";
             "Account";
       } catch {}
     </script>
-    <AccountModal client:only="preact" />
+    <AccountModal client:only="preact" transition:persist />
+
   </div>
 </nav>
