@@ -430,7 +430,7 @@ func _refresh_attribute_panel() -> void:
 	# dependent transmission delay. Only meaningful for placed units.
 	if selected_node is Unit and def.id == &"transceiver":
 		_add_send_message_button(def.color)
-	
+
 	if selected_node and "is_removable" in selected_node:
 		var is_locked = not selected_node.is_removable
 		_lock_all_attributes(is_locked)
@@ -810,7 +810,9 @@ func _on_tutorial_filter(allowed_ids: Array) -> void:
 func _lock_all_attributes(is_locked: bool) -> void:
 	_attr_content.modulate.a = 0.3 if is_locked else 1.0
 	_set_interactivity(_attr_content, not is_locked)
-	_attr_content.mouse_default_cursor_shape = Control.CURSOR_FORBIDDEN if is_locked else Control.CURSOR_ARROW
+	_attr_content.mouse_default_cursor_shape = (
+		Control.CURSOR_FORBIDDEN if is_locked else Control.CURSOR_ARROW
+	)
 
 
 func _set_interactivity(node: Control, enabled: bool) -> void:
