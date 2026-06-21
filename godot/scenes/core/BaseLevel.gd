@@ -56,19 +56,18 @@ func _ready():
 	GameEvents.reset_requested.connect(_on_reset_requested)
 	GameEvents.delete_requested.connect(_on_delete_requested)
 	GameEvents.sidebar_resized.connect(_on_sidebar_resized)
-	
+
 	for child in get_children():
 		if child is Unit:
 			# If world_uv is null, it means it was pre-placed and not dragged/spawned
 			if child.get_value(&"world_uv") == null:
-				
 				# Calculate UV purely based on the 1620x1080 Editor space
 				var u = (child.global_position.x - DESIGN_MAP_ORIGIN.x) / DESIGN_MAP_SIZE.x
 				var v = (child.global_position.y - DESIGN_MAP_ORIGIN.y) / DESIGN_MAP_SIZE.y
-				
+
 				# Inject it into the Unit's physical_state dictionary
 				child.set_value(&"world_uv", Vector2(u, v))
-	
+
 	_on_window_resized()
 
 	toggle_suggestions(suggestions_enabled)

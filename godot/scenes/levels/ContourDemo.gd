@@ -41,9 +41,9 @@ func _ready() -> void:
 	add_to_group("terrain")
 
 	super._ready()
-	
+
 	await get_tree().process_frame
-	
+
 	if sidebar_width == 0.0 and has_node("CanvasLayer/Control/Sidebar"):
 		sidebar_width = $CanvasLayer/Control/Sidebar.size.x
 		_on_window_resized()
