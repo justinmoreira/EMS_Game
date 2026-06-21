@@ -42,17 +42,8 @@ func _ready() -> void:
 
 	super._ready()
 
-	await get_tree().process_frame
-
-	if sidebar_width == 0.0 and has_node("CanvasLayer/Control/Sidebar"):
-		sidebar_width = $CanvasLayer/Control/Sidebar.size.x
-		_on_window_resized()
-
 	height_grid = _generate_terrain(grid_w, grid_h)
-	#set_terrain_data(height_grid, map_container.global_position, map_container.size)
-	set_terrain_data(height_grid, _map_origin(), get_map_size())
-	print(_map_origin(), " ", get_map_size())
-	print(map_container.global_position, " ", map_container.size)
+	set_terrain_data(height_grid, map_container.global_position, map_container.size)
 
 	var tex := _create_height_texture(height_grid, grid_w, grid_h)
 	contour_rect.material.set_shader_parameter("height_map", tex)
@@ -354,12 +345,11 @@ func get_unit_total_height(unit: Node) -> float:
 
 	var ground := 0.0
 
-	if unit.has_meta("world_uv"):
-		var uv: Vector2 = unit.get_meta("world_uv")
+	var uv = unit.get_value(&"world_uv", null) if unit.has_method("get_value") else null
 
-		var gx: float = clamp(int(uv.x * float(grid_w)), 0, grid_w - 1)
-		var gy: float = clamp(int(uv.y * float(grid_h)), 0, grid_h - 1)
-
+	if uv != null:
+		var gx: int = clamp(int(uv.x * float(grid_w)), 0, grid_w - 1)
+		var gy: int = clamp(int(uv.y * float(grid_h)), 0, grid_h - 1)
 		ground = float(height_grid[gx][gy])
 	else:
 		var terrain_px: Vector2 = unit.global_position
