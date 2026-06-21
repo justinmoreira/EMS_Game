@@ -271,8 +271,8 @@ func _update_terrain_transform() -> void:
 	map_origin = world_uv_to_terrain_px(Vector2.ZERO)
 	var far_corner: Vector2 = world_uv_to_terrain_px(Vector2.ONE)
 	map_scale = (far_corner - map_origin) / Vector2(float(grid_w), float(grid_h))
-	
-	
+
+
 func _reposition_labels() -> void:
 	# Labels are children of BaseLevel (same as units), so world_uv_to_screen
 	# gives positions directly in our local coordinate space.
