@@ -1,4 +1,3 @@
-@tool
 class_name Unit extends Node2D
 
 # A press+release that moves the cursor less than this counts as a click,
@@ -7,8 +6,6 @@ const CLICK_DRAG_THRESHOLD_PX := 5.0
 const SELECTION_RADIUS := 32.0
 
 @export var definition: UnitDefinition
-@export var is_immovable: bool = false  # If true, this unit cannot be dragged
-@export var is_removable: bool = true  # If false, this unit cannot be removed
 var physical_state: Dictionary = {}
 
 var _unit_visual: UnitVisual
@@ -50,49 +47,6 @@ func _exit_tree() -> void:
 
 
 # ── Domain (definition / physical_state) ─────────────────────────────
-
-
-func _get_property_list() -> Array:
-	var properties: Array = []
-
-	if definition == null:
-		return properties
-
-	for spec in definition.attributes:
-		var prop_type = TYPE_NIL
-
-		# Map your custom enum to Godot's native variant types
-		match spec.kind:
-			AttributeSpec.Kind.INT:
-				prop_type = TYPE_INT
-			AttributeSpec.Kind.FLOAT:
-				prop_type = TYPE_FLOAT
-			AttributeSpec.Kind.STRING:
-				prop_type = TYPE_STRING
-			AttributeSpec.Kind.BOOL:
-				prop_type = TYPE_BOOL
-			AttributeSpec.Kind.ENUM:
-				prop_type = TYPE_INT
-
-		var prop := {
-			"name": spec.id,
-			"type": prop_type,
-			"usage": PROPERTY_USAGE_DEFAULT,
-			"hint": PROPERTY_HINT_NONE,
-			"hint_string": ""
-		}
-
-		# Render nicely to update in Godot GUI
-		if spec.kind == AttributeSpec.Kind.ENUM:
-			prop["hint"] = PROPERTY_HINT_ENUM
-			prop["hint_string"] = ",".join(spec.enum_options)
-		elif spec.kind in [AttributeSpec.Kind.FLOAT, AttributeSpec.Kind.INT]:
-			prop["hint"] = PROPERTY_HINT_RANGE
-			prop["hint_string"] = "%s,%s,%s" % [spec.min_value, spec.max_value, spec.step]
-
-		properties.append(prop)
-
-	return properties
 
 
 # Returns the value for an attribute id, or fallback if unset.
@@ -247,14 +201,6 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 	# Only the initial press starts a drag here. Release and motion live in
 	# _input so they keep working when the cursor leaves the shape mid-drag.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		if is_immovable:
-			# Still allow selection, but not dragging
-			if event.is_pressed():
-				GameEvents.select(self)
-				get_tree().root.set_input_as_handled()
-			return
-
-		# Preserve main #61's UX: clear stale link visuals on drag-press.
 		_is_being_dragged = true
 		_drag_start_pos = get_global_mouse_position()
 		_drag_start_unit_pos = global_position
@@ -264,7 +210,7 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 
 
 func _input(event: InputEvent) -> void:
-	if not _is_being_dragged or is_immovable:
+	if not _is_being_dragged:
 		return
 
 	# Right-click during a drag → cancel: snap back, leave links untouched
