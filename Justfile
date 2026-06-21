@@ -118,14 +118,15 @@ db-start:
     supabase start
 
 [group('dev')]
-[doc('Restart local Supabase (force by default, mode=soft skips restart when healthy)')]
+[doc('Restart local Supabase (force by default, mode=soft skips restart when healthy and migrations are up-to-date)')]
 db-restart mode="force":
     #!/usr/bin/env bash
     set -euo pipefail
 
     if [ "{{mode}}" = "soft" ]; then
         if curl --silent --show-error --fail --max-time 5 http://127.0.0.1:54321/auth/v1/health >/dev/null; then
-            echo "✅ Supabase auth is healthy; skipping restart"
+            echo "✅ Supabase auth is healthy"
+            just _apply_pending_migrations
             exit 0
         fi
         echo "⚠️  Supabase auth is unhealthy; restarting..."
@@ -136,6 +137,7 @@ db-restart mode="force":
     supabase stop
     supabase start
     just _wait_supabase
+    just _apply_pending_migrations
 
 [group('dev')]
 [doc('Stop local Supabase')]
@@ -151,6 +153,100 @@ db-reset:
 [doc('Generate TypeScript types from database schema')]
 db-types:
     supabase gen types typescript --local > {{client_path}}/app/lib/database.types.ts
+
+[group('quality')]
+[doc('Verify migration files reproduce the live local schema (catches: ALTER applied locally but no migration written for it)')]
+migrations-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! supabase status &>/dev/null; then
+        echo "⚠️  Supabase isn't running — skipping migration drift check."
+        echo "   Start it with: just db-start"
+        exit 0
+    fi
+
+    # The CLI spins up a "shadow database" container on port 54320 to compute
+    # the diff, but it frequently leaks the container on interrupt / error.
+    # Kill anything on that port that isn’t our main supabase_db_<project>
+    # container so the next diff has a clean lane.
+    main_db=$(docker ps --filter "name=supabase_db_" -q | head -1)
+    for c in $(docker ps -aq --filter "publish=54320"); do
+        if [ "$c" != "$main_db" ]; then
+            docker rm -f "$c" >/dev/null 2>&1 || true
+        fi
+    done
+
+    diff_out=$(supabase db diff 2>&1 || true)
+    if echo "$diff_out" | grep -q "No schema changes found"; then
+        echo "✅ Migration files match the live schema."
+        exit 0
+    fi
+    if echo "$diff_out" | grep -qE "failed to (start|set up)|port is already allocated|Cannot find project"; then
+        echo "⚠️  Couldn’t run supabase db diff (infra issue, not drift):"
+        echo ""
+        echo "$diff_out" | tail -10
+        echo ""
+        echo "   Try: docker ps  → kill anything stale, then re-run."
+        exit 0
+    fi
+    echo "❌ Schema drift detected — your local DB has changes the migration files don't."
+    echo ""
+    echo "$diff_out" | tail -40
+    echo ""
+    echo "Fix:"
+    echo "  • Generate a migration:  supabase db diff -f <descriptive_name>"
+    echo "  • Or revert local DB:    just db-reset"
+    exit 1
+
+[group('dev')]
+[doc('Run SQL against the local Supabase DB. No args → interactive psql shell. Uses psql inside the supabase Docker container so the host doesn’t need a postgres client.')]
+query *sql:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # `-q` returns just the container ID, so no Go-template --format flag
+    # is needed (which would collide with Just's substitution syntax).
+    container=$(docker ps --filter "name=supabase_db_" -q | head -1)
+    if [ -z "$container" ]; then
+        echo "❌ No running Supabase Postgres container — start it with \`just db-start\`."
+        exit 1
+    fi
+    if [ -z "{{sql}}" ]; then
+        docker exec -it "$container" psql -U postgres
+    else
+        docker exec -i "$container" psql -U postgres -c "{{sql}}"
+    fi
+
+[group('dev')]
+[doc('Apply any migration files that are not yet recorded in supabase_migrations.schema_migrations (idempotent; silent when up-to-date)')]
+[private]
+_apply_pending_migrations:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Reach psql inside the running supabase container — keeps the host free
+    # of a postgres-client dep. `-q` returns the container ID directly, so
+    # no Go-template --format flag is needed.
+    container=$(docker ps --filter "name=supabase_db_" -q | head -1)
+    if [ -z "$container" ]; then
+        echo "⚠️  No running Supabase Postgres container; skipping migration check"
+        exit 0
+    fi
+
+    # Count migration files locally vs versions recorded in the local DB.
+    file_count=$(ls -1 supabase/migrations/*.sql 2>/dev/null | wc -l | tr -d ' ')
+    applied_count=$(docker exec -i "$container" psql -U postgres -At \
+        -c "SELECT count(*) FROM supabase_migrations.schema_migrations" \
+        2>/dev/null || echo 0)
+
+    if [ "$file_count" -le "$applied_count" ]; then
+        # No diff → fast path, no output.
+        exit 0
+    fi
+
+    echo "📋 Pending migrations detected ($file_count files vs $applied_count applied) — applying..."
+    if ! supabase migration up; then
+        supabase db reset
+    fi
 
 [group('dev')]
 [doc('Wait for local Supabase auth to become healthy')]
@@ -174,28 +270,101 @@ _wait_supabase:
     fi
 
 [group('dev')]
-[doc('Start Astro dev server with auto Godot rebuild on changes')]
+[doc('Start Astro dev server with auto Godot rebuild on changes; restarts dev server on health-check failure')]
 [private]
 _hmr_serve:
     #!/usr/bin/env bash
     CLIENT_PATH={{client_path}} ./scripts/gen-env.sh
+
+    # Recursive descendant kill — bun spawns vite as a grandchild and a plain
+    # kill on $! leaves it orphaned holding the port. Same helper as `dev`.
+    _kill_tree() {
+        local pid=$1 child
+        for child in $(pgrep -P "$pid" 2>/dev/null); do _kill_tree "$child"; done
+        kill "$pid" 2>/dev/null || true
+    }
+
+    DEV_PID=""
+    WATCH_PID=""
+    cleanup() {
+        [ -n "$DEV_PID" ] && _kill_tree "$DEV_PID"
+        [ -n "$WATCH_PID" ] && _kill_tree "$WATCH_PID"
+    }
+    trap 'cleanup; exit' INT TERM
+    trap cleanup EXIT
+
     echo "🔄 Watching godot/ for changes (auto rebuild)..."
-    watchexec --postpone --poll 2000ms -w godot -e gd,tscn,gdshader,tres -- just build_game 2>&1 | tee /tmp/godot-rebuild.log &
+    # Process substitution (> >(tee ...)) keeps $! pointing at watchexec, not
+    # tee — a plain pipe would put tee at the tail of the pipeline and we'd
+    # only kill the logger, leaving watchexec running.
+    watchexec --postpone --poll 2000ms -w godot -e gd,tscn,gdshader,tres -- just build_game > >(tee /tmp/godot-rebuild.log) 2>&1 &
     WATCH_PID=$!
-    trap "kill $WATCH_PID 2>/dev/null" EXIT
+
     PORT=$(python3 scripts/find_port.py)
-    echo "🌐 Starting dev server on port $PORT..."
-    cd {{client_path}} && PORT=$PORT bun run dev --port $PORT
+    echo "🌐 Starting dev server on port $PORT (health-check-supervised)..."
+
+    # Supervised loop: if 3 consecutive HC probes fail, kill the tree and
+    # respawn. Editing astro.config.mjs can crash vite's reload but leave
+    # bun alive in a broken state — the HC catches that.
+    while true; do
+        (cd {{client_path}} && PORT=$PORT bun run dev --port $PORT) &
+        DEV_PID=$!
+        # Warmup must exceed astro's cold-start (~16s observed). Probes
+        # before astro binds will all fail and trip the restart spuriously.
+        sleep 20
+        fails=0
+        while kill -0 $DEV_PID 2>/dev/null; do
+            # TCP probe via bash's /dev/tcp — purely "is the port bound?",
+            # no HTTP request, no curl timeout. Avoids false positives from
+            # vite's lazy first-request compile (which can blow past any
+            # reasonable HTTP timeout).
+            if (exec 3<>/dev/tcp/localhost/$PORT) 2>/dev/null; then
+                exec 3<&-; exec 3>&-
+                fails=0
+            else
+                fails=$((fails + 1))
+                if [ $fails -ge 3 ]; then
+                    echo "⚠️  Dev server unhealthy after $fails HC fails — restarting..."
+                    _kill_tree $DEV_PID
+                    break
+                fi
+            fi
+            sleep 5
+        done
+        wait $DEV_PID 2>/dev/null
+        DEV_PID=""
+        sleep 1
+    done
 
 [group('dev')]
 [doc('Full dev stack: Supabase + Astro + Godot watcher')]
 dev:
     #!/usr/bin/env bash
     echo "⚡ Bringing up dev (db + Godot build + client deps in parallel)..."
-    just db-restart soft &
-    just build_game &
-    just _init_client &
+
+    # Recursive descendant kill. Plain `kill $(jobs -p)` only hits our direct
+    # `just` children; the real culprit (godot4, spawned as a grandchild of
+    # `just build_game`) kept running and flooded the terminal after the parent
+    # failed. Walking the pgrep tree catches it.
+    _kill_tree() {
+        local pid=$1 child
+        for child in $(pgrep -P "$pid" 2>/dev/null); do _kill_tree "$child"; done
+        kill "$pid" 2>/dev/null || true
+    }
+
+    pids=()
+    # If a preflight job fails (wait -n returns non-zero), kill the trees of
+    # all siblings so nothing keeps churning after `just dev` exits.
+    trap 'for p in "${pids[@]}"; do _kill_tree "$p"; done' EXIT
+
+    just db-restart soft & pids+=($!)
+    just build_game & pids+=($!)
+    just _init_client & pids+=($!)
     for _ in 1 2 3; do wait -n || exit $?; done
+
+    # Preflight done — drop the trap so it doesn't try to kill the long-running
+    # watcher/dev server below.
+    trap - EXIT
     just _hmr_serve
 
 [group('quality')]

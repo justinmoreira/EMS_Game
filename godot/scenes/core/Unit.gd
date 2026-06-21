@@ -19,8 +19,13 @@ var unit_visual: UnitVisual:
 
 var _selection_area: Area2D
 var _is_being_dragged: bool = false
-var _drag_start_pos: Vector2 = Vector2.ZERO
+var _drag_start_pos: Vector2 = Vector2.ZERO  # mouse position at press
+var _drag_start_unit_pos: Vector2 = Vector2.ZERO  # unit position at press (for cancel)
 var _drag_distance: float = 0.0
+# Tracks whether we've fired links_clear_requested this drag. Press alone
+# shouldn't clear — only actual movement past CLICK_DRAG_THRESHOLD_PX. A pure
+# click leaves the existing link visuals untouched.
+var _drag_links_cleared: bool = false
 
 
 func _ready() -> void:
@@ -98,6 +103,83 @@ func _spawn_visual() -> void:
 	add_child(_unit_visual)
 
 
+func update_ranges() -> void:
+	if _unit_visual == null:
+		return
+
+	var is_transceiver = is_in_group("transceivers")
+	var is_jammer = is_in_group("jammers")
+	var is_sensor = is_in_group("sensors")
+	var power: float = get_value(&"power", 0.0)
+	var height: float = get_value(&"height", 0.0)
+	var frequency: float = get_value(&"frequency", 1000.0)
+
+	var ground_h: float = 0.0
+	var terrain = get_tree().get_first_node_in_group("terrain")
+	if terrain and terrain.has_method("get_ground_height_at_pos"):
+		ground_h = terrain.get_ground_height_at_pos(global_position)
+
+	if is_transceiver:
+		var max_range = PhysicsEngine.calculate_signal_range(
+			power,
+			ground_h + height,
+			ground_h + height,
+			frequency,
+			0.5,
+			PhysicsEngine.TRANSCEIVER_BALANCE_RATIO
+		)
+		_unit_visual.set_ring("max_range", max_range, "MAX RANGE")
+
+		var bw_idx: int = get_value(&"transceiver_bandwidth", 0)
+		var bw_power: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
+		var bw_penalty: float = PhysicsEngine.bandwidth_penalty(bw_idx)
+		if bw_penalty > 0.0:
+			var strong_range = PhysicsEngine.calculate_signal_range(
+				power,
+				ground_h + height,
+				ground_h + height,
+				frequency,
+				PhysicsEngine.NOISE_FLOOR / bw_power,
+				PhysicsEngine.TRANSCEIVER_BALANCE_RATIO
+			)
+			_unit_visual.set_ring("strong_range", min(strong_range, max_range), "STRONG SIGNAL")
+		else:
+			_unit_visual.remove_ring("strong_range")
+
+	elif is_jammer:
+		var bw_idx: int = get_value(&"jammer_bandwidth", 0)
+		var bw_power: float = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
+		var max_range := PhysicsEngine.calculate_signal_range(
+			power,
+			ground_h + height,
+			ground_h + height,
+			frequency,
+			PhysicsEngine.NOISE_FLOOR,
+			bw_power * PhysicsEngine.JAMMER_BALANCE_RATIO
+		)
+		_unit_visual.set_ring("max_range", max_range, "JAM RANGE")
+		_unit_visual.remove_ring("strong_range")
+
+	elif is_sensor:
+		var sensitivity: float = get_value(&"sensitivity", 3.0)
+		var tuning_frequency: float = get_value(&"tuning_frequency", 1000.0)
+		var bw_idx: int = get_value(&"sensor_bandwidth", 1)
+		var threshold := (
+			lerpf(3.0, PhysicsEngine.NOISE_FLOOR, sensitivity / 10.0)
+			+ PhysicsEngine.bandwidth_penalty(bw_idx)
+		)
+
+		var detection_range := PhysicsEngine.calculate_signal_range(
+			5.0,
+			ground_h + height,
+			ground_h + height,
+			tuning_frequency,
+			threshold,
+			PhysicsEngine.SENSOR_BALANCE_RATIO
+		)
+		_unit_visual.set_ring("detection", detection_range, "DETECTION RANGE")
+
+
 # ── Interaction (drag / click select) ────────────────────────────────
 
 
@@ -127,9 +209,13 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 				GameEvents.select(self)
 				get_tree().root.set_input_as_handled()
 			return
+
+		# Preserve main #61's UX: clear stale link visuals on drag-press.
 		_is_being_dragged = true
 		_drag_start_pos = get_global_mouse_position()
+		_drag_start_unit_pos = global_position
 		_drag_distance = 0.0
+		_drag_links_cleared = false
 		get_tree().root.set_input_as_handled()
 
 
@@ -137,33 +223,69 @@ func _input(event: InputEvent) -> void:
 	if not _is_being_dragged or is_immovable:
 		return
 
+	# Right-click during a drag → cancel: snap back, leave links untouched
+	# (re-sim only if motion already cleared them so visuals get rebuilt).
+	if (
+		event is InputEventMouseButton
+		and event.button_index == MOUSE_BUTTON_RIGHT
+		and event.pressed
+	):
+		global_position = _drag_start_unit_pos
+		var bl = get_parent()
+		if bl and bl.has_method("screen_to_world_uv"):
+			set_value(&"world_uv", bl.screen_to_world_uv(_drag_start_unit_pos))
+		_is_being_dragged = false
+		if _drag_links_cleared:
+			GameEvents.simulation_requested.emit()
+		get_tree().root.set_input_as_handled()
+		return
+
 	if (
 		event is InputEventMouseButton
 		and event.button_index == MOUSE_BUTTON_LEFT
 		and not event.pressed
 	):
-		if _drag_distance < CLICK_DRAG_THRESHOLD_PX:
-			GameEvents.select(self)
+		# A drag (moved past threshold) re-sims so links reflect the new geometry.
+		# Either way, end with this unit selected so its panel shows what you
+		# just clicked / placed / moved.
+		if _drag_links_cleared:
+			GameEvents.simulation_requested.emit()
+		GameEvents.select(self)
 		_is_being_dragged = false
 		get_tree().root.set_input_as_handled()
 		return
 
 	if event is InputEventMouseMotion:
-		# Clamp by converting through the level's UV space — which already
-		# accounts for sidebar/playable-area exclusion. No direct sidebar reach.
 		var base_level = get_parent()
 		if not (base_level and base_level.has_method("screen_to_world_uv")):
 			return
 
+		# Clamp in SCREEN space (sidebar's right edge → viewport right edge).
+		# Clamping in world-UV [0,1] cuts off the rectangular map's left/right
+		# strips, since UV [0,1] is the SQUARE subregion of a widescreen map.
+		# sidebar_width is published live via GameEvents.
 		var mouse_pos = get_global_mouse_position()
-		var world_uv = base_level.screen_to_world_uv(mouse_pos)
-		var clamped := Vector2(clamp(world_uv.x, 0.0, 1.0), clamp(world_uv.y, 0.0, 1.0))
+		var screen_rect = get_viewport().get_visible_rect()
+		mouse_pos.x = clamp(
+			mouse_pos.x,
+			screen_rect.position.x + base_level.sidebar_width,
+			screen_rect.position.x + screen_rect.size.x
+		)
+		mouse_pos.y = clamp(
+			mouse_pos.y, screen_rect.position.y, screen_rect.position.y + screen_rect.size.y
+		)
 
-		if has_meta("world_uv"):
-			set_meta("world_uv", clamped)
-
-		global_position = base_level.world_uv_to_screen(clamped)
+		set_value(&"world_uv", base_level.screen_to_world_uv(mouse_pos))
+		global_position = mouse_pos
 		_drag_distance = _drag_start_pos.distance_to(global_position)
+
+		# Fire-once: clear stale link visuals as soon as we know this is a real
+		# drag (not a click). Pure clicks never reach the threshold, so their
+		# existing visuals stay intact.
+		if not _drag_links_cleared and _drag_distance >= CLICK_DRAG_THRESHOLD_PX:
+			GameEvents.links_clear_requested.emit()
+			_drag_links_cleared = true
+
 		get_tree().root.set_input_as_handled()
 
 

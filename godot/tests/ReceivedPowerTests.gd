@@ -10,40 +10,40 @@ func test_received_power():
 
 	# Test 1: Baseline calculation
 	# TxPower=10, heights=(5,5), freq=1000, distance=1km, terrain=1
-	# HeightFactor = 1 + (5+5)/20 = 1.5
+	# HeightFactor = 1 + (5+5)/1000 = 1.01
 	# FrequencyFactor = 1000/1000 = 1.0
 	# DistanceLoss = (1+1)^2 = 4
-	# ReceivedPower = (10 * 1.5 * 1.0) / (4 * 1) = 15/4 = 3.75
+	# ReceivedPower = (10 * 1.01 * 1.0) / (4 * 1) = 2.525 * GAME_RATIO
 	var result1 = PhysicsEngine.calculate_received_power(10.0, 5.0, 5.0, 1000.0, 1.0, 1.0)
-	assert_eq(result1, 3.75, "Baseline calculation: Got 3.75")
+	assert_eq(result1, 2.525, "Baseline calculation: Got 2.525")
 
 	# Test 2: Zero distance (closest possible)
 	# DistanceLoss = (0+1)^2 = 1
-	# ReceivedPower = (10 * 1.5 * 1.0) / (1 * 1) = 15
+	# ReceivedPower = (10 * 1.01 * 1.0) / (1 * 1) = 10.1 * GAME_RATIO
 	var result2 = PhysicsEngine.calculate_received_power(10.0, 5.0, 5.0, 1000.0, 0.0, 1.0)
-	assert_eq(result2, 15.0, "Zero distance: Got 15.0")
+	assert_eq(result2, 10.1, "Zero distance: Got 10.1")
 
 	# Test 3: Ground level (no height advantage)
 	# HeightFactor = 1 + (0+0)/20 = 1.0
-	# ReceivedPower = (10 * 1.0 * 1.0) / (4 * 1) = 2.5
+	# ReceivedPower = (10 * 1.0 * 1.0) / (4 * 1) = 2.5 * GAME_RATIO = 7.5
 	var result3 = PhysicsEngine.calculate_received_power(10.0, 0.0, 0.0, 1000.0, 1.0, 1.0)
 	assert_eq(result3, 2.5, "Ground level: Got 2.5")
 
 	# Test 4: Different frequency (higher frequency = lower signal)
 	# FrequencyFactor = 1000/2000 = 0.5
-	# ReceivedPower = (10 * 1.5 * 0.5) / (4 * 1) = 7.5/4 = 1.875
+	# ReceivedPower = (10 * 1.01 * 0.5) / (4 * 1) = 1.2625 * GAME_RATIO
 	var result4 = PhysicsEngine.calculate_received_power(10.0, 5.0, 5.0, 2000.0, 1.0, 1.0)
-	assert_eq(result4, 1.875, "Higher frequency: Got 1.875")
+	assert_eq(result4, 1.2625, "Higher frequency: Got 2625")
 
 	# Test 5: Terrain loss attenuation
 	# With terrain_loss = 2.0, divides result by 2
-	# ReceivedPower = (10 * 1.5 * 1.0) / (4 * 2) = 15/8 = 1.875
+	# ReceivedPower = (10 * 1.01 * 1.0) / (4 * 2) = 1.2625 * GAME_RATIO
 	var result5 = PhysicsEngine.calculate_received_power(10.0, 5.0, 5.0, 1000.0, 1.0, 2.0)
-	assert_eq(result5, 1.875, "Terrain loss: Got 1.875")
+	assert_eq(result5, 1.2625, "Terrain loss: Got 1.2625")
 
 	# Test 6: Low transmission power
-	# ReceivedPower = (2 * 1.5 * 1.0) / (4 * 1) = 3/4 = 0.75
+	# ReceivedPower = (2 * 1.01 * 1.0) / (4 * 1) = 0.505 * GAME_RATIO
 	var result6 = PhysicsEngine.calculate_received_power(2.0, 5.0, 5.0, 1000.0, 1.0, 1.0)
-	assert_eq(result6, 0.75, "Low transmission power: Got 0.75")
+	assert_eq(result6, 0.505, "Low transmission power: Got 0.505")
 
 	print("\nAll Received Power Tests Complete")

@@ -35,6 +35,9 @@ if (isBrowser) {
     } else {
       document.cookie = "sb-access-token=; path=/; Max-Age=0";
       document.cookie = "sb-refresh-token=; path=/; Max-Age=0";
+      // Tell godot-bridge.js to flush the cached sandbox snapshot so an
+      // anonymous visitor on the same browser doesn't load this user's scene.
+      window.dispatchEvent(new CustomEvent("auth-signed-out"));
     }
   });
 }

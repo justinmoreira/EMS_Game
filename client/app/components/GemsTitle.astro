@@ -1,0 +1,26 @@
+---
+// Fixed-position hero. Rendered on landing pages (index, singleplayer) at
+// the same place every time so a full page reload doesn't visibly move it —
+// gives the impression GEMS persists across navigation. The default slot
+// is for an action button (Play Now) that sits below the subtitle with
+// normal flow spacing.
+//
+// pointer-events:none on the wrapper lets clicks pass through to whatever
+// is behind GEMS; the button gets pointer-events:auto explicitly.
+---
+
+<div
+  class="pointer-events-none fixed left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-6 text-center"
+>
+  <div>
+    <h1
+      class="text-7xl font-black tracking-tighter text-white drop-shadow-lg md:text-8xl"
+    >
+      GEMS
+    </h1>
+    <p class="mt-2 text-lg tracking-wide text-neutral-400">
+      Gamifying Electro-Magnetic Spectrum
+    </p>
+  </div>
+  <slot />
+</div>

@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="EMS sim"
+config/name="GEMS"
 run/main_scene="res://scenes/levels/ContourDemo.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
@@ -24,6 +24,8 @@ UnitNameManager="*res://scripts/UnitNameManager.gd"
 TutorialController="*res://scripts/TutorialController.gd"
 LinkRenderer="*res://scripts/LinkRenderer.gd"
 StatusBadgeRenderer="*res://scripts/StatusBadgeRenderer.gd"
+MessageRelay="*res://scripts/MessageRelay.gd"
+MessageRenderer="*res://scripts/MessageRenderer.gd"
 
 [display]
 

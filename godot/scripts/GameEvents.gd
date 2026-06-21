@@ -41,6 +41,12 @@ signal reset_requested
 @warning_ignore("unused_signal")
 signal delete_requested(unit: Node)
 
+# Drag-press clears stale link visuals before the new drag-release sim.
+# LinkRenderer wires this to clear_all so Unit.gd stays decoupled from
+# the SimulationManager singleton.
+@warning_ignore("unused_signal")
+signal links_clear_requested
+
 # Sidebar publishes its width on resize so BaseLevel can update layout
 # without a global find_child reach.
 @warning_ignore("unused_signal")
@@ -49,3 +55,12 @@ signal sidebar_resized(width: float)
 # Sim broadcast — SimulationManager emits, renderers/listeners react.
 @warning_ignore("unused_signal")
 signal simulation_complete(link_results: Array, detect_results: Array)
+
+# Message relay — Sidebar emits send_requested; MessageRelay computes per-receiver
+# delay (higher frequency = faster) and emits message_dispatched, which the
+# renderer animates as a traveling pulse. Educational: visualize the benefit
+# of higher transmitter frequency.
+@warning_ignore("unused_signal")
+signal message_send_requested(from_unit: Node)
+@warning_ignore("unused_signal")
+signal message_dispatched(from_unit: Node, to_unit: Node, delay: float)

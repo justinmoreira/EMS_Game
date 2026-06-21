@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="UnitDefinition" format=3 uid="uid://bmc6tg4c2e7rl"]
+[gd_resource type="Resource" script_class="UnitDefinition" format=3 uid="uid://cd2kh332pl2ss"]
 
 [ext_resource type="Script" uid="uid://brvcwcd503l75" path="res://scenes/core/UnitDefinition.gd" id="def"]
 [ext_resource type="Script" uid="uid://mdhqup6qxr0d" path="res://scenes/core/AttributeSpec.gd" id="spec"]
@@ -50,7 +50,7 @@ id = &"jammer"
 display_name = "Jammer"
 group = &"jammers"
 letter = "J"
-color = Color(1, 0.7019608, 0.2784314, 1)
+color = Color(1, 0.36, 0.36, 1)
 sprite_path = "res://assets/sprites/jammer.png"
 animated_sprite_path = "res://assets/sprites/jammerAni.png"
 attributes = Array[ExtResource("spec")]([SubResource("a_unit_name"), SubResource("a_power"), SubResource("a_frequency"), SubResource("a_height"), SubResource("a_bandwidth")])

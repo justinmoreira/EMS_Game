@@ -16,29 +16,34 @@ const C_OUT_OF_RANGE := Color.DARK_ORANGE
 const C_JAMMED := Color.RED
 const C_FREQUENCY_DIFF := Color.CYAN
 const C_BANDWIDTH_PENALTY := Color.MAGENTA
+const C_TERRAIN_BLOCKED := Color.BLACK
 
 var active_links: Dictionary = {}
 var links_visible: bool = true
+
+var focus_mode: bool = false
+var bidirectional_mode: bool = false
+var _focused_unit: Unit = null
+var _hovered_unit: Unit = null
 
 
 func _ready() -> void:
 	GameEvents.simulation_complete.connect(_on_simulation_complete)
 	GameEvents.reset_requested.connect(clear_all)
+	GameEvents.links_clear_requested.connect(clear_all)
 
 
 func _exit_tree() -> void:
 	clear_all()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_update_active_link_visuals()
-
-
-func _input(event):
-	if event is InputEventKey and event.pressed and event.keycode == KEY_T:
-		links_visible = !links_visible
-		for k in active_links:
-			_apply_visibility_for_key(k)
+	# Animate the moving-dashed pattern (CONNECTING links scroll their dashes).
+	for key in active_links:
+		var data = active_links[key]
+		if is_instance_valid(data.get("line")):
+			data.line.advance_dash(delta)
 
 
 func _on_simulation_complete(link_results: Array, _detect_results: Array) -> void:
@@ -80,9 +85,9 @@ func _draw_directional_link(source: Unit, target: Unit, final_state: int) -> voi
 
 func _create_link_nodes(source: Unit, target: Unit, key: String) -> void:
 	var scene = get_tree().current_scene
-	var line = Line2D.new()
-	line.width = LINE_WIDTH
-	line.antialiased = true
+	# PatternedLinkLine draws solid/dashed/moving-dashed/zigzag per link state
+	# (via LinkVisuals) instead of a plain Line2D.
+	var line = PatternedLinkLine.new()
 	line.z_index = 100
 	scene.add_child(line)
 
@@ -124,7 +129,7 @@ func _update_link_geometry(key: String) -> void:
 	var l_start = start + (dir * NODE_PADDING) + (normal * LINE_OFFSET)
 	var l_end = end - (dir * NODE_PADDING) + (normal * LINE_OFFSET)
 
-	data.line.points = PackedVector2Array([l_start, l_end])
+	data.line.set_points(l_start, l_end)
 	data.arrow.global_position = l_end - dir * (ARROW_SIZE * 0.3)
 	data.arrow.rotation = dir.angle()
 
@@ -133,20 +138,33 @@ func _set_link_visual_state(key: String, state: int) -> void:
 	if not active_links.has(key):
 		return
 	var data = active_links[key]
-	var color = C_CONNECTING
+
+	# Each state maps to a color AND a line pattern (LinkVisuals): success is a
+	# solid green line, connecting scrolls a moving dash, failures use static
+	# dashes, and a jam zigzags.
+	var color = LinkVisuals.C_CONNECTING
+	var pattern = LinkVisuals.LINE_PATTERN_MOVING_DASHED
 	match state:
 		SimulationManager.LinkState.SUCCESS:
-			color = C_SUCCESS
+			color = LinkVisuals.C_SUCCESS
+			pattern = LinkVisuals.LINE_PATTERN_SOLID
 		SimulationManager.LinkState.FAILED_OUT_OF_RANGE:
-			color = C_OUT_OF_RANGE
+			color = LinkVisuals.C_OUT_OF_RANGE
+			pattern = LinkVisuals.LINE_PATTERN_DASHED
 		SimulationManager.LinkState.FAILED_JAMMED:
-			color = C_JAMMED
+			color = LinkVisuals.C_JAMMED
+			pattern = LinkVisuals.LINE_PATTERN_ZIGZAG
 		SimulationManager.LinkState.FREQUENCY_DIFF:
-			color = C_FREQUENCY_DIFF
+			color = LinkVisuals.C_FREQUENCY_DIFF
+			pattern = LinkVisuals.LINE_PATTERN_DASHED
 		SimulationManager.LinkState.BANDWIDTH_PENALTY:
-			color = C_BANDWIDTH_PENALTY
+			color = LinkVisuals.C_BANDWIDTH_PENALTY
+			pattern = LinkVisuals.LINE_PATTERN_DASHED
+		SimulationManager.LinkState.TERRAIN_BLOCKED:
+			color = LinkVisuals.C_TERRAIN_BLOCKED
+			pattern = LinkVisuals.LINE_PATTERN_DASHED
 	if is_instance_valid(data.line):
-		data.line.default_color = color
+		data.line.set_visual(color, pattern)
 	if is_instance_valid(data.arrow):
 		data.arrow.color = color
 	data["state"] = state
@@ -182,9 +200,57 @@ func _free_link_nodes(data: Dictionary) -> void:
 		data.arrow.queue_free()
 
 
+func set_focused_unit(unit: Unit) -> void:
+	_focused_unit = unit
+	_refresh_all_visibility()
+
+
+func set_hovered_unit(unit: Unit) -> void:
+	_hovered_unit = unit
+	_refresh_all_visibility()
+
+
+func _refresh_all_visibility() -> void:
+	for key in active_links:
+		_apply_visibility_for_key(key)
+
+
+# Replace the existing _apply_visibility_for_key entirely
 func _apply_visibility_for_key(key: String) -> void:
 	var data = active_links[key]
+	var should_show: bool
+	var is_hover_preview := false
+
+	if not links_visible:
+		should_show = false
+	elif focus_mode:
+		var selected = (
+			is_instance_valid(_focused_unit)
+			and (data.source == _focused_unit or data.target == _focused_unit)
+		)
+		var hovered = (
+			is_instance_valid(_hovered_unit)
+			and (data.source == _hovered_unit or data.target == _hovered_unit)
+		)
+		should_show = selected or hovered
+		is_hover_preview = hovered and not selected
+	else:
+		should_show = true
+
+	var alpha := 0.35 if is_hover_preview else 1.0
+
 	if is_instance_valid(data.line):
-		data.line.visible = links_visible
+		data.line.visible = should_show
+		data.line.modulate.a = alpha
 	if is_instance_valid(data.arrow):
-		data.arrow.visible = links_visible
+		data.arrow.visible = should_show
+		data.arrow.modulate.a = alpha
+
+
+func get_links_for_unit(unit: Unit) -> Array:
+	var results := []
+	for key in active_links:
+		var data = active_links[key]
+		if data.source == unit or data.target == unit:
+			results.append(data)
+	return results

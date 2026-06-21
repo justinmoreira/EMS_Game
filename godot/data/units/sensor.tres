@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="UnitDefinition" format=3 uid="uid://b58qnu2ytbxx6"]
+[gd_resource type="Resource" script_class="UnitDefinition" format=3 uid="uid://bnb2ndvm2tkp4"]
 
 [ext_resource type="Script" uid="uid://brvcwcd503l75" path="res://scenes/core/UnitDefinition.gd" id="def"]
 [ext_resource type="Script" uid="uid://mdhqup6qxr0d" path="res://scenes/core/AttributeSpec.gd" id="spec"]
@@ -16,7 +16,7 @@ id = &"sensitivity"
 display_name = "Sensitivity"
 max_value = 10.0
 unit = "dBm"
-default_value = 3
+default_value = 5
 
 [sub_resource type="Resource" id="a_tuning"]
 script = ExtResource("spec")
@@ -56,7 +56,7 @@ id = &"sensor"
 display_name = "Sensor"
 group = &"sensors"
 letter = "S"
-color = Color(1, 0.36078432, 0.36078432, 1)
+color = Color(0.878, 0.6, 1, 1)
 sprite_path = "res://assets/sprites/sensor.png"
 animated_sprite_path = "res://assets/sprites/sensorAni.png"
 attributes = Array[ExtResource("spec")]([SubResource("a_unit_name"), SubResource("a_sensitivity"), SubResource("a_tuning"), SubResource("a_height"), SubResource("a_bandwidth"), SubResource("a_scanning")])

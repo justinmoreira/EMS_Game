@@ -7,6 +7,9 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_l1"]
 shader = ExtResource("3_nlylg")
+shader_parameter/zoom = 1.0
+shader_parameter/offset = Vector2(0, 0)
+shader_parameter/aspect_ratio = 1.0
 shader_parameter/color_low = Color(0, 0, 0, 1)
 shader_parameter/color_mid = Color(0, 0, 0, 1)
 shader_parameter/color_high = Color(0, 0, 0, 1)
@@ -33,30 +36,17 @@ texture = SubResource("PlaceholderTexture2D_pb6d8")
 expand_mode = 2
 
 [node name="Sidebar" parent="CanvasLayer/Control" parent_id_path=PackedInt32Array(860915758) index="0" unique_id=831222554]
-custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 1
 size_flags_vertical = 1
 
 [node name="TransceiverUnit" parent="." index="3" unique_id=2117697803 instance=ExtResource("4_q1cip")]
 visible = false
-position = Vector2(901, 589)
+position = Vector2(1158, 759)
 is_immovable = true
 is_removable = false
 
 [node name="TransceiverUnit2" parent="." index="4" unique_id=1393893384 instance=ExtResource("4_q1cip")]
 visible = false
-position = Vector2(766, 565)
-is_immovable = true
-is_removable = false
-
-[node name="TransceiverUnit3" parent="." index="5" unique_id=24006139 instance=ExtResource("4_q1cip")]
-visible = false
-position = Vector2(1625, 337)
-is_immovable = true
-is_removable = false
-
-[node name="TransceiverUnit4" parent="." index="6" unique_id=1386293706 instance=ExtResource("4_q1cip")]
-visible = false
-position = Vector2(1286, 280)
+position = Vector2(997, 609)
 is_immovable = true
 is_removable = false

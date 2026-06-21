@@ -1,4 +1,5 @@
 ---
+import GemsTitle from "@/components/GemsTitle.astro";
 import Base from "@/layouts/Base.astro";
 import { BASE_URL } from "@/utils";
 
@@ -7,7 +8,7 @@ const modes = [
     id: "tutorial",
     name: "Tutorial",
     icon: "book",
-    href: `${BASE_URL}/placeholder?mode=tutorial`,
+    href: `${BASE_URL}/tutorial`,
     description:
       "Learn the basics of EMS gameplay, unit placement, frequency matching, and signal behavior.",
     badge: "Recommended",
@@ -25,7 +26,7 @@ const modes = [
     id: "silent-link",
     name: "Silent Link",
     icon: "signal",
-    href: `${BASE_URL}/placeholder?mode=silent-link`,
+    href: `${BASE_URL}/silent-link`,
     description:
       "Build communication links while keeping emissions low and avoiding detection.",
     badge: "Coming Soon",
@@ -42,13 +43,23 @@ const modes = [
 ];
 ---
 
-<Base title="Singleplayer | EMS Sim">
-  <div id="vanta-bg" class="fixed inset-0 -z-10"></div>
+<Base title="GEMS">
+  <div id="vanta-bg" transition:persist="vanta-bg" class="fixed inset-0 -z-10">
+  </div>
 
-  <main class="min-h-[calc(100vh-3rem)] px-6 py-10 text-white">
-    <section
-      class="mx-auto flex min-h-[calc(100vh-8rem)] max-w-5xl flex-col items-center justify-center"
+  <GemsTitle>
+    <a
+      id="play-now"
+      href={`${BASE_URL}/tutorial`}
+      data-astro-reload
+      class="pointer-events-auto inline-flex min-w-56 items-center justify-center rounded-xl bg-emerald-400 px-12 py-4 text-xl font-bold text-black shadow-lg shadow-emerald-950/50 transition-colors hover:bg-emerald-300"
     >
+      Play Now
+    </a>
+  </GemsTitle>
+
+  <main class="px-6 pt-[calc(25vh-7rem)] text-white">
+    <section class="mx-auto flex max-w-5xl flex-col items-center">
       <div
         class="mb-8 w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-black/45 shadow-2xl backdrop-blur-md"
       >
@@ -124,26 +135,6 @@ const modes = [
           <p class="mt-2">Selected game mode</p>
         </div>
       </div>
-
-      <div class="text-center">
-        <h1
-          class="text-7xl font-black tracking-tighter drop-shadow-lg md:text-8xl"
-        >
-          GEMS
-        </h1>
-
-        <p class="mt-4 text-xl tracking-wide text-neutral-400">
-          Gamifying Electro-Magnetic Spectrum
-        </p>
-
-        <a
-          id="play-now"
-          href={`${BASE_URL}/placeholder?mode=tutorial`}
-          class="mt-10 inline-flex min-w-56 items-center justify-center rounded-xl bg-emerald-400 px-12 py-4 text-xl font-bold text-black shadow-lg shadow-emerald-950/50 transition-colors hover:bg-emerald-300"
-        >
-          Play Now
-        </a>
-      </div>
     </section>
   </main>
 
@@ -157,27 +148,50 @@ const modes = [
     src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"
     crossorigin="anonymous"></script>
 
-  <script is:inline>
-    VANTA.NET({
-      el: "#vanta-bg",
-      mouseControls: true,
-      touchControls: true,
-      gyroControls: false,
-      minHeight: 200.0,
-      minWidth: 200.0,
-      scale: 1.0,
-      scaleMobile: 1.0,
-      color: 0x58ff3f,
-      backgroundColor: 0x0a0a0a,
-      points: 8.0,
-      maxDistance: 20.0,
-      spacing: 18.0,
-    });
+  <script is:inline data-astro-rerun>
+    // See identical block in index.astro for rationale — re-init only
+    // when #vanta-bg has no canvas (i.e. fresh render, not a persisted
+    // carry-over from the previous page).
+    //
+    // Poll for VANTA: on swaps from a page that didn't load three/vanta
+    // (e.g. /play → /singleplayer), Astro inserts the <script src> tags
+    // but they're still loading async when this rerun fires. Without the
+    // wait, VANTA is undefined and the background stays black.
+    (function init(attempt) {
+      attempt = attempt || 0;
+      if (typeof VANTA === "undefined") {
+        if (attempt > 200) return; // give up after ~5s
+        return setTimeout(() => init(attempt + 1), 25);
+      }
+      const el = document.getElementById("vanta-bg");
+      if (!el || el.querySelector("canvas")) return;
+      VANTA.NET({
+        el,
+        mouseControls: true,
+        touchControls: true,
+        gyroControls: false,
+        minHeight: 200.0,
+        minWidth: 200.0,
+        scale: 1.0,
+        scaleMobile: 1.0,
+        color: 0x58ff3f,
+        backgroundColor: 0x0a0a0a,
+        points: 8.0,
+        maxDistance: 20.0,
+        spacing: 18.0,
+      });
+    })();
   </script>
 
-  <script is:inline>
-    const icons = {
-      book: `
+  <script is:inline data-astro-rerun>
+    // IIFE-wrapped so top-level `const` declarations don't collide on
+    // re-runs (data-astro-rerun re-executes this in global scope on every
+    // ClientRouter navigation; a bare `const icons = {...}` would throw
+    // "already declared" on the second run and the icons would never
+    // populate).
+    (() => {
+      const icons = {
+        book: `
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round"
           stroke-linejoin="round">
@@ -185,7 +199,7 @@ const modes = [
           <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z" />
         </svg>
       `,
-      cube: `
+        cube: `
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round"
           stroke-linejoin="round">
@@ -196,7 +210,7 @@ const modes = [
           <path d="M12 13v8" />
         </svg>
       `,
-      signal: `
+        signal: `
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round"
           stroke-linejoin="round">
@@ -207,7 +221,7 @@ const modes = [
           <path d="M12 12h.01" />
         </svg>
       `,
-      target: `
+        target: `
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round"
           stroke-linejoin="round">
@@ -219,54 +233,55 @@ const modes = [
           <path d="M19 12h3" />
         </svg>
       `,
-    };
+      };
 
-    document.querySelectorAll(".mode-icon").forEach((icon) => {
-      const iconName = icon.getAttribute("data-icon");
-      icon.innerHTML = icons[iconName] || "";
-    });
-
-    const modeTabs = document.querySelectorAll(".mode-tab");
-    const playNowButton = document.getElementById("play-now");
-    const modeDescription = document.getElementById("mode-description");
-    const modeBadge = document.getElementById("mode-badge");
-
-    function selectMode(selectedTab) {
-      modeTabs.forEach((tab) => {
-        const isSelected = tab === selectedTab;
-
-        tab.setAttribute("aria-selected", String(isSelected));
-        tab.classList.toggle("selected", isSelected);
-        tab.classList.toggle("text-emerald-400", isSelected);
-        tab.classList.toggle("text-neutral-400", !isSelected);
-
-        const line = tab.querySelector(".selection-line");
-
-        if (line) {
-          line.classList.toggle("opacity-100", isSelected);
-          line.classList.toggle("opacity-0", !isSelected);
-        }
+      document.querySelectorAll(".mode-icon").forEach((icon) => {
+        const iconName = icon.getAttribute("data-icon");
+        icon.innerHTML = icons[iconName] || "";
       });
 
-      const href = selectedTab.getAttribute("data-href");
-      const description = selectedTab.getAttribute("data-description");
-      const badge = selectedTab.getAttribute("data-badge");
+      const modeTabs = document.querySelectorAll(".mode-tab");
+      const playNowButton = document.getElementById("play-now");
+      const modeDescription = document.getElementById("mode-description");
+      const modeBadge = document.getElementById("mode-badge");
 
-      if (href && playNowButton) {
-        playNowButton.setAttribute("href", href);
+      function selectMode(selectedTab) {
+        modeTabs.forEach((tab) => {
+          const isSelected = tab === selectedTab;
+
+          tab.setAttribute("aria-selected", String(isSelected));
+          tab.classList.toggle("selected", isSelected);
+          tab.classList.toggle("text-emerald-400", isSelected);
+          tab.classList.toggle("text-neutral-400", !isSelected);
+
+          const line = tab.querySelector(".selection-line");
+
+          if (line) {
+            line.classList.toggle("opacity-100", isSelected);
+            line.classList.toggle("opacity-0", !isSelected);
+          }
+        });
+
+        const href = selectedTab.getAttribute("data-href");
+        const description = selectedTab.getAttribute("data-description");
+        const badge = selectedTab.getAttribute("data-badge");
+
+        if (href && playNowButton) {
+          playNowButton.setAttribute("href", href);
+        }
+
+        if (description && modeDescription) {
+          modeDescription.textContent = description;
+        }
+
+        if (badge && modeBadge) {
+          modeBadge.textContent = badge;
+        }
       }
 
-      if (description && modeDescription) {
-        modeDescription.textContent = description;
-      }
-
-      if (badge && modeBadge) {
-        modeBadge.textContent = badge;
-      }
-    }
-
-    modeTabs.forEach((tab) => {
-      tab.addEventListener("click", () => selectMode(tab));
-    });
+      modeTabs.forEach((tab) => {
+        tab.addEventListener("click", () => selectMode(tab));
+      });
+    })();
   </script>
 </Base>
