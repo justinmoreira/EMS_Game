@@ -45,6 +45,7 @@ script = ExtResource("2")
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
+frequency = 800
 
 [node name="EnemySensor2" type="Node2D" parent="." index="4" unique_id=2024476142]
 position = Vector2(1480, 260)
@@ -52,6 +53,7 @@ script = ExtResource("2")
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
+frequency = 800
 
 [node name="EnemyJammer" type="Node2D" parent="." index="5" unique_id=234907007]
 visible = false
@@ -60,3 +62,4 @@ script = ExtResource("2")
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
+frequency = 950
