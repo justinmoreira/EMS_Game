@@ -214,7 +214,8 @@ func _rebuild_sources() -> void:
 	var srx_px: Vector2 = srx_data.px
 	var z_rx: float = srx_data.z
 
-	# Exponential gain from sens (high sens -> loud emissions take over, low sens -> quiet emissions aren't heard)
+	# Exponential gain from sens (high sens -> loud emissions take over,
+	# low sens -> quiet emissions aren't heard)
 	var sens = _safe_get(_sensor, "sensitivity", 5.0)
 	var sens_norm = clampf(sens / 10.0, 0.0, 1.0)
 
