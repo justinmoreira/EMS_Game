@@ -43,7 +43,7 @@ func _ready() -> void:
 	super._ready()
 
 	height_grid = _generate_terrain(grid_w, grid_h)
-	set_terrain_data(height_grid, map_container.global_position, map_container.size)
+	set_terrain_data(height_grid, _map_origin(), get_map_size())
 
 	var tex := _create_height_texture(height_grid, grid_w, grid_h)
 	contour_rect.material.set_shader_parameter("height_map", tex)

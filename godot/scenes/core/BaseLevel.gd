@@ -94,12 +94,10 @@ func _on_window_resized() -> void:
 # offset_left set in _on_window_resized.
 
 
-#TODO: Fix to give accurate representation of map origin
 func _map_origin() -> Vector2:
 	return Vector2(sidebar_width, 0)
 
 
-#TODO: Fix to give accurate representation of map size
 func get_map_size() -> Vector2:
 	return Vector2(size.x - sidebar_width, size.y)
 
