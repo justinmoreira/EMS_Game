@@ -41,7 +41,7 @@ size_flags_horizontal = 1
 size_flags_vertical = 1
 
 [node name="FriendlyTransceiver" type="Node2D" parent="." index="3" unique_id=155165395]
-position = Vector2(945, 640)
+position = Vector2(1200, 640)
 script = ExtResource("4_1ghud")
 definition = ExtResource("5_sbe1m")
 is_immovable = true
