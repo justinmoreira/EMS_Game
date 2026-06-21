@@ -217,7 +217,7 @@ func _rebuild_sources() -> void:
 	# Exponential gain from sens (high sens -> loud emissions take over, low sens -> quiet emissions aren't heard)
 	var sens = _safe_get(_sensor, "sensitivity", 5.0)
 	var sens_norm = clampf(sens / 10.0, 0.0, 1.0)
-	
+
 	# 0.1x -> 25x gain
 	var gain_multiplier = lerpf(0.1, 25.0, pow(sens_norm, 2.0))
 
@@ -247,13 +247,20 @@ func _rebuild_sources() -> void:
 
 		if rx_power >= 0.01:
 			# As received power spikes, width expands exponentially
-			var blowout_factor = pow(rx_power, 1.5) 
+			var blowout_factor = pow(rx_power, 1.5)
 			var sigma: float = SIGMA_BASE_MHZ + blowout_factor * SIGMA_POWER
-			
+
 			# Max sigma
 			sigma = minf(sigma, 4000.0)
-			
-			_sources.append({"freq": freq, "rx": rx_power, "two_s2": 2.0 * sigma * sigma, "blowout": blowout_factor})
+
+			_sources.append(
+				{
+					"freq": freq,
+					"rx": rx_power,
+					"two_s2": 2.0 * sigma * sigma,
+					"blowout": blowout_factor
+				}
+			)
 
 	for jammer in get_tree().get_nodes_in_group("jammers"):
 		var j_data = _get_unit_spatial_data(jammer, terrain)
@@ -276,21 +283,25 @@ func _rebuild_sources() -> void:
 		var base_rx_power = PhysicsEngine.calculate_received_power(
 			power, z_j, z_rx, freq, dist, terrain_loss
 		)
-		
+
 		var jammer_power_at_rx = (
-			PhysicsEngine.JAMMER_BALANCE_RATIO * base_rx_power * PhysicsEngine.BANDWIDTH_POWER[bw_idx]
+			PhysicsEngine.JAMMER_BALANCE_RATIO
+			* base_rx_power
+			* PhysicsEngine.BANDWIDTH_POWER[bw_idx]
 		)
-		
+
 		jammer_power_at_rx *= gain_multiplier
 
 		if jammer_power_at_rx >= 0.01:
-			var raw_amplified_power = PhysicsEngine.JAMMER_BALANCE_RATIO * base_rx_power * gain_multiplier
+			var raw_amplified_power = (
+				PhysicsEngine.JAMMER_BALANCE_RATIO * base_rx_power * gain_multiplier
+			)
 			var blowout_factor = pow(raw_amplified_power, 1.5)
-			
+
 			var bw_half = PhysicsEngine.BANDWIDTH_MHZ[bw_idx] / 2.0
 			var jammer_width_scaler := 6.0
 			var base_j_sigma = maxf(10.0, bw_half * jammer_width_scaler)
-			
+
 			var j_sigma = base_j_sigma + blowout_factor * SIGMA_POWER
 			j_sigma = minf(j_sigma, 4000.0)
 
@@ -309,27 +320,27 @@ func _sample_at(freq: float) -> float:
 	for src in _sources:
 		var d: float = freq - src.freq
 		var power_mult := 1.0
-		
+
 		# Apply chaotic distortion if the signal is blowing out
 		if src.blowout > 5.0:
 			var dist_factor = minf(src.blowout, 100.0)
-			
+
 			var warp = sin(_noise_t * 25.0 + freq * 0.15) * (dist_factor * 0.8)
 			var warp2 = cos(_noise_t * 12.0 - freq * 0.05) * (dist_factor * 0.4)
 			d += warp + warp2
-			
+
 			power_mult = randf_range(0.6, 1.4)
-			
+
 		var curve = exp(-(d * d) / src.two_s2)
 		sum += (src.rx * power_mult) * curve
-		
+
 	return sum
 
 
 func _noise_at(freq: float) -> float:
 	var sens = _safe_get(_sensor, "sensitivity", 5.0)
 	var sens_norm = clampf(sens / 10.0, 0.0, 1.0)
-	
+
 	var noise_floor_base = lerpf(3.0, 0.1, sens_norm)
 	var drift := sin(_noise_t * 5.0 + freq * 0.01) * 0.05
 	var base_noise = maxf(0.01, noise_floor_base + drift)
@@ -340,15 +351,15 @@ func _noise_at(freq: float) -> float:
 	for j in _jammers_rx:
 		var d: float = freq - j.freq
 		var power_mult := 1.0
-		
+
 		# Chaotic distortion
 		if j.blowout > 5.0:
 			var dist_factor = minf(j.blowout, 100.0)
-			
+
 			var warp = sin(_noise_t * 25.0 + freq * 0.15) * (dist_factor * 0.8)
 			var warp2 = cos(_noise_t * 12.0 - freq * 0.05) * (dist_factor * 0.4)
 			d += warp + warp2
-			
+
 			power_mult = randf_range(0.6, 1.4)
 
 		var curve = exp(-(d * d) / j.two_s2)

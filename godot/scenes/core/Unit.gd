@@ -51,36 +51,37 @@ func _exit_tree() -> void:
 
 # ── Domain (definition / physical_state) ─────────────────────────────
 
+
 func _get_property_list() -> Array:
 	var properties: Array = []
-	
+
 	if definition == null:
 		return properties
 
 	for spec in definition.attributes:
 		var prop_type = TYPE_NIL
-		
+
 		# Map your custom enum to Godot's native variant types
 		match spec.kind:
-			AttributeSpec.Kind.INT: 
+			AttributeSpec.Kind.INT:
 				prop_type = TYPE_INT
-			AttributeSpec.Kind.FLOAT: 
+			AttributeSpec.Kind.FLOAT:
 				prop_type = TYPE_FLOAT
-			AttributeSpec.Kind.STRING: 
+			AttributeSpec.Kind.STRING:
 				prop_type = TYPE_STRING
-			AttributeSpec.Kind.BOOL: 
+			AttributeSpec.Kind.BOOL:
 				prop_type = TYPE_BOOL
-			AttributeSpec.Kind.ENUM: 
-				prop_type = TYPE_INT 
-				
+			AttributeSpec.Kind.ENUM:
+				prop_type = TYPE_INT
+
 		var prop := {
 			"name": spec.id,
 			"type": prop_type,
-			"usage": PROPERTY_USAGE_DEFAULT, 
+			"usage": PROPERTY_USAGE_DEFAULT,
 			"hint": PROPERTY_HINT_NONE,
 			"hint_string": ""
 		}
-		
+
 		# Render nicely to update in Godot GUI
 		if spec.kind == AttributeSpec.Kind.ENUM:
 			prop["hint"] = PROPERTY_HINT_ENUM
@@ -88,12 +89,12 @@ func _get_property_list() -> Array:
 		elif spec.kind in [AttributeSpec.Kind.FLOAT, AttributeSpec.Kind.INT]:
 			prop["hint"] = PROPERTY_HINT_RANGE
 			prop["hint_string"] = "%s,%s,%s" % [spec.min_value, spec.max_value, spec.step]
-			
+
 		properties.append(prop)
 
 	return properties
-	
-	
+
+
 # Returns the value for an attribute id, or fallback if unset.
 func get_value(id: StringName, fallback = null):
 	return physical_state.get(id, fallback)
