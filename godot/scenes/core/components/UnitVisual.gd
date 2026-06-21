@@ -17,6 +17,16 @@ var unit_name: String = ""  # Unit name
 
 @export var is_selected: bool = false
 @export var is_hovered: bool = false
+
+# ── Multiplayer ownership glow ───────────────────────────────────────
+# Soft radial halo behind the unit: blue = yours, red = the opponent's.
+# NONE (sandbox / singleplayer) draws nothing. The body color still
+# encodes unit TYPE; this glow only encodes WHO owns it.
+enum Owner { NONE, MINE, ENEMY }
+const MINE_GLOW_COLOR := Color(0.25, 0.55, 1.0)  # blue — your units
+const ENEMY_GLOW_COLOR := Color(1.0, 0.28, 0.28)  # red — opponent units
+var owner_kind: int = Owner.NONE
+
 var _animated_sprite: AnimatedSprite2D
 
 var signal_rings: Dictionary = {}
@@ -49,6 +59,11 @@ func _setup_heatmap() -> void:
 
 func set_hovered(hovered: bool) -> void:
 	is_hovered = hovered
+	queue_redraw()
+
+
+func set_owner_kind(kind: int) -> void:
+	owner_kind = kind
 	queue_redraw()
 
 
@@ -263,8 +278,27 @@ func _sort_keys_by_radius_desc(a, b) -> int:
 	return -1 if ra > rb else 1
 
 
+# Fakes a radial gradient by stacking concentric translucent fills: many
+# overlaps near the body, few at the outer edge, so alpha builds toward the
+# center and feathers out. Cheap enough for the handful of units on a board.
+func _draw_owner_glow(rgb: Color) -> void:
+	var inner := RADIUS
+	var outer := RADIUS * 2.0
+	var steps := 18
+	for i in range(steps):
+		var t := float(i) / float(steps - 1)  # 0 = outer edge, 1 = body
+		var r := lerpf(outer, inner, t)
+		draw_circle(Vector2.ZERO, r, Color(rgb.r, rgb.g, rgb.b, 0.06))
+
+
 func _draw() -> void:
 	var font := ThemeDB.fallback_font
+
+	# Ownership glow sits behind everything else.
+	if owner_kind == Owner.MINE:
+		_draw_owner_glow(MINE_GLOW_COLOR)
+	elif owner_kind == Owner.ENEMY:
+		_draw_owner_glow(ENEMY_GLOW_COLOR)
 
 	# Draw selection corners if selected
 	if is_selected or is_hovered:

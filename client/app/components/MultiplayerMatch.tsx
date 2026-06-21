@@ -304,6 +304,79 @@ export default function MultiplayerMatch() {
     setPendingOpponentAction(null);
   }, [match?.current_turn, pendingOpponentAction]);
 
+  // Replay-on-load: rebuild both boards from the DB so a reconnect/reload
+  // isn't an empty canvas until the next turn streams in. Applies each
+  // player's LATEST action — your own always, the opponent's only for turns
+  // already committed (turn_number < current_turn) so reload can't peek at
+  // their pending submit (WEGO). owner_player_id is embedded in each board,
+  // so the blue/red glow restores correctly. apply_opponent_board is
+  // wipe-by-owner + re-add, so this stays idempotent with the live path.
+  // Keyed to matchId/user only — runs once per match load, not per turn.
+  useEffect(() => {
+    if (!matchId || !user) return;
+    const myId = user.id;
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    (async () => {
+      // Read current_turn fresh rather than off the mutable `match` object,
+      // so this effect needn't depend on (and re-run with) every turn bump.
+      const { data: m } = await supabase
+        .from("matches")
+        .select("current_turn")
+        .eq("id", matchId)
+        .maybeSingle();
+      const currentTurn = m?.current_turn ?? 0;
+
+      const { data, error } = await supabase
+        .from("match_actions")
+        .select("*")
+        .eq("match_id", matchId)
+        .order("turn_number", { ascending: true });
+      if (cancelled || error || !data) return;
+
+      // Latest action per player (ascending order → last write wins). Drop
+      // the opponent's not-yet-committed turns to preserve no-peek.
+      const latest = new Map<string, ActionRow>();
+      for (const a of data) {
+        if (a.player_id !== myId && a.turn_number >= currentTurn) continue;
+        latest.set(a.player_id, a);
+      }
+      if (latest.size === 0) return;
+
+      const applyAll = (): boolean => {
+        const fn = window.godotApplyOpponentBoard;
+        if (typeof fn !== "function") return false;
+        for (const a of latest.values()) {
+          const board = (a.action as { board?: Json } | null)?.board;
+          if (board != null) fn(JSON.stringify(board), a.player_id);
+        }
+        console.log(
+          "[mp/match] replayed",
+          latest.size,
+          "board(s) from DB on load",
+        );
+        return true;
+      };
+
+      // The Godot bridge fn may not be registered yet on a cold load; poll
+      // briefly until it is, then apply exactly once.
+      if (!applyAll()) {
+        pollTimer = setInterval(() => {
+          if (cancelled || applyAll()) {
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = null;
+          }
+        }, 200);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (pollTimer) clearInterval(pollTimer);
+    };
+  }, [matchId, user?.id]);
+
   // Block ALL match UI until the auth gate has resolved. While verifying
   // we don't know whether the user is actually signed in; once verified
   // and null, the redirect effect above is already firing — render a

@@ -147,6 +147,10 @@ func apply_opponent_board(snapshot: Array, owner_id: String) -> void:
 		unit.set_value(&"world_uv", world_uv)
 		unit.global_position = world_uv_to_screen(world_uv)
 
+	# Opponent geometry changed — rerun the sim so link lines, detection, and
+	# range rings reflect the merged board.
+	GameEvents.simulation_requested.emit()
+
 
 # Multiplayer SUBMIT: snapshot the current unit layout and ship it to JS,
 # which forwards to MultiplayerMatch.tsx's submitMpAction (inserts a row
@@ -155,7 +159,7 @@ func apply_opponent_board(snapshot: Array, owner_id: String) -> void:
 func _on_mp_submit_requested() -> void:
 	if not OS.has_feature("web"):
 		return
-	var snapshot := serialize_units()
+	var snapshot := serialize_units(true)
 	# Double-stringify: inner produces the snapshot JSON; outer wraps it
 	# as a JS string literal so the eval'd source carries it intact.
 	var snapshot_json := JSON.stringify(snapshot)
@@ -168,6 +172,16 @@ func _on_mp_submit_requested() -> void:
 		" bytes"
 	)
 	JavaScriptBridge.eval("window.mpSubmitBoard(" + js_arg + ")")
+
+
+# Local player's multiplayer id (auth uid), mirrored to window by
+# MultiplayerMatch.tsx. Empty on desktop, in sandbox, or before the match
+# resolves — i.e. whenever there's no ownership to assign.
+func _local_mp_player_id() -> String:
+	if not OS.has_feature("web"):
+		return ""
+	var v: Variant = JavaScriptBridge.eval("window.MULTIPLAYER_PLAYER_ID || ''")
+	return (v as String) if v is String else ""
 
 
 func _on_sidebar_resized(width: float) -> void:
@@ -306,6 +320,13 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	var override: Dictionary = data.get("attributes_override", {})
 	for attr_name in override:
 		unit.set(attr_name, override[attr_name])
+
+	# In a multiplayer match, stamp the unit with the local player's id so
+	# ownership is explicit and durable: it rides in serialize_units → the
+	# match_actions board JSON → the DB. Sandbox/singleplayer leaves it unset.
+	var mp_id := _local_mp_player_id()
+	if mp_id != "":
+		unit.physical_state[&"owner_player_id"] = mp_id
 
 	add_child(unit)
 
@@ -604,11 +625,19 @@ func _get_or_create_attribute_label(unit: Unit) -> UnitAttributesLabel:
 # (currently just world_uv) split into {"x", "y"} for JSON friendliness.
 
 
-func serialize_units() -> Array:
+func serialize_units(own_only: bool = false) -> Array:
 	var out: Array = []
+	var local_id := _local_mp_player_id()
 	for child in get_children():
 		if not (child is Unit and child.definition):
 			continue
+		# In multiplayer, skip units owned by the OPPONENT — a submit must
+		# carry only this player's own units, never echo the opponent's back
+		# to them (which duplicated and desynced both boards every turn).
+		if own_only:
+			var o: Variant = (child as Unit).physical_state.get(&"owner_player_id", null)
+			if o is String and (o as String) != local_id:
+				continue
 		var state: Dictionary = child.physical_state.duplicate()
 		var uv = state.get(&"world_uv", null)
 		if uv is Vector2:
@@ -647,6 +676,12 @@ func deserialize_units(snapshot: Array) -> void:
 			if String(k) == "world_uv":
 				continue
 			unit.set(k, state[k])
+		# owner_player_id isn't a definition attribute, so Unit._set drops it.
+		# Restore it directly so the blue/red ownership glow survives the
+		# snapshot round-trip (otherwise restored units all read as "mine").
+		var owner_v: Variant = state.get("owner_player_id", null)
+		if owner_v is String and not (owner_v as String).is_empty():
+			unit.physical_state[&"owner_player_id"] = owner_v
 		add_child(unit)
 		unit.set_value(&"world_uv", world_uv)
 		unit.global_position = world_uv_to_screen(world_uv)

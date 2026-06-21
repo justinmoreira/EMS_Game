@@ -95,31 +95,30 @@ func _init_default_values() -> void:
 func _spawn_visual() -> void:
 	_unit_visual = UnitVisual.new()
 	_unit_visual.unit_label = definition.letter
-	_unit_visual.circle_color = _resolve_circle_color()
+	_unit_visual.circle_color = definition.color
 	_unit_visual.sprite_sheet_path = definition.animated_sprite_path
 	_unit_visual.unit_name = get_value(&"unit_name", "")
+	_unit_visual.owner_kind = _owner_kind()
 	add_child(_unit_visual)
 
 
-# In multiplayer, units placed by the opponent render with inverted RGB —
-# a placeholder for proper "enemy" art. Sandbox and ownerless units
-# (everything we have today, since no sync layer assigns owners yet)
-# render with the definition color unchanged, so this is a no-op until
-# unit ownership starts being set on `physical_state.owner_player_id`.
-func _resolve_circle_color() -> Color:
-	var base: Color = definition.color
-	var owner: Variant = physical_state.get(&"owner_player_id", null)
-	if owner == null or not (owner is String):
-		return base
+# Ownership for the multiplayer glow: your units glow blue, the opponent's
+# glow red. The body keeps its TYPE color either way — the glow is the only
+# thing that encodes WHO owns the unit. Outside a multiplayer match (no
+# MULTIPLAYER_PLAYER_ID) there's no owner, so no glow.
+func _owner_kind() -> int:
 	var local_id := _local_mp_player_id()
-	if local_id == "" or (owner as String) == local_id:
-		return base
-	return Color(1.0 - base.r, 1.0 - base.g, 1.0 - base.b, base.a)
+	if local_id == "":
+		return UnitVisual.Owner.NONE
+	var owner: Variant = physical_state.get(&"owner_player_id", null)
+	if owner is String and (owner as String) != local_id:
+		return UnitVisual.Owner.ENEMY
+	return UnitVisual.Owner.MINE
 
 
 # MultiplayerMatch.tsx publishes window.MULTIPLAYER_PLAYER_ID = auth.uid()
 # as soon as the session resolves. Returns "" on desktop, in sandbox, or
-# before the global is set — all cases where the inversion should no-op.
+# before the global is set — all cases where there's no ownership glow.
 func _local_mp_player_id() -> String:
 	if not OS.has_feature("web"):
 		return ""
