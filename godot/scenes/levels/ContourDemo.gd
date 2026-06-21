@@ -41,9 +41,18 @@ func _ready() -> void:
 	add_to_group("terrain")
 
 	super._ready()
+	
+	await get_tree().process_frame
+	
+	if sidebar_width == 0.0 and has_node("CanvasLayer/Control/Sidebar"):
+		sidebar_width = $CanvasLayer/Control/Sidebar.size.x
+		_on_window_resized()
 
 	height_grid = _generate_terrain(grid_w, grid_h)
-	set_terrain_data(height_grid, map_container.global_position, map_container.size)
+	#set_terrain_data(height_grid, map_container.global_position, map_container.size)
+	set_terrain_data(height_grid, _map_origin(), get_map_size())
+	print(_map_origin(), " ", get_map_size())
+	print(map_container.global_position, " ", map_container.size)
 
 	var tex := _create_height_texture(height_grid, grid_w, grid_h)
 	contour_rect.material.set_shader_parameter("height_map", tex)
