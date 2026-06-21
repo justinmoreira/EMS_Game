@@ -166,7 +166,9 @@ func _apply_card_restrictions() -> void:
 		card.mouse_filter = Control.MOUSE_FILTER_STOP if is_allowed else Control.MOUSE_FILTER_IGNORE
 
 		for child in card.get_children():
-			child.mouse_filter = Control.MOUSE_FILTER_PASS if is_allowed else Control.MOUSE_FILTER_IGNORE
+			child.mouse_filter = (
+				Control.MOUSE_FILTER_PASS if is_allowed else Control.MOUSE_FILTER_IGNORE
+			)
 
 
 func _on_simulation_requested() -> void:
@@ -354,9 +356,7 @@ func register_player_unit(unit: Node) -> void:
 
 	if unit.is_in_group("sensors") and _current_level >= 4:
 		_sensor_visualizations[unit] = {
-			"rings": [],
-			"pulse_time": 0.0,
-			"closest_jammer_distance": INF
+			"rings": [], "pulse_time": 0.0, "closest_jammer_distance": INF
 		}
 
 
@@ -381,9 +381,7 @@ func _update_sensor_visualizations(delta: float) -> void:
 
 		if not _sensor_visualizations.has(sensor):
 			_sensor_visualizations[sensor] = {
-				"rings": [],
-				"pulse_time": 0.0,
-				"closest_jammer_distance": INF
+				"rings": [], "pulse_time": 0.0, "closest_jammer_distance": INF
 			}
 
 		var vis_data: Dictionary = _sensor_visualizations[sensor]
