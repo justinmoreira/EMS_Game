@@ -1,6 +1,6 @@
 extends ContourGen
 
-# Silent Link Mode Controller - Event-driven state machine matching EnemyHunter structure
+# Silent Link Mode Controller - Event-driven state machine matching TutorialController structure
 
 const SILENT_LINK_INTRO_POPUP := preload("res://scenes/ui/IntroPopup.tscn")
 const SILENT_LINK_HINT := preload("res://scenes/ui/HintPopup.tscn")
@@ -505,6 +505,12 @@ func _on_next_level_pressed() -> void:
 	set_process(false)
 	set_physics_process(false)
 	_cleanup_sensor_visualizations()
+
+	# Disconnect signals before scene change to prevent stale callbacks
+	if GameEvents.simulation_requested.is_connected(_on_simulation_requested):
+		GameEvents.simulation_requested.disconnect(_on_simulation_requested)
+	if GameEvents.simulation_complete.is_connected(_on_simulation_complete):
+		GameEvents.simulation_complete.disconnect(_on_simulation_complete)
 
 	if _current_level > MAX_LEVEL:
 		get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")

@@ -713,6 +713,13 @@ func _on_confirm_pressed() -> void:
 
 
 func _update_reset_button() -> void:
+	if not is_inside_tree():
+		return
+
+	var tree := get_tree()
+	if tree == null:
+		return
+
 	var has_units = (
 		get_tree().get_nodes_in_group("transceivers").size() > 0
 		or get_tree().get_nodes_in_group("jammers").size() > 0
