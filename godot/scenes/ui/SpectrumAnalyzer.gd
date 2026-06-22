@@ -99,7 +99,7 @@ func _process(delta: float) -> void:
 		if _progress >= 1.0:
 			_state = SensorState.COMPLETE
 			scan_complete.emit()
-		
+
 	queue_redraw()
 
 
