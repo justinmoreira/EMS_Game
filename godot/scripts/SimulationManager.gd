@@ -28,6 +28,7 @@ var active_links: Dictionary = {}
 
 
 func _ready() -> void:
+	GameEvents.simulation_requested.connect(simulate)
 	call_deferred("simulate")
 
 
@@ -46,7 +47,7 @@ func simulate() -> void:
 	var transceivers = _live_group("transceivers")
 	var jammers = _live_group("jammers")
 	var sensors = _live_group("sensors")
-	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
+	var terrain = get_tree().get_first_node_in_group("terrain") as Sandbox
 
 	var jammer_descs: Array = []
 	for jammer_node in jammers:
@@ -105,6 +106,7 @@ func simulate() -> void:
 					"target": tx,
 					"target_type": "transceiver",
 					"detected": result.detected,
+					"fully_detected": result.fully_detected,
 					"sensor_jammed": result.jammed
 				}
 			)
@@ -116,10 +118,10 @@ func simulate() -> void:
 					"target": tx,
 					"target_type": "jammer",
 					"detected": result.detected,
+					"fully_detected": result.fully_detected,
 					"sensor_jammed": result.jammed
 				}
 			)
-
 	_apply_link_visibility()
 	_apply_unit_range_visibility()
 
@@ -136,7 +138,7 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 	if frequency_diff > bandwidth_half:
 		return LinkState.FREQUENCY_DIFF
 
-	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
+	var terrain = get_tree().get_first_node_in_group("terrain") as Sandbox
 	var tx_px: Vector2
 	var rx_px: Vector2
 	var z_tx: float
@@ -224,7 +226,7 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 
 
 func calculate_detection(srx: Unit, tx: Unit, jammers: Array) -> Dictionary:
-	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
+	var terrain = get_tree().get_first_node_in_group("terrain") as Sandbox
 	var tx_px: Vector2
 	var srx_px: Vector2
 	var z_tx: float
@@ -278,7 +280,11 @@ func calculate_detection(srx: Unit, tx: Unit, jammers: Array) -> Dictionary:
 	)
 	var is_jammed = interference > PhysicsEngine.NOISE_FLOOR
 
-	return {"detected": is_detected, "jammed": is_jammed}
+	return {
+		"detected": is_detected.detected,
+		"fully_detected": is_detected.fully_detected,
+		"jammed": is_jammed
+	}
 
 
 func _update_all_unit_ranges() -> void:

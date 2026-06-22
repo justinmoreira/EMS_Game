@@ -33,7 +33,7 @@ func _get_or_create_status_visual(unit: Node) -> UnitStatusVisual:
 
 func _compute_status(unit: Unit, link_results: Array, detect_results: Array) -> int:
 	for d in detect_results:
-		if d.target == unit and d.detected:
+		if d.target == unit and d.fully_detected:
 			return UnitStatusVisual.Status.DETECTED
 
 	for r in link_results:
@@ -46,7 +46,7 @@ func _compute_status(unit: Unit, link_results: Array, detect_results: Array) -> 
 
 		for d in detect_results:
 			if d.sensor == unit:
-				if d.detected and !d.target_type == "jammer":
+				if d.fully_detected and !d.target_type == "jammer":
 					detected_something = true
 				if d.get("sensor_jammed", false):
 					is_jammed = true

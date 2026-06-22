@@ -1,5 +1,7 @@
-class_name ContourGen
+class_name Sandbox
 extends BaseLevel
+
+const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/IntroPopup.tscn")
 
 # ── Labelling knobs ───────────────────────────────────────────────────────────
 ## Minimum grid-cell radius between any two labels of the same type.
@@ -24,6 +26,8 @@ var grid_w: int = 150
 var grid_h: int = 150
 var cell_size: int = 8
 var height_grid: Array = []
+
+var _sandbox_popup_open := false
 
 @onready var contour_rect: TextureRect = $BackgroundTexture
 @onready var map_container = $BackgroundTexture
@@ -63,6 +67,43 @@ func _ready() -> void:
 	contour_rect.material.set_shader_parameter("mid_point", 0.6)
 
 	_label_tactical_points(height_grid, grid_w, grid_h)
+
+	open_popup()
+
+
+func open_popup() -> void:
+	if _sandbox_popup_open:
+		return
+	_sandbox_popup_open = true
+
+	var popup := SANDBOX_INTRO_POPUP.instantiate()
+	popup.title_string = "Sandbox Mode"
+	popup.body_string = (
+		"Welcome to Sandbox Mode.\n\n"
+		+ "Sandbox Mode is a free-play environment where you can experiment "
+		+ "with electromagnetic warfare systems.\n\n"
+		+ "Place transceivers, jammers, and sensors anywhere on the map and "
+		+ "adjust their settings to see how they interact.\n\n"
+		+ "Game Units:\n"
+		+ "[i]• Transceivers - Send/receive signals\n"
+		+ "• Jammers - Disrupt signals\n"
+		+ "• Sensors - Detect signals\n\n[/i]"
+		+ "Goal: Experiment and learn how different settings affect "
+		+ "communication, interference, and detection."
+	)
+	popup.button_string = "Continue"
+
+	var cl := CanvasLayer.new()
+	cl.layer = 100
+	add_child(cl)
+	cl.add_child(popup)
+
+	if popup.has_signal("continued"):
+		popup.continued.connect(_on_sandbox_popup_closed)
+
+
+func _on_sandbox_popup_closed() -> void:
+	_sandbox_popup_open = false
 
 
 # ── Terrain generation ────────────────────────────────────────────────────────

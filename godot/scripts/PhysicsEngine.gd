@@ -52,12 +52,12 @@ static func is_detected(
 	z_tx: float = -1.0,
 	z_srx: float = -1.0,
 	interference: float = 0.0
-) -> bool:
+) -> Dictionary:
 	var frequency_diff = abs(tx.frequency - srx.tuning_frequency)
 	var bandwidth_half = BANDWIDTH_MHZ[srx.sensor_bandwidth] / 2.0
 
 	if frequency_diff > bandwidth_half:
-		return false
+		return {"detected": false, "fully_detected": false}
 
 	var threshold = (
 		lerpf(3.0, NOISE_FLOOR, srx.sensitivity / 10.0) + bandwidth_penalty(srx.sensor_bandwidth)
@@ -74,9 +74,13 @@ static func is_detected(
 		tx.power, h_tx, h_srx, tx.frequency, dis, terrain_loss
 	)
 
-	if tx.is_in_group("jammers"):
-		return SENSOR_BALANCE_RATIO * received_power > threshold
-	return SENSOR_BALANCE_RATIO * received_power > threshold + interference
+	var detected = SENSOR_BALANCE_RATIO * received_power > PhysicsEngine.NOISE_FLOOR
+	var fully_detected = SENSOR_BALANCE_RATIO * received_power > threshold
+
+	if !tx.is_in_group("jammers"):
+		fully_detected = SENSOR_BALANCE_RATIO * received_power > threshold + interference
+
+	return {"detected": detected, "fully_detected": fully_detected}
 
 
 static func calculate_received_power(

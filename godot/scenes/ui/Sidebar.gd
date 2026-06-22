@@ -71,6 +71,10 @@ func _ready() -> void:
 	_build_sidebar()
 	_refresh_attribute_panel()
 
+	# Publish initial size so listeners (BaseLevel) get a value before any resize.
+	GameEvents.sidebar_resized.emit.call_deferred(size.x)
+	_refresh_attribute_panel()
+
 	# Publish the fixed design width to listeners (BaseLevel). Constant, not the
 	# live size.x, so attribute-panel growth doesn't recenter the map.
 	GameEvents.sidebar_resized.emit.call_deferred(SIDEBAR_WIDTH)
@@ -433,6 +437,12 @@ func _refresh_attribute_panel() -> void:
 	if selected_node is Unit and def.id == &"transceiver":
 		_add_send_message_button(def.color)
 
+	if selected_node and "is_removable" in selected_node:
+		var is_locked = not selected_node.is_removable
+		_lock_all_attributes(is_locked)
+	else:
+		_lock_all_attributes(false)
+
 	# Reapply the stored tutorial filter after every row rebuild.
 	# queue_free() is deferred, so we defer this too to run after the
 	# new rows are fully added to the scene tree.
@@ -743,6 +753,7 @@ func _on_confirm_pressed() -> void:
 			selected_node.set_value(id, pending_attributes[id])
 	pending_attributes.clear()
 
+	GameEvents.confirm_pressed.emit(selected_node)
 	GameEvents.simulation_requested.emit()
 
 
@@ -900,6 +911,14 @@ func _on_tutorial_filter_attributes(allowed_attributes: Array) -> void:
 
 		row.modulate.a = 1.0 if enabled else 0.35
 		_set_interactivity(row, enabled)
+
+
+func _lock_all_attributes(is_locked: bool) -> void:
+	_attr_content.modulate.a = 0.3 if is_locked else 1.0
+	_set_interactivity(_attr_content, not is_locked)
+	_attr_content.mouse_default_cursor_shape = (
+		Control.CURSOR_FORBIDDEN if is_locked else Control.CURSOR_ARROW
+	)
 
 
 func _set_interactivity(node: Control, enabled: bool) -> void:

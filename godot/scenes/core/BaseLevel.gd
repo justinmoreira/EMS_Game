@@ -1,11 +1,10 @@
 class_name BaseLevel
 extends Control
 
-const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
-
 # Unit attribute controls
 const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
 const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
+const ERROR_POPUP := preload("res://scenes/ui/HintPopup.tscn")
 const SUGGESTIONS_PANEL_SCENE := preload("res://scenes/ui/SuggestionsDialog.tscn")
 
 const MAP_SIZE = Vector2(1080, 1080)
@@ -33,6 +32,11 @@ var suggestions_panel: Control = null
 @export var base_hover_radius: float = 32.0
 @export var show_signal_ranges: bool = false
 @export var suggestions_enabled: bool = false
+
+@export var spectrum_enabled: bool = false
+
+var spectrum_analyzer: SpectrumAnalyzer
+
 # Sidebar layout — populated via signal, no global find_child reach.
 # Width is the live x-size of the sidebar; 0 if no sidebar in this scene.
 var sidebar_width: float = 0.0
@@ -54,7 +58,6 @@ const DESIGN_MAP_SIZE = Vector2(1620.0, 1080.0)
 func _ready():
 	get_tree().get_root().size_changed.connect(_on_window_resized)
 	GameEvents.selection_changed.connect(_on_selection_changed)
-	GameEvents.simulation_requested.connect(SimulationManager.simulate)
 	GameEvents.reset_requested.connect(_on_reset_requested)
 	GameEvents.delete_requested.connect(_on_delete_requested)
 	GameEvents.sidebar_resized.connect(_on_sidebar_resized)
@@ -72,6 +75,8 @@ func _ready():
 
 	_on_window_resized()
 
+	spectrum_analyzer = get_tree().get_root().find_child("SpectrumAnalyzer", true, false)
+
 	toggle_suggestions(suggestions_enabled)
 
 
@@ -81,6 +86,8 @@ func _on_sidebar_resized(width: float) -> void:
 
 
 func _on_window_resized() -> void:
+	if !is_inside_tree():
+		return
 	self.size = get_viewport_rect().size
 	if background:
 		background.offset_left = sidebar_width
@@ -256,6 +263,12 @@ func _on_selection_changed(unit: Node) -> void:
 	LinkRenderer.set_focused_unit(focused)
 	SimulationManager.simulate()
 
+	if spectrum_analyzer:
+		if unit and unit.is_in_group("sensors"):
+			spectrum_analyzer.configure(unit)
+		else:
+			spectrum_analyzer.configure(null)
+
 
 func _set_unit_selected_visual(unit: Unit, selected: bool) -> void:
 	if unit and unit.unit_visual:
@@ -305,6 +318,13 @@ func toggle_suggestions(enabled: bool) -> void:
 	call_deferred("_refresh_suggestions_ui")
 
 
+func toggle_spectrum(enabled: bool) -> void:
+	spectrum_enabled = enabled
+
+	if spectrum_analyzer:
+		spectrum_analyzer.visible = enabled
+
+
 func _refresh_suggestions_ui() -> void:
 	if suggestions_panel == null:
 		return
@@ -346,15 +366,20 @@ func _on_reset_requested() -> void:
 	UnitNameManager.reset()
 	for group in [&"transceivers", &"jammers", &"sensors"]:
 		for unit in get_tree().get_nodes_in_group(group):
-			unit.queue_free()
+			if unit.is_removable:
+				unit.queue_free()
 	GameEvents.clear_selection()
 
 
 func _on_delete_requested(unit: Node) -> void:
 	# LinkRenderer's per-frame purge will drop links involving this unit
 	# once is_instance_valid returns false post-queue_free.
-	if unit:
+	if unit && unit.is_removable:
 		unit.queue_free()
+	if unit && !unit.is_removable:
+		var popup = ERROR_POPUP.instantiate()
+		popup.hint_text = "This unit can not be removed."
+		add_child(popup)
 	GameEvents.clear_selection()
 
 

@@ -138,6 +138,7 @@ func _set_link_visual_state(key: String, state: int) -> void:
 	if not active_links.has(key):
 		return
 	var data = active_links[key]
+
 	# Each state maps to a color AND a line pattern (LinkVisuals): success is a
 	# solid green line, connecting scrolls a moving dash, failures use static
 	# dashes, and a jam zigzags.

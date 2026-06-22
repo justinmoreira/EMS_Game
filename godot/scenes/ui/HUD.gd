@@ -8,6 +8,7 @@ var settings = {
 	"unit_details": false,
 	"suggestions": false,
 	"heatmap": false,
+	"spectrum": false,
 	"heightmap_shader": true,
 	"grid": true
 }
@@ -28,6 +29,7 @@ func _ready():
 	%UnitDetailsToggle.toggled.connect(_on_unit_details_toggled)
 	%SuggestionsToggle.toggled.connect(_on_suggestions_toggled)
 	%HeatmapToggle.toggled.connect(_on_heatmap_toggled)
+	%SpectrumToggle.toggled.connect(_on_spectrum_toggled)
 
 	# Load saved settings
 	_load_settings()
@@ -136,6 +138,21 @@ func _on_suggestions_toggled(is_pressed: bool):
 		level.toggle_suggestions(is_pressed)
 
 
+func _on_spectrum_toggled(is_pressed: bool):
+	settings["spectrum"] = is_pressed
+	_save_settings()
+
+	var level = get_tree().current_scene
+	if level.has_method("toggle_spectrum"):
+		level.toggle_spectrum(is_pressed)
+
+
+func set_spectrum_enabled(enabled: bool) -> void:
+	settings["spectrum"] = enabled
+	%SpectrumToggle.button_pressed = enabled
+	_on_spectrum_toggled(enabled)
+
+
 func _on_focus_link_lines_toggled(is_pressed: bool):
 	settings["focus_link_lines"] = is_pressed
 	_save_settings()
@@ -176,4 +193,9 @@ func _load_settings() -> void:
 		LinkRenderer.links_visible = settings["link_lines"]
 		LinkRenderer.focus_mode = settings["focus_link_lines"]
 	%FocusLinkLinesToggle.disabled = not settings["link_lines"]
+
+	var level = get_tree().current_scene
+	if level and level.has_method("toggle_spectrum"):
+		level.toggle_spectrum(settings["spectrum"])
+
 	SimulationManager.simulate()
