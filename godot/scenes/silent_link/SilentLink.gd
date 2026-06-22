@@ -83,7 +83,7 @@ func _exit_tree() -> void:
 	_cleanup_sensor_visualizations()
 
 
-func _process(float) -> void:
+func _process(_delta: float) -> void:
 	if _step == Step.PLANNING and _timer_label:
 		var elapsed := Time.get_ticks_msec() / 1000.0 - _start_time
 		_timer_label.text = "Time: %.1fs" % elapsed
