@@ -95,7 +95,7 @@ func _advance() -> void:
 		jammers_script = "Avoid the spoof emission from a jammer,\n"
 	elif _total_jammers > 0:
 		jammers_script = "Avoid all spoof emissions from %d jammers,\n" % _total_jammers
-		
+
 	match _step:
 		Step.WELCOME:
 			_step = Step.HUNTING
@@ -179,7 +179,7 @@ func _on_reveal_pressed() -> void:
 		_hint_overlay.remove_hints_for(transceiver.global_position)
 
 		_reveal_unit(transceiver)
-	
+
 	for jammer in get_tree().get_nodes_in_group("jammers"):
 		var tx_id: int = jammer.get_instance_id()
 
