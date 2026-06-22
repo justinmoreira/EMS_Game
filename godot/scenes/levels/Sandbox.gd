@@ -1,7 +1,6 @@
 class_name Sandbox
 extends BaseLevel
 
-
 const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/IntroPopup.tscn")
 
 # ── Labelling knobs ───────────────────────────────────────────────────────────
@@ -68,17 +67,15 @@ func _ready() -> void:
 	contour_rect.material.set_shader_parameter("mid_point", 0.6)
 
 	_label_tactical_points(height_grid, grid_w, grid_h)
-	
+
 	open_popup()
-	
-	
 
 
 func open_popup() -> void:
 	if _sandbox_popup_open:
 		return
 	_sandbox_popup_open = true
-	
+
 	var popup := SANDBOX_INTRO_POPUP.instantiate()
 	popup.title_string = "Sandbox Mode"
 	popup.body_string = (
@@ -92,7 +89,7 @@ func open_popup() -> void:
 		+ "Goal: Experiment and learn how different settings affect communication, interference, and detection."
 	)
 	popup.button_string = "Continue"
-	
+
 	var cl := CanvasLayer.new()
 	cl.layer = 100
 	add_child(cl)
