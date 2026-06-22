@@ -68,7 +68,7 @@ func _start() -> void:
 	popup.title_string = "Enemy Hunter Mode - Level %d" % _current_level
 	popup.body_string = (
 		"Find and jam all hidden transceivers on the map.\n\n"
-		+ "[i]• Detect signals above the noise floor\n"
+		+ "[i]• Utilize the frequency spectrum analyzer to detect signals above the noise floor\n"
 		+ "• Direction hints point toward emitters\n"
 		+ "• Fully detect transceivers to reveal them\n\n"
 		+ "Jam every transceiver as fast as you can![/i]"
