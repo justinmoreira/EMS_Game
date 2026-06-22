@@ -708,7 +708,8 @@ func _on_confirm_pressed() -> void:
 		for id in pending_attributes:
 			selected_node.set_value(id, pending_attributes[id])
 	pending_attributes.clear()
-
+	
+	GameEvents.confirm_pressed.emit(selected_node)
 	GameEvents.simulation_requested.emit()
 
 

@@ -41,6 +41,8 @@ signal reset_requested
 @warning_ignore("unused_signal")
 signal delete_requested(unit: Node)
 
+signal confirm_pressed(unit: Node)
+
 # Drag-press clears stale link visuals before the new drag-release sim.
 # LinkRenderer wires this to clear_all so Unit.gd stays decoupled from
 # the SimulationManager singleton.
