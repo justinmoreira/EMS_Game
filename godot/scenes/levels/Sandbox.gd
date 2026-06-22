@@ -68,7 +68,8 @@ func _ready() -> void:
 
 	_label_tactical_points(height_grid, grid_w, grid_h)
 
-	open_popup()
+	if get_script() == Sandbox:
+		open_popup()
 
 
 func open_popup() -> void:
