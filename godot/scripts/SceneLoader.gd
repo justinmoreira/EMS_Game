@@ -7,16 +7,15 @@ const ENEMY_HUNTER_SCENE_PATH = "res://scenes/enemy-hunter/level-1.tscn"
 
 
 func _ready():
-	#var mode := _get_mode_from_url()
+	if OS.has_feature("headless") or DisplayServer.get_name() == "headless":
+		return
+		
 	var href := ""
 
 	if OS.has_feature("web"):
 		href = str(JavaScriptBridge.eval("window.location.href", true))
 
-	print("URL:", href)
-
 	var mode := _get_mode_from_url()
-	print("Mode:", mode)
 
 	match mode:
 		"tutorial":
