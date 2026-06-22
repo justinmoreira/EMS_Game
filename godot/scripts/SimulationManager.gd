@@ -210,7 +210,6 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 	var bandwidth_penalty = PhysicsEngine.BANDWIDTH_POWER[bw_idx]
 	var link_state = null
 
-<<<<<<< HEAD
 	if terrain_loss > INTERFERENCE_THRESHOLD:
 		link_state = LinkState.TERRAIN_BLOCKED
 	elif !PhysicsEngine.range_check(received_power):
@@ -223,17 +222,6 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 		link_state = LinkState.SUCCESS
 
 	return link_state
-=======
-	if !PhysicsEngine.range_check(received_power):
-		return LinkState.FAILED_OUT_OF_RANGE
-
-	if PhysicsEngine.bandwidth_penalty_check(received_power, bandwidth_penalty):
-		return LinkState.BANDWIDTH_PENALTY
-	if !PhysicsEngine.jamming_check(received_power, interference):
-		return LinkState.FAILED_JAMMED
-
-	return LinkState.SUCCESS
->>>>>>> origin
 
 
 func calculate_detection(srx: Unit, tx: Unit, jammers: Array) -> Dictionary:
@@ -299,20 +287,9 @@ func calculate_detection(srx: Unit, tx: Unit, jammers: Array) -> Dictionary:
 
 
 func _update_all_unit_ranges() -> void:
-<<<<<<< HEAD
 	for group in [&"transceivers", &"jammers", &"sensors"]:
 		for unit in _live_group(group):
 			unit.update_ranges()
-=======
-	for group in [&"transceivers", &"jammers"]:
-		for unit_node in get_tree().get_nodes_in_group(group):
-			var unit = unit_node as Unit
-
-			if unit == null:
-				continue
-
-			if unit.has_method("update_ranges"):
-				unit.update_ranges()
 
 
 # Called by HUD.gd when the user toggles link lines.
@@ -375,4 +352,3 @@ func _set_range_visuals_visible(unit: Unit, visible_value: bool) -> void:
 
 		if range_node != null and range_node is CanvasItem:
 			range_node.visible = visible_value
->>>>>>> origin
