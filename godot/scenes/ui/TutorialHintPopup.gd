@@ -1,21 +1,32 @@
 extends Control
 
 signal continued
+signal previous_requested
 
-var hint_text: String = ""
+@export_multiline var hint_text := ""
+@export var show_previous := false
+@export var show_next := true
 
 @onready var hint_label: RichTextLabel = %HintLabel
-@onready var ok_button: Button = %OkButton
+@onready var previous_button: Button = %PreviousButton
+@onready var next_button: Button = %NextButton
 
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_STOP
 	hint_label.text = hint_text
-	ok_button.grab_focus()
-	ok_button.pressed.connect(_on_ok_pressed)
+
+	previous_button.visible = show_previous
+	next_button.visible = show_next
+
+	previous_button.pressed.connect(_on_previous_pressed)
+	next_button.pressed.connect(_on_next_pressed)
 
 
-func _on_ok_pressed() -> void:
-	hide()
+func _on_previous_pressed() -> void:
+	previous_requested.emit()
+	queue_free()
+
+
+func _on_next_pressed() -> void:
 	continued.emit()
 	queue_free()

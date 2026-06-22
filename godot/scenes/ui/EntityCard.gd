@@ -2,8 +2,8 @@ extends PanelContainer
 
 signal pressed
 
-const ICON_RADIUS := 20.0
-const ICON_FONT_SIZE := 18
+const ICON_RADIUS := 26.0
+const ICON_FONT_SIZE := 22
 const PREVIEW_RADIUS := 32.0
 const PREVIEW_FONT_SIZE := 25
 
@@ -47,7 +47,7 @@ func setup(
 func _ready() -> void:
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	size_flags_vertical = Control.SIZE_EXPAND_FILL
+	size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_apply_normal_style()
 
