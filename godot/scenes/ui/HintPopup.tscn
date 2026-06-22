@@ -18,7 +18,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0, 0, 0, 0.4)
+mouse_filter = 2
+color = Color(0, 0, 0, 0.18)
 
 [node name="CenterContainer" type="CenterContainer" parent="." unique_id=822377855]
 layout_mode = 1
@@ -29,7 +30,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="Panel" type="PanelContainer" parent="CenterContainer" unique_id=2113041030]
-custom_minimum_size = Vector2(500, 180)
+custom_minimum_size = Vector2(760, 400)
 layout_mode = 2
 
 [node name="Margin" type="MarginContainer" parent="CenterContainer/Panel" unique_id=1598550414]
@@ -49,10 +50,22 @@ custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 24
+text = ""
 
-[node name="OkButton" type="Button" parent="CenterContainer/Panel/Margin/VBox" unique_id=1129309963]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 40)
+[node name="ButtonRow" type="HBoxContainer" parent="CenterContainer/Panel/Margin/VBox"]
 layout_mode = 2
-size_flags_horizontal = 4
-text = "Got it"
+alignment = 1
+theme_override_constants/separation = 12
+
+[node name="PreviousButton" type="Button" parent="CenterContainer/Panel/Margin/VBox/ButtonRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 40)
+layout_mode = 2
+text = "Previous"
+
+[node name="NextButton" type="Button" parent="CenterContainer/Panel/Margin/VBox/ButtonRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 40)
+layout_mode = 2
+text = "Next"

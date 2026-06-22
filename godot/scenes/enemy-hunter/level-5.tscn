@@ -45,129 +45,69 @@ visible = false
 position = Vector2(1610, 905)
 is_immovable = true
 is_removable = false
-unit_name = ""
-power = 5
-frequency = 2500.0
-height = 5
-transceiver_bandwidth = 1
 
 [node name="TransceiverUnit2" parent="." index="4" unique_id=1393893384 instance=ExtResource("4_a8jiy")]
 visible = false
 position = Vector2(1570, 967)
 is_immovable = true
 is_removable = false
-unit_name = ""
-power = 5
-frequency = 2500.0
-height = 5
-transceiver_bandwidth = 1
 
 [node name="JammerUnit" parent="." index="5" unique_id=1423769516 instance=ExtResource("5_o824j")]
 visible = false
 position = Vector2(1633, 182)
 is_immovable = true
 is_removable = false
-unit_name = ""
-power = 5
-frequency = 500.0
-height = 5
-jammer_bandwidth = 1
 
 [node name="JammerUnit2" parent="." index="6" unique_id=1695700718 instance=ExtResource("5_o824j")]
 visible = false
 position = Vector2(1203, 825)
 is_immovable = true
 is_removable = false
-unit_name = ""
-power = 5
-frequency = 100.0
-height = 5
-jammer_bandwidth = 1
 
 [node name="JammerUnit3" parent="." index="7" unique_id=296072181 instance=ExtResource("5_o824j")]
 visible = false
 position = Vector2(643, 321)
 is_immovable = true
 is_removable = false
-unit_name = ""
-power = 5
-frequency = 1500.0
-height = 5
-jammer_bandwidth = 1
 
 [node name="JammerUnit4" parent="." index="8" unique_id=1649137717 instance=ExtResource("5_o824j")]
 visible = false
 position = Vector2(954, 300)
 is_immovable = true
 is_removable = false
-unit_name = ""
-power = 5
-frequency = 1600.0
-height = 5
-jammer_bandwidth = 1
 
 [node name="JammerUnit5" parent="." index="9" unique_id=1549741508 instance=ExtResource("5_o824j")]
 visible = false
 position = Vector2(1155, 335)
 is_immovable = true
 is_removable = false
-unit_name = ""
-power = 5
-frequency = 1800.0
-height = 5
-jammer_bandwidth = 1
 
 [node name="JammerUnit6" parent="." index="10" unique_id=12668638 instance=ExtResource("5_o824j")]
 visible = false
 position = Vector2(768, 616)
 is_immovable = true
 is_removable = false
-unit_name = ""
-power = 5
-frequency = 2000.0
-height = 5
-jammer_bandwidth = 1
 
 [node name="JammerUnit7" parent="." index="11" unique_id=466771131 instance=ExtResource("5_o824j")]
 visible = false
 position = Vector2(1493, 544)
 is_immovable = true
 is_removable = false
-unit_name = ""
-power = 5
-frequency = 2100.0
-height = 5
-jammer_bandwidth = 1
 
 [node name="JammerUnit8" parent="." index="12" unique_id=671125740 instance=ExtResource("5_o824j")]
 visible = false
 position = Vector2(1203, 636)
 is_immovable = true
 is_removable = false
-unit_name = ""
-power = 5
-frequency = 2800.0
-height = 5
-jammer_bandwidth = 1
 
 [node name="JammerUnit9" parent="." index="13" unique_id=1695685801 instance=ExtResource("5_o824j")]
 visible = false
 position = Vector2(958, 863)
 is_immovable = true
 is_removable = false
-unit_name = ""
-power = 5
-frequency = 1400.0
-height = 5
-jammer_bandwidth = 1
 
 [node name="JammerUnit10" parent="." index="14" unique_id=1351401363 instance=ExtResource("5_o824j")]
 visible = false
 position = Vector2(688, 846)
 is_immovable = true
 is_removable = false
-unit_name = ""
-power = 5
-frequency = 500.0
-height = 5
-jammer_bandwidth = 1

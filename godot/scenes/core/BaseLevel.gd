@@ -1,6 +1,8 @@
 class_name BaseLevel
 extends Control
 
+const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
+
 # Unit attribute controls
 const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
 const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
@@ -227,6 +229,9 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	_on_unit_placed(unit)
 	# Newly-placed unit is treated as selected so its panel opens.
 	GameEvents.select(unit)
+
+	GameEvents.unit_placed.emit(unit)
+	GameEvents.units_changed.emit()
 
 
 func _on_unit_placed(unit: Unit) -> void:

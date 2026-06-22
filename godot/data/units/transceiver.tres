@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="UnitDefinition" format=3 uid="uid://do7mnqgnax6o1"]
+[gd_resource type="Resource" script_class="UnitDefinition" format=3 uid="uid://bg3s0poj4rx7p"]
 
-[ext_resource type="Script" uid="uid://brvcwcd503l75" path="res://scenes/core/UnitDefinition.gd" id="def"]
-[ext_resource type="Script" uid="uid://mdhqup6qxr0d" path="res://scenes/core/AttributeSpec.gd" id="spec"]
+[ext_resource type="Script" path="res://scenes/core/UnitDefinition.gd" id="def"]
+[ext_resource type="Script" path="res://scenes/core/AttributeSpec.gd" id="spec"]
 
 [sub_resource type="Resource" id="a_unit_name"]
 script = ExtResource("spec")
