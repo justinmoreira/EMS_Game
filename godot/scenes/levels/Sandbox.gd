@@ -78,18 +78,19 @@ func open_popup() -> void:
 
 	var popup := SANDBOX_INTRO_POPUP.instantiate()
 	popup.title_string = "Sandbox Mode"
-	popup.body_string = ("""Welcome to Sandbox Mode.
-
-Sandbox Mode is a free-play environment where you can experiment with electromagnetic warfare systems.
-
-Place transceivers, jammers, and sensors anywhere on the map and adjust their settings to see how they interact.
-
-Game Units:
-[i]• Transceivers - Send/receive signals
-• Jammers - Disrupt signals
-• Sensors - Detect signals[/i]
-
-Goal: Experiment and learn how different settings affect communication, interference, and detection.""")
+	popup.body_string = (
+		"Welcome to Sandbox Mode.\n\n"
+		+ "Sandbox Mode is a free-play environment where you can experiment "
+		+ "with electromagnetic warfare systems.\n\n"
+		+ "Place transceivers, jammers, and sensors anywhere on the map and "
+		+ "adjust their settings to see how they interact.\n\n"
+		+ "Game Units:\n"
+		+ "[i]• Transceivers - Send/receive signals\n"
+		+ "• Jammers - Disrupt signals\n"
+		+ "• Sensors - Detect signals\n\n[/i]"
+		+ "Goal: Experiment and learn how different settings affect "
+		+ "communication, interference, and detection."
+	)
 	popup.button_string = "Continue"
 
 	var cl := CanvasLayer.new()
