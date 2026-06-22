@@ -18,6 +18,8 @@ var _completion_time: float = 0.0
 var _timer_label: Label = null
 var _hud: Node = null
 var _current_level: int = 1
+var _last_hint_time: float = -10.0
+var _hint_overlay: DetectionVisual = null
 
 var _link_established := false
 var _player_detected := false
@@ -59,6 +61,11 @@ func _ready() -> void:
 	if hud_nodes.size() > 0:
 		_hud = hud_nodes[0]
 
+	_hint_overlay = DetectionVisual.new()
+	_hint_overlay.z_index = 999
+	_hint_overlay.z_as_relative = false
+	add_child(_hint_overlay)
+
 	_transceivers = get_tree().get_nodes_in_group("transceivers")
 	_enemy_units = get_tree().get_nodes_in_group("enemy_units")
 
@@ -81,8 +88,8 @@ func _process(delta: float) -> void:
 		var elapsed := Time.get_ticks_msec() / 1000.0 - _start_time
 		_timer_label.text = "Time: %.1fs" % elapsed
 
-	if _current_level >= 4:
-		_update_sensor_visualizations(delta)
+	if _current_level >= 4 and (_step == Step.PLANNING or _step == Step.SIMULATING):
+		_update_sensor_hints()
 
 
 func _start() -> void:
@@ -171,8 +178,26 @@ func _apply_card_restrictions() -> void:
 			)
 
 
+func _has_minimum_setup() -> bool:
+	# Require at least 2 transceivers total on map (preplaced + player placed)
+	var total_transceivers := get_tree().get_nodes_in_group("transceivers").size()
+	return total_transceivers >= 2
+
+
+func _show_hint_debounced(text: String, cooldown: float = 1.0) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - _last_hint_time < cooldown:
+		return
+	_last_hint_time = now
+	_show_hint(text)
+
+
 func _on_simulation_requested() -> void:
 	if _step != Step.PLANNING and _step != Step.COMPLETE:
+		return
+
+	if not _has_minimum_setup():
+		_step = Step.PLANNING
 		return
 
 	_player_units.clear()
@@ -191,31 +216,33 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 	if _step != Step.SIMULATING or _simulation_over:
 		return
 
-	# Keep deterministic one-path resolution.
+	if not _has_minimum_setup():
+		return
+
 	_player_detected = false
 	_jammed = false
 	_link_established = false
 
-	if not _check_link_possible():
-		_show_hint("Link not possible - check your placements and retry!")
-		_finish(false)
-		return
-
-	# Optional parse hooks if your sim returns useful state dicts.
 	_parse_sim_results_for_flags(link_results, detect_results)
 
-	# Fallback world checks (source of truth).
+	_update_sensor_hints()
+
 	_check_jamming()
 	_check_detection()
 
+	if not _check_link_possible():
+		_step = Step.PLANNING
+		_show_hint_debounced("Link not possible - adjust transceiver placement/frequency.")
+		return
+
 	if _jammed:
-		_show_hint("Signal jammed! Try again.")
-		_finish(false)
+		_step = Step.PLANNING
+		_show_hint_debounced("Signal jammed! Reposition and try again.")
 		return
 
 	if _player_detected:
-		_show_hint("Detected by enemy! Try again.")
-		_finish(false)
+		_step = Step.PLANNING
+		_show_hint_debounced("Detected by enemy! Try a stealthier route.")
 		return
 
 	_link_established = true
@@ -370,82 +397,41 @@ func unregister_player_unit(unit: Node) -> void:
 		_sensor_visualizations.erase(unit)
 
 
-func _update_sensor_visualizations(delta: float) -> void:
+func _update_sensor_hints() -> void:
+	if _hint_overlay == null:
+		return
+
+	var active_hint_ids: Array[int] = []
 	var sensors = get_tree().get_nodes_in_group("sensors")
+	var jammers = get_tree().get_nodes_in_group("jammers")
 
 	for sensor in sensors:
 		if sensor.name.begins_with("Enemy"):
 			continue
-		if not sensor.global_position:
-			continue
 
-		if not _sensor_visualizations.has(sensor):
-			_sensor_visualizations[sensor] = {
-				"rings": [], "pulse_time": 0.0, "closest_jammer_distance": INF
-			}
+		var closest_jammer: Node = null
+		var closest_dist := INF
 
-		var vis_data: Dictionary = _sensor_visualizations[sensor]
-		vis_data["pulse_time"] = float(vis_data["pulse_time"]) + delta
-
-		var closest_distance: float = INF
-		var jammers = get_tree().get_nodes_in_group("jammers")
 		for jammer in jammers:
 			var dist: float = sensor.global_position.distance_to(jammer.global_position)
-			if dist < closest_distance:
-				closest_distance = dist
+			if dist < closest_dist:
+				closest_dist = dist
+				closest_jammer = jammer
 
-		vis_data["closest_jammer_distance"] = closest_distance
-		_update_sensor_rings(sensor, vis_data)
+		if closest_jammer == null:
+			continue
 
+		if closest_dist > SENSOR_DETECTION_RANGE:
+			continue
 
-func _update_sensor_rings(sensor: Node, vis_data: Dictionary) -> void:
-	var distance: float = float(vis_data["closest_jammer_distance"])
-	var ring_count := 3
+		var sensor_id: int = sensor.get_instance_id()
+		var jammer_id: int = closest_jammer.get_instance_id()
+		var hint_id: int = int(str(sensor_id) + str(jammer_id))
 
-	while vis_data["rings"].size() < ring_count:
-		vis_data["rings"].append(_create_sensor_ring(sensor))
+		_hint_overlay.set_hint(sensor.global_position, closest_jammer.global_position, hint_id)
+		active_hint_ids.append(hint_id)
 
-	while vis_data["rings"].size() > ring_count:
-		(vis_data["rings"].pop_back() as Node).queue_free()
-
-	var ring_color := Color.BLUE
-	if distance < SENSOR_DETECTION_RANGE:
-		if distance < 100.0:
-			ring_color = Color.RED
-		elif distance < 200.0:
-			ring_color = Color.ORANGE
-		else:
-			ring_color = Color(1.0, 1.0, 0.0, 1.0)
-
-	for i in range(vis_data["rings"].size()):
-		var ring: Node2D = vis_data["rings"][i] as Node2D
-		var delay: float = float(i) / float(ring_count)
-		var phase: float = fmod(float(vis_data["pulse_time"]) * SENSOR_PULSE_SPEED + delay, 1.0)
-		var alpha: float = (1.0 - phase) * 0.8
-
-		ring.modulate = Color(ring_color.r, ring_color.g, ring_color.b, alpha)
-		ring.scale = Vector2.ONE * (0.5 + phase)
-		ring.global_position = sensor.global_position
-
-
-func _create_sensor_ring(sensor: Node) -> Node2D:
-	var ring := Node2D.new()
-	ring.global_position = sensor.global_position
-	ring.z_index = 100
-	add_child(ring)
-
-	var circle := Line2D.new()
-	circle.width = 2.5
-	circle.antialiased = true
-
-	var segments := 24
-	for i in range(segments + 1):
-		var angle := (float(i) / float(segments)) * TAU
-		var point := Vector2(cos(angle), sin(angle)) * 50.0
-		circle.add_point(point)
-
-	ring.add_child(circle)
-	return ring
+	_hint_overlay.retain_only(active_hint_ids)
 
 
 func _cleanup_sensor_visualizations() -> void:
@@ -454,6 +440,9 @@ func _cleanup_sensor_visualizations() -> void:
 			if is_instance_valid(ring):
 				ring.queue_free()
 	_sensor_visualizations.clear()
+
+	if _hint_overlay:
+		_hint_overlay.retain_only([])
 
 
 func _show_scoreboard() -> void:
