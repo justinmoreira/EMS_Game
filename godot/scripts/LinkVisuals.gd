@@ -12,6 +12,7 @@ const C_OUT_OF_RANGE := Color.DARK_ORANGE
 const C_JAMMED := Color.RED
 const C_FREQUENCY_DIFF := Color.CYAN
 const C_BANDWIDTH_PENALTY := Color.MAGENTA
+const C_TERRAIN_BLOCKED := Color.BLACK
 
 const LINE_WIDTH := 4.0
 const DASH_LENGTH := 14.0

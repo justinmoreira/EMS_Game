@@ -12,11 +12,12 @@ func _ready() -> void:
 
 
 func _on_simulation_complete(link_results: Array, detect_results: Array) -> void:
-	for tx in get_tree().get_nodes_in_group("transceivers"):
-		if not is_instance_valid(tx):
-			continue
-		var visual := _get_or_create_status_visual(tx)
-		visual.set_status(_compute_status(tx, link_results, detect_results))
+	for group in ["transceivers", "jammers", "sensors"]:
+		for unit in get_tree().get_nodes_in_group(group):
+			if not is_instance_valid(unit):
+				continue
+			var visual := _get_or_create_status_visual(unit)
+			visual.set_status(_compute_status(unit, link_results, detect_results))
 
 
 func _get_or_create_status_visual(unit: Node) -> UnitStatusVisual:
@@ -30,16 +31,27 @@ func _get_or_create_status_visual(unit: Node) -> UnitStatusVisual:
 	return visual
 
 
-func _compute_status(tx: Unit, link_results: Array, detect_results: Array) -> int:
-	# Jammed applies only to the RECEIVER of a failed link.
+func _compute_status(unit: Unit, link_results: Array, detect_results: Array) -> int:
+	for d in detect_results:
+		if d.target == unit and d.detected:
+			return UnitStatusVisual.Status.DETECTED
+
 	for r in link_results:
-		if r.target != tx:
-			continue
-		if r.state == SimulationManager.LinkState.FAILED_JAMMED:
+		if r.target == unit and r.state == SimulationManager.LinkState.FAILED_JAMMED:
 			return UnitStatusVisual.Status.JAMMED
 
-	for d in detect_results:
-		if d.transceiver == tx and d.detected:
-			return UnitStatusVisual.Status.DETECTED
+	if unit.is_in_group("sensors"):
+		var is_jammed = false
+		var detected_something = false
+
+		for d in detect_results:
+			if d.sensor == unit:
+				if d.detected and !d.target_type == "jammer":
+					detected_something = true
+				if d.get("sensor_jammed", false):
+					is_jammed = true
+
+		if is_jammed and not detected_something:
+			return UnitStatusVisual.Status.JAMMED
 
 	return UnitStatusVisual.Status.NONE
