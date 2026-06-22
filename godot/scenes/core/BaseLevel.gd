@@ -1,7 +1,7 @@
 class_name BaseLevel
 extends Control
 
-const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
+const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/IntroPopup.tscn")
 
 # Unit attribute controls
 const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H

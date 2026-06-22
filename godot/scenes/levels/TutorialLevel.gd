@@ -1,5 +1,5 @@
 extends "res://scenes/levels/ContourDemo.gd"
-const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
+const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/HintPopup.tscn")
 const TUTORIAL_COMPLETION_POPUP := preload("res://scenes/ui/TutorialCompletionPopup.tscn")
 const TUTORIAL_TEXT := preload("res://scenes/levels/TutorialText.gd")
 const TUTORIAL_TERRAIN_SEED := 12345

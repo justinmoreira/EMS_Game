@@ -10,8 +10,8 @@ config_version=5
 
 [application]
 
-config/name="EMS sim"
-run/main_scene="res://scenes/levels/SceneRouter.tscn"
+config/name="GEMS"
+run/main_scene="res://scenes/levels/ContourDemo.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
