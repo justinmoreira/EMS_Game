@@ -265,8 +265,11 @@ func _input(event: InputEvent) -> void:
 			mouse_pos.y, screen_rect.position.y, screen_rect.position.y + screen_rect.size.y
 		)
 
-		set_value(&"world_uv", base_level.screen_to_world_uv(mouse_pos))
-		global_position = mouse_pos
+		var world_uv: Vector2 = base_level.screen_to_world_uv(mouse_pos)
+
+		if world_uv.x >= 0.0 and world_uv.x <= 1.0 and world_uv.y >= 0.0 and world_uv.y <= 1.0:
+			set_value(&"world_uv", world_uv)
+			global_position = mouse_pos
 		_drag_distance = _drag_start_pos.distance_to(global_position)
 
 		# Fire-once: clear stale link visuals as soon as we know this is a real
