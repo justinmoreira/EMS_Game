@@ -9,6 +9,15 @@ enum LinkState {
 var link_results: Array[Dictionary] = []
 var detect_results: Array[Dictionary] = []
 
+# These are needed by the newest HUD.gd from main.
+# Without these, HUD.gd will crash when toggling link lines or unit ranges.
+var links_visible: bool = true
+var unit_ranges_visible: bool = true
+
+# Some versions of main store drawn link visuals here.
+# Keeping this here makes the tutorial branch compatible with HUD.gd.
+var active_links: Dictionary = {}
+
 
 func _ready() -> void:
 	call_deferred("simulate")
@@ -26,10 +35,19 @@ func simulate() -> void:
 
 	for i in range(transceivers.size()):
 		var unit_a = transceivers[i] as Unit
+
+		if unit_a == null:
+			continue
+
 		for j in range(transceivers.size()):
 			if i == j:
 				continue
+
 			var unit_b = transceivers[j] as Unit
+
+			if unit_b == null:
+				continue
+
 			link_results.append(
 				{
 					"source": unit_a,
@@ -38,11 +56,24 @@ func simulate() -> void:
 				}
 			)
 
-	for sensor in sensors:
-		for tx in transceivers:
+	for sensor_node in sensors:
+		var sensor = sensor_node as Unit
+
+		if sensor == null:
+			continue
+
+		for tx_node in transceivers:
+			var tx = tx_node as Unit
+
+			if tx == null:
+				continue
+
 			detect_results.append(
 				{"sensor": sensor, "transceiver": tx, "detected": calculate_detection(sensor, tx)}
 			)
+
+	_apply_link_visibility()
+	_apply_unit_range_visibility()
 
 	GameEvents.simulation_complete.emit(link_results, detect_results)
 
@@ -149,10 +180,12 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 
 	if !PhysicsEngine.range_check(received_power):
 		return LinkState.FAILED_OUT_OF_RANGE
+
 	if PhysicsEngine.bandwidth_penalty_check(received_power, bandwidth_penalty):
 		return LinkState.BANDWIDTH_PENALTY
 	if !PhysicsEngine.jamming_check(received_power, interference):
 		return LinkState.FAILED_JAMMED
+
 	return LinkState.SUCCESS
 
 
@@ -199,6 +232,74 @@ func calculate_detection(srx: Unit, tx: Unit) -> bool:
 
 
 func _update_all_unit_ranges() -> void:
-	for group in [&"transceivers", &"jammers", &"sensors"]:
-		for unit in get_tree().get_nodes_in_group(group):
-			unit.update_ranges()
+	for group in [&"transceivers", &"jammers"]:
+		for unit_node in get_tree().get_nodes_in_group(group):
+			var unit = unit_node as Unit
+
+			if unit == null:
+				continue
+
+			if unit.has_method("update_ranges"):
+				unit.update_ranges()
+
+
+# Called by HUD.gd when the user toggles link lines.
+func set_links_visible(value: bool) -> void:
+	links_visible = value
+	_apply_link_visibility()
+
+
+# Called by HUD.gd when the user toggles unit ranges.
+func set_unit_ranges_visible(value: bool) -> void:
+	unit_ranges_visible = value
+	_apply_unit_range_visibility()
+
+
+func _apply_link_visibility() -> void:
+	for key in active_links.keys():
+		var data = active_links[key]
+
+		if typeof(data) != TYPE_DICTIONARY:
+			continue
+
+		var line = data.get("line")
+		var arrow = data.get("arrow")
+
+		if is_instance_valid(line):
+			line.visible = links_visible
+
+		if is_instance_valid(arrow):
+			arrow.visible = links_visible
+
+
+func _apply_unit_range_visibility() -> void:
+	for group in [&"transceivers", &"jammers"]:
+		for unit_node in get_tree().get_nodes_in_group(group):
+			var unit = unit_node as Unit
+
+			if unit == null:
+				continue
+
+			if unit.has_method("update_ranges"):
+				unit.update_ranges()
+
+			_set_range_visuals_visible(unit, unit_ranges_visible)
+
+
+func _set_range_visuals_visible(unit: Unit, visible_value: bool) -> void:
+	var possible_range_nodes = [
+		"Range",
+		"RangeCircle",
+		"RangeVisual",
+		"RangeArea",
+		"DetectionRange",
+		"JammingRange",
+		"CommunicationRange",
+		"LinkRange"
+	]
+
+	for node_name in possible_range_nodes:
+		var range_node = unit.get_node_or_null(node_name)
+
+		if range_node != null and range_node is CanvasItem:
+			range_node.visible = visible_value

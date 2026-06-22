@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="UnitDefinition" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="UnitDefinition" format=3 uid="uid://1480ftm8p2yd"]
 
 [ext_resource type="Script" path="res://scenes/core/UnitDefinition.gd" id="def"]
 [ext_resource type="Script" path="res://scenes/core/AttributeSpec.gd" id="spec"]
@@ -14,10 +14,7 @@ default_value = ""
 script = ExtResource("spec")
 id = &"power"
 display_name = "Power"
-kind = 0
-min_value = 0.0
 max_value = 10.0
-step = 1.0
 unit = "dBm"
 default_value = 5
 
@@ -28,7 +25,6 @@ display_name = "Frequency"
 kind = 1
 min_value = 30.0
 max_value = 3000.0
-step = 1.0
 unit = "MHz"
 default_value = 1000.0
 
@@ -36,10 +32,7 @@ default_value = 1000.0
 script = ExtResource("spec")
 id = &"height"
 display_name = "Height"
-kind = 0
-min_value = 0.0
 max_value = 10.0
-step = 1.0
 unit = "m"
 default_value = 5
 
@@ -60,4 +53,4 @@ letter = "J"
 color = Color(1, 0.36, 0.36, 1)
 sprite_path = "res://assets/sprites/jammer.png"
 animated_sprite_path = "res://assets/sprites/jammerAni.png"
-attributes = [SubResource("a_unit_name"), SubResource("a_power"), SubResource("a_frequency"), SubResource("a_height"), SubResource("a_bandwidth")]
+attributes = Array[ExtResource("spec")]([SubResource("a_unit_name"), SubResource("a_power"), SubResource("a_frequency"), SubResource("a_height"), SubResource("a_bandwidth")])

@@ -58,18 +58,16 @@ var _attr_placeholder: Label
 var _entity_cards: Dictionary = {}  # EntityType -> Control
 var _attr_content: VBoxContainer
 var _tutorial_active: bool = false
+var _tutorial_allowed_ids: Array = []
+var _tutorial_allowed_attributes: Array = []
 
 
 func _ready() -> void:
 	GameEvents.units_changed.connect(_update_reset_button)
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
+	GameEvents.tutorial_filter_attributes.connect(_on_tutorial_filter_attributes)
 	GameEvents.selection_changed.connect(_on_selection_changed)
-	resized.connect(func(): GameEvents.sidebar_resized.emit(size.x))
-	_build_sidebar()
-	_refresh_attribute_panel()
-
-	# Publish initial size so listeners (BaseLevel) get a value before any resize.
-	GameEvents.sidebar_resized.emit.call_deferred(size.x)
+	resized.connect(func(): GameEvents.sidebar_resized.emit(SIDEBAR_WIDTH))
 	_build_sidebar()
 	_refresh_attribute_panel()
 
@@ -98,21 +96,23 @@ func _entity_type_for_def_id(id: StringName) -> EntityType:
 
 
 func select_entity(type: EntityType, display_name: String = "", node: Node = null) -> void:
-	# If switching to a different entity type, clear old pending attributes
+	# In tutorial mode, only block sidebar card selection for disallowed types.
+	# Do not block already placed units. The attribute panel must still refresh
+	# when the user clicks a placed unit on the map.
+	if _tutorial_active and node == null and type != EntityType.NONE:
+		if not _is_entity_type_allowed(type):
+			return
+
 	if type != EntityType.NONE and type != pending_entity_type:
 		pending_attributes.clear()
 
-	if _tutorial_active:
-		return
 	selected_entity = type
 	selected_entity_name = display_name
 	selected_node = node
 
-	# If selecting a new entity type from sidebar without a placed unit
 	if node == null and type != EntityType.NONE:
 		pending_entity_type = type
 	else:
-		# Selecting a placed unit, clear pending
 		pending_entity_type = EntityType.NONE
 		pending_attributes.clear()
 
@@ -224,6 +224,7 @@ func _populate_tray(panel: PanelContainer) -> void:
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 8)
 	vbox.add_child(stack)
+
 	var tx_card := _build_entity_card(
 		"Transceiver",
 		"T",
@@ -432,6 +433,12 @@ func _refresh_attribute_panel() -> void:
 	if selected_node is Unit and def.id == &"transceiver":
 		_add_send_message_button(def.color)
 
+	# Reapply the stored tutorial filter after every row rebuild.
+	# queue_free() is deferred, so we defer this too to run after the
+	# new rows are fully added to the scene tree.
+	if not _tutorial_allowed_attributes.is_empty():
+		call_deferred("_reapply_current_tutorial_attribute_filter")
+
 
 func _add_send_message_button(accent: Color) -> void:
 	var btn := Button.new()
@@ -451,6 +458,10 @@ func _add_send_message_button(accent: Color) -> void:
 	_attr_body.add_child(btn)
 
 
+func _reapply_current_tutorial_attribute_filter() -> void:
+	_on_tutorial_filter_attributes(_tutorial_allowed_attributes.duplicate())
+
+
 func _definition_for(t: EntityType) -> UnitDefinition:
 	match t:
 		EntityType.TRANSCEIVER:
@@ -465,6 +476,8 @@ func _definition_for(t: EntityType) -> UnitDefinition:
 func _add_attribute_input(spec: AttributeSpec, def: UnitDefinition) -> void:
 	var accent := def.color
 	var current = _read_attribute(spec, def)
+	var attribute_key := String(spec.id)
+
 	match spec.kind:
 		AttributeSpec.Kind.INT:
 			_add_slider(
@@ -475,7 +488,8 @@ func _add_attribute_input(spec: AttributeSpec, def: UnitDefinition) -> void:
 				spec.unit,
 				accent,
 				func(v): _write_attribute(spec.id, int(v)),
-				true
+				true,
+				attribute_key
 			)
 		AttributeSpec.Kind.FLOAT:
 			_add_slider(
@@ -486,7 +500,8 @@ func _add_attribute_input(spec: AttributeSpec, def: UnitDefinition) -> void:
 				spec.unit,
 				accent,
 				func(v): _write_attribute(spec.id, v),
-				false
+				false,
+				attribute_key
 			)
 		AttributeSpec.Kind.ENUM:
 			_add_dropdown(
@@ -494,15 +509,24 @@ func _add_attribute_input(spec: AttributeSpec, def: UnitDefinition) -> void:
 				Array(spec.enum_options),
 				int(current),
 				accent,
-				func(v): _write_attribute(spec.id, v)
+				func(v): _write_attribute(spec.id, v),
+				attribute_key
 			)
 		AttributeSpec.Kind.BOOL:
 			_add_toggle(
-				spec.display_name, bool(current), accent, func(v): _write_attribute(spec.id, v)
+				spec.display_name,
+				bool(current),
+				accent,
+				func(v): _write_attribute(spec.id, v),
+				attribute_key
 			)
 		AttributeSpec.Kind.STRING:
 			_add_text_input(
-				spec.display_name, str(current), accent, func(v): _write_attribute(spec.id, v)
+				spec.display_name,
+				str(current),
+				accent,
+				func(v): _write_attribute(spec.id, v),
+				attribute_key
 			)
 
 
@@ -539,9 +563,10 @@ func _add_slider(
 	unit: String,
 	accent: Color,
 	on_change: Callable,
-	integers: bool = false
+	integers: bool = false,
+	attribute_key: String = ""
 ) -> void:
-	var vbox := _make_row_container()
+	var vbox := _make_row_container(attribute_key)
 
 	var top := HBoxContainer.new()
 	top.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -598,9 +623,14 @@ func _add_slider(
 
 
 func _add_dropdown(
-	label: String, options: Array, current_idx: int, accent: Color, on_change: Callable
+	label: String,
+	options: Array,
+	current_idx: int,
+	accent: Color,
+	on_change: Callable,
+	attribute_key: String = ""
 ) -> void:
-	var vbox := _make_row_container()
+	var vbox := _make_row_container(attribute_key)
 	var hbox := HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_theme_constant_override("separation", 8)
@@ -612,15 +642,19 @@ func _add_dropdown(
 	dd.custom_minimum_size = Vector2(70, 0)
 	dd.add_theme_font_size_override("font_size", 13)
 	dd.add_theme_color_override("font_color", accent)
+
 	for opt in options:
 		dd.add_item(opt)
+
 	dd.select(current_idx)
 	dd.item_selected.connect(func(idx): on_change.call(idx))
 	hbox.add_child(dd)
 
 
-func _add_toggle(label: String, current: bool, accent: Color, on_change: Callable) -> void:
-	var vbox := _make_row_container()
+func _add_toggle(
+	label: String, current: bool, accent: Color, on_change: Callable, attribute_key: String = ""
+) -> void:
+	var vbox := _make_row_container(attribute_key)
 	var hbox := HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_theme_constant_override("separation", 8)
@@ -634,8 +668,12 @@ func _add_toggle(label: String, current: bool, accent: Color, on_change: Callabl
 	hbox.add_child(toggle)
 
 
-func _make_row_container() -> VBoxContainer:
+func _make_row_container(attribute_key: String = "") -> VBoxContainer:
 	var panel := PanelContainer.new()
+
+	if attribute_key != "":
+		panel.name = attribute_key
+
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_LIGHT, 10))
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_attr_body.add_child(panel)
@@ -644,6 +682,7 @@ func _make_row_container() -> VBoxContainer:
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_theme_constant_override("separation", 8)
 	panel.add_child(vbox)
+
 	return vbox
 
 
@@ -725,8 +764,10 @@ func _on_simulate_pressed() -> void:
 	GameEvents.simulation_requested.emit()
 
 
-func _add_text_input(label: String, current: String, accent: Color, on_change: Callable) -> void:
-	var vbox := _make_row_container()
+func _add_text_input(
+	label: String, current: String, accent: Color, on_change: Callable, attribute_key: String = ""
+) -> void:
+	var vbox := _make_row_container(attribute_key)
 	var hbox := HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_theme_constant_override("separation", 8)
@@ -747,6 +788,8 @@ func _add_text_input(label: String, current: String, accent: Color, on_change: C
 # ════════════════════════════════════════════
 #  STYLE HELPERS
 # ════════════════════════════════════════════
+
+
 func _flat_style(bg: Color, padding: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
@@ -785,25 +828,83 @@ func _make_label(text: String, color: Color, txt_size: int, expand: bool = false
 
 
 func _on_tutorial_filter(allowed_ids: Array) -> void:
-	# allowed_ids contains StringName definition.id values (e.g. &"transceiver").
+	# Supports the newer UnitDefinition ids, such as &"transceiver", while also
+	# accepting the older EntityType enum values from EMS-183 if TutorialLevel
+	# still emits those.
+	_tutorial_allowed_ids = allowed_ids
 	_tutorial_active = not allowed_ids.is_empty()
-	_attr_content.modulate.a = 0.3 if _tutorial_active else 1.0
-	_set_interactivity(_attr_content, not _tutorial_active)
+
 	for type in _entity_cards:
 		var card = _entity_cards[type]
-		var def := _definition_for(type)
-		var enabled = not _tutorial_active or (def and def.id in allowed_ids)
+		var enabled := not _tutorial_active or _is_entity_type_allowed(type)
+
 		card.modulate.a = 1.0 if enabled else 0.3
-		card.set_process_input(enabled)
 		card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+		card.set_process_input(enabled)
+		card.set_process_unhandled_input(enabled)
+		card.set_process_unhandled_key_input(enabled)
+
 		for child in card.get_children():
-			child.mouse_filter = (
-				Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
-			)
+			if child is Control:
+				child.mouse_filter = (
+					Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
+				)
+
+
+func _is_entity_type_allowed(type: EntityType) -> bool:
+	if _tutorial_allowed_ids.is_empty():
+		return true
+
+	var def := _definition_for(type)
+	if def and def.id in _tutorial_allowed_ids:
+		return true
+	if def and String(def.id) in _tutorial_allowed_ids:
+		return true
+	if type in _tutorial_allowed_ids:
+		return true
+
+	return false
+
+
+func _on_tutorial_filter_attributes(allowed_attributes: Array) -> void:
+	_tutorial_allowed_attributes = allowed_attributes
+
+	if _attr_body == null:
+		return
+
+	var lock_all := false
+	for allowed_attribute in allowed_attributes:
+		var allowed_text := str(allowed_attribute).to_lower()
+		if allowed_text == "__lock_all__":
+			lock_all = true
+			break
+
+	var lock_attributes := lock_all or not allowed_attributes.is_empty()
+
+	for row in _attr_body.get_children():
+		if not row is Control:
+			continue
+
+		var row_name := row.name.to_lower()
+		var enabled := not lock_attributes
+
+		if lock_all:
+			enabled = false
+		else:
+			for allowed_attribute in allowed_attributes:
+				var allowed_text := str(allowed_attribute).to_lower()
+
+				if row_name == allowed_text or row_name.contains(allowed_text):
+					enabled = true
+					break
+
+		row.modulate.a = 1.0 if enabled else 0.35
+		_set_interactivity(row, enabled)
 
 
 func _set_interactivity(node: Control, enabled: bool) -> void:
 	node.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+
 	for child in node.get_children():
 		if child is Control:
 			_set_interactivity(child, enabled)

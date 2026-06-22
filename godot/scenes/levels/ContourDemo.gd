@@ -288,23 +288,51 @@ func _create_height_texture(grid: Array, w: int, h: int) -> ImageTexture:
 
 
 func toggle_shader(enabled: bool) -> void:
+	if contour_rect == null or not is_instance_valid(contour_rect):
+		push_warning("toggle_shader skipped: contour_rect is missing.")
+		return
+
+	if contour_rect.material == null:
+		push_warning("toggle_shader skipped: contour_rect has no material.")
+		return
+
+	if not contour_rect.material is ShaderMaterial:
+		push_warning("toggle_shader skipped: contour_rect material is not a ShaderMaterial.")
+		return
+
+	var shader_material := contour_rect.material as ShaderMaterial
+
 	if not enabled:
-		contour_rect.material.set_shader_parameter("gray_mode", true)
-		contour_rect.material.set_shader_parameter("gray_mode_color", Color(0.5, 0.5, 0.5, 1.0))
+		shader_material.set_shader_parameter("gray_mode", true)
+		shader_material.set_shader_parameter("gray_mode_color", Color(0.5, 0.5, 0.5, 1.0))
 	else:
-		contour_rect.material.set_shader_parameter("gray_mode", false)
-		contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))
-		contour_rect.material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0))
-		contour_rect.material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0))
-		contour_rect.material.set_shader_parameter("water_color", Color(0.10, 0.30, 0.85, 1.0))
+		shader_material.set_shader_parameter("gray_mode", false)
+		shader_material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))
+		shader_material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0))
+		shader_material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0))
+		shader_material.set_shader_parameter("water_color", Color(0.10, 0.30, 0.85, 1.0))
 
 	for child in get_children():
-		if child is Label:
-			child.visible = enabled
+		if child.has_method("set_shader_enabled"):
+			child.set_shader_enabled(enabled)
 
 
 func toggle_grid(enabled: bool) -> void:
-	contour_rect.material.set_shader_parameter("line_thickness", 1.0 if enabled else 0.0)
+	if contour_rect == null or not is_instance_valid(contour_rect):
+		push_warning("toggle_grid skipped: contour_rect is missing.")
+		return
+
+	if contour_rect.material == null:
+		push_warning("toggle_grid skipped: contour_rect has no material.")
+		return
+
+	if not contour_rect.material is ShaderMaterial:
+		push_warning("toggle_grid skipped: contour_rect material is not a ShaderMaterial.")
+		return
+
+	var shader_material := contour_rect.material as ShaderMaterial
+	shader_material.set_shader_parameter("line_thickness", 1.0 if enabled else 0.0)
+
 	for child in get_children():
 		if child is Label:
 			child.visible = enabled
