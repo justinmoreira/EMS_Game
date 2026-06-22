@@ -1,7 +1,7 @@
 extends Node
 
 const TUTORIAL_SCENE_PATH = "res://scenes/levels/TutorialLevel.tscn"
-const SANDBOX_SCENE_PATH = "res://scenes/levels/ContourDemo.tscn"
+const SANDBOX_SCENE_PATH = "res://scenes/levels/Sandbox.tscn"
 const SILENT_LINK_SCENE_PATH = "res://scenes/silent-link/level-1.tscn"
 const ENEMY_HUNTER_SCENE_PATH = "res://scenes/enemy-hunter/level-1.tscn"
 

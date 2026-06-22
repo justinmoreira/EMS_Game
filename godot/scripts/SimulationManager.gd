@@ -28,6 +28,7 @@ var active_links: Dictionary = {}
 
 
 func _ready() -> void:
+	GameEvents.simulation_requested.connect(simulate)
 	call_deferred("simulate")
 
 
@@ -46,7 +47,7 @@ func simulate() -> void:
 	var transceivers = _live_group("transceivers")
 	var jammers = _live_group("jammers")
 	var sensors = _live_group("sensors")
-	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
+	var terrain = get_tree().get_first_node_in_group("terrain") as Sandbox
 
 	var jammer_descs: Array = []
 	for jammer_node in jammers:
@@ -137,7 +138,7 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 	if frequency_diff > bandwidth_half:
 		return LinkState.FREQUENCY_DIFF
 
-	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
+	var terrain = get_tree().get_first_node_in_group("terrain") as Sandbox
 	var tx_px: Vector2
 	var rx_px: Vector2
 	var z_tx: float
@@ -225,7 +226,7 @@ func calculate_link(tx: Unit, rx: Unit, jammers: Array) -> int:
 
 
 func calculate_detection(srx: Unit, tx: Unit, jammers: Array) -> Dictionary:
-	var terrain = get_tree().get_first_node_in_group("terrain") as ContourGen
+	var terrain = get_tree().get_first_node_in_group("terrain") as Sandbox
 	var tx_px: Vector2
 	var srx_px: Vector2
 	var z_tx: float

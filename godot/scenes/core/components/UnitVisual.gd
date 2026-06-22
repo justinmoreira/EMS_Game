@@ -178,7 +178,7 @@ func _refresh_heatmap() -> void:
 func _compute_heatmap_samples(max_cell_offset: int) -> Dictionary:
 	var sample_grid := {}
 	var parent_unit := get_parent()
-	var terrain := get_tree().get_first_node_in_group("terrain") as ContourGen
+	var terrain := get_tree().get_first_node_in_group("terrain") as Sandbox
 	if terrain == null:
 		return sample_grid
 

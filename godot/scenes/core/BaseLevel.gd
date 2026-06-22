@@ -1,8 +1,6 @@
 class_name BaseLevel
 extends Control
 
-const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/IntroPopup.tscn")
-
 # Unit attribute controls
 const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
 const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
@@ -60,7 +58,6 @@ const DESIGN_MAP_SIZE = Vector2(1620.0, 1080.0)
 func _ready():
 	get_tree().get_root().size_changed.connect(_on_window_resized)
 	GameEvents.selection_changed.connect(_on_selection_changed)
-	GameEvents.simulation_requested.connect(SimulationManager.simulate)
 	GameEvents.reset_requested.connect(_on_reset_requested)
 	GameEvents.delete_requested.connect(_on_delete_requested)
 	GameEvents.sidebar_resized.connect(_on_sidebar_resized)
@@ -89,6 +86,8 @@ func _on_sidebar_resized(width: float) -> void:
 
 
 func _on_window_resized() -> void:
+	if !is_inside_tree():
+		return
 	self.size = get_viewport_rect().size
 	if background:
 		background.offset_left = sidebar_width

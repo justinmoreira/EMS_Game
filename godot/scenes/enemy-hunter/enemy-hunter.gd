@@ -1,4 +1,4 @@
-extends ContourGen
+extends Sandbox
 
 # Enemy Hunter Mode Controller - Event-driven state machine matching TutorialController structure
 
