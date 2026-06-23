@@ -4,8 +4,8 @@
 [ext_resource type="Script" uid="uid://be2d1wayxpq4p" path="res://scenes/core/Unit.gd" id="2"]
 [ext_resource type="Script" uid="uid://ddqox1i38acoc" path="res://scenes/silent_link/SilentLink.gd" id="2_2d5dm"]
 [ext_resource type="Shader" uid="uid://ccadptf4j2ywd" path="res://shaders/ContourLine.gdshader" id="3"]
-[ext_resource type="Resource" uid="uid://sejrtwhopc4x" path="res://data/units/sensor.tres" id="6_mnoak"]
-[ext_resource type="Resource" uid="uid://b2tyosia8y2n7" path="res://data/units/jammer.tres" id="6_t67gm"]
+[ext_resource type="Resource" uid="uid://dwr12u2th8xdx" path="res://data/units/sensor.tres" id="6_mnoak"]
+[ext_resource type="Resource" uid="uid://1480ftm8p2yd" path="res://data/units/jammer.tres" id="6_t67gm"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_l1"]
 shader = ExtResource("3")

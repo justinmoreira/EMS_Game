@@ -928,14 +928,6 @@ func _lock_all_attributes(is_locked: bool) -> void:
 	)
 
 
-func _lock_all_attributes(is_locked: bool) -> void:
-	_attr_content.modulate.a = 0.3 if is_locked else 1.0
-	_set_interactivity(_attr_content, not is_locked)
-	_attr_content.mouse_default_cursor_shape = (
-		Control.CURSOR_FORBIDDEN if is_locked else Control.CURSOR_ARROW
-	)
-
-
 func _set_interactivity(node: Control, enabled: bool) -> void:
 	node.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
 

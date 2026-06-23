@@ -1,4 +1,4 @@
-extends ContourGen
+extends Sandbox
 
 # Silent Link Mode Controller - Event-driven state machine matching TutorialController structure
 
