@@ -49,16 +49,30 @@ var terrain_heatmap_enabled: bool = false
 
 @onready var background := $BackgroundTexture
 
+const DESIGN_MAP_ORIGIN = Vector2(300.0, 0.0)
+const DESIGN_MAP_SIZE = Vector2(1620.0, 1080.0)
+
 # --- Initialization ---
 
 
 func _ready():
 	get_tree().get_root().size_changed.connect(_on_window_resized)
 	GameEvents.selection_changed.connect(_on_selection_changed)
-	GameEvents.simulation_requested.connect(SimulationManager.simulate)
 	GameEvents.reset_requested.connect(_on_reset_requested)
 	GameEvents.delete_requested.connect(_on_delete_requested)
 	GameEvents.sidebar_resized.connect(_on_sidebar_resized)
+
+	for child in get_children():
+		if child is Unit:
+			# If world_uv is null, it means it was pre-placed and not dragged/spawned
+			if child.get_value(&"world_uv") == null:
+				# Calculate UV purely based on the 1620x1080 Editor space
+				var u = (child.global_position.x - DESIGN_MAP_ORIGIN.x) / DESIGN_MAP_SIZE.x
+				var v = (child.global_position.y - DESIGN_MAP_ORIGIN.y) / DESIGN_MAP_SIZE.y
+
+				# Inject it into the Unit's physical_state dictionary
+				child.set_value(&"world_uv", Vector2(u, v))
+
 	_on_window_resized()
 
 	spectrum_analyzer = get_tree().get_root().find_child("SpectrumAnalyzer", true, false)
@@ -72,6 +86,8 @@ func _on_sidebar_resized(width: float) -> void:
 
 
 func _on_window_resized() -> void:
+	if !is_inside_tree():
+		return
 	self.size = get_viewport_rect().size
 	if background:
 		background.offset_left = sidebar_width
@@ -87,14 +103,12 @@ func _on_window_resized() -> void:
 # offset_left set in _on_window_resized.
 
 
-#TODO: Fix to give accurate representation of map origin
 func _map_origin() -> Vector2:
-	return background.position if background else Vector2(sidebar_width, 0)
+	return Vector2(sidebar_width, 0)
 
 
-#TODO: Fix to give accurate representation of map size
 func get_map_size() -> Vector2:
-	return background.size if background else Vector2(size.x - sidebar_width, size.y)
+	return Vector2(size.x - sidebar_width, size.y)
 
 
 func screen_to_world_uv(screen_pos: Vector2) -> Vector2:
@@ -214,6 +228,9 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	_on_unit_placed(unit)
 	# Newly-placed unit is treated as selected so its panel opens.
 	GameEvents.select(unit)
+
+	GameEvents.unit_placed.emit(unit)
+	GameEvents.units_changed.emit()
 
 
 func _on_unit_placed(unit: Unit) -> void:

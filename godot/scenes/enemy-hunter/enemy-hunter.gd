@@ -1,4 +1,4 @@
-extends ContourGen
+extends Sandbox
 
 # Enemy Hunter Mode Controller - Event-driven state machine matching TutorialController structure
 
@@ -18,6 +18,7 @@ var _start_time: float = 0.0
 var _completion_time: float = 0.0
 var _timer_label: Label = null
 var _total_transceivers: int = 0
+var _total_jammers: int = 0
 var _hud: Node = null
 var _reveal_button: Button = null
 var _current_level: int = 1
@@ -43,7 +44,7 @@ func _ready() -> void:
 	_hint_overlay = DetectionVisual.new()
 	add_child(_hint_overlay)
 
-	_count_transceivers()
+	_count_units()
 	_start()
 
 
@@ -53,8 +54,9 @@ func _process(_delta: float) -> void:
 		_timer_label.text = "Time: %.1fs" % elapsed
 
 
-func _count_transceivers() -> void:
+func _count_units() -> void:
 	_total_transceivers = get_tree().get_nodes_in_group("transceivers").size()
+	_total_jammers = get_tree().get_nodes_in_group("jammers").size()
 
 
 func _start() -> void:
@@ -66,7 +68,7 @@ func _start() -> void:
 	popup.title_string = "Enemy Hunter Mode - Level %d" % _current_level
 	popup.body_string = (
 		"Find and jam all hidden transceivers on the map.\n\n"
-		+ "[i]• Detect signals above the noise floor\n"
+		+ "[i]• Utilize the frequency spectrum analyzer to detect signals above the noise floor\n"
 		+ "• Direction hints point toward emitters\n"
 		+ "• Fully detect transceivers to reveal them\n\n"
 		+ "Jam every transceiver as fast as you can![/i]"
@@ -88,6 +90,12 @@ func _on_intro_closed() -> void:
 
 
 func _advance() -> void:
+	var jammers_script = ""
+	if _total_jammers == 1:
+		jammers_script = "Avoid the spoof emission from a jammer,\n"
+	elif _total_jammers > 0:
+		jammers_script = "Avoid all spoof emissions from %d jammers,\n" % _total_jammers
+
 	match _step:
 		Step.WELCOME:
 			_step = Step.HUNTING
@@ -96,6 +104,7 @@ func _advance() -> void:
 			_show_hint(
 				(
 					"Hunt down all %d transceivers!\n" % _total_transceivers
+					+ jammers_script
 					+ "Detect signals above the noise floor,\n"
 					+ "reveal the transmitters, then jam them."
 				)
@@ -169,7 +178,17 @@ func _on_reveal_pressed() -> void:
 
 		_hint_overlay.remove_hints_for(transceiver.global_position)
 
-		_reveal_transceiver(transceiver)
+		_reveal_unit(transceiver)
+
+	for jammer in get_tree().get_nodes_in_group("jammers"):
+		var tx_id: int = jammer.get_instance_id()
+
+		if tx_id not in _detected_emitters:
+			_detected_emitters.append(tx_id)
+
+		_hint_overlay.remove_hints_for(jammer.global_position)
+
+		_reveal_unit(jammer)
 
 	# Disable button after use
 	if _reveal_button:
@@ -283,7 +302,7 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 
 			_hint_overlay.remove_hints_for(target.global_position)
 
-			_reveal_transceiver(target)
+			_reveal_unit(target)
 
 	# Remove stale hints
 	_hint_overlay.retain_only(hinted_this_sim)
@@ -322,14 +341,14 @@ func _calculate_score() -> int:
 	return max(1000, 10000 - time_penalty * 100)
 
 
-func _reveal_transceiver(transceiver: Node) -> void:
-	if transceiver.has_method("reveal"):
-		transceiver.reveal()
+func _reveal_unit(unit: Node) -> void:
+	if unit.has_method("reveal"):
+		unit.reveal()
 		return
-	transceiver.show()
-	transceiver.modulate.a = 1.0
-	if transceiver.has_node("Sprite2D"):
-		var sprite := transceiver.get_node("Sprite2D")
+	unit.show()
+	unit.modulate.a = 1.0
+	if unit.has_node("Sprite2D"):
+		var sprite := unit.get_node("Sprite2D")
 		sprite.show()
 		sprite.modulate.a = 1.0
 

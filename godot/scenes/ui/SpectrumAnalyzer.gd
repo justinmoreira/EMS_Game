@@ -69,6 +69,7 @@ var _font: Font
 
 
 func _ready() -> void:
+	GameEvents.confirm_pressed.connect(_on_settings_confirmed)
 	_font = ThemeDB.fallback_font
 	_spectrum.resize(TRACE_SAMPLES)
 	_spectrum.fill(0.0)
@@ -100,6 +101,11 @@ func _process(delta: float) -> void:
 			scan_complete.emit()
 
 	queue_redraw()
+
+
+func _on_settings_confirmed(unit: Node) -> void:
+	if unit == _sensor:
+		_rebuild_sources()
 
 
 func configure(sensor: Node) -> void:
