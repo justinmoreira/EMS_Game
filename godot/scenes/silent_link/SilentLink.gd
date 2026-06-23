@@ -25,6 +25,7 @@ var _link_established := false
 var _player_detected := false
 var _jammed := false
 var _simulation_over := false
+var _terrain_blocked := false
 
 # Gameplay entities
 var _player_units: Array = []
@@ -208,6 +209,7 @@ func _on_simulation_requested() -> void:
 	_player_detected = false
 	_jammed = false
 	_link_established = false
+	_terrain_blocked = false
 	_simulation_over = false
 	_step = Step.SIMULATING
 
@@ -221,7 +223,9 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 
 	_player_detected = false
 	_jammed = false
+	_terrain_blocked = false
 	_link_established = false
+	_simulation_over = false
 
 	_parse_sim_results_for_flags(link_results, detect_results)
 
@@ -229,6 +233,11 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 
 	_check_jamming()
 	_check_detection()
+
+	if _terrain_blocked:
+		_step = Step.PLANNING
+		_show_hint_debounced("Link blocked by terrain! Reposition transceivers and try again.")
+		return
 
 	if not _check_link_possible():
 		_step = Step.PLANNING
@@ -251,19 +260,18 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 
 func _parse_sim_results_for_flags(link_results: Array, detect_results: Array) -> void:
 	for result in link_results:
-		if result is Dictionary:
-			# If your simulation emits jamming state, map it here.
-			# Example:
-			# var state: int = result.get("state", 0)
-			# if state == 3: _jammed = true
-			pass
+		if not result is Dictionary:
+			continue
+
+		var state: int = result.get("state", 0)
+
+		if state == SimulationManager.LinkState.TERRAIN_BLOCKED:
+			_terrain_blocked = true
+		elif state == SimulationManager.LinkState.FAILED_JAMMED:
+			_jammed = true
 
 	for detect_result in detect_results:
 		if detect_result is Dictionary:
-			# If your simulation emits explicit detection booleans, map them here.
-			# Example:
-			# var detected: bool = detect_result.get("detected", false)
-			# if detected: _player_detected = true
 			pass
 
 
