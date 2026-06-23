@@ -7,7 +7,11 @@ const ENEMY_HUNTER_SCENE_PATH = "res://scenes/enemy-hunter/level-1.tscn"
 
 
 func _ready():
-	if OS.has_feature("headless") or DisplayServer.get_name() == "headless" or !OS.has_feature("web"):
+	if (
+		OS.has_feature("headless")
+		or DisplayServer.get_name() == "headless"
+		or !OS.has_feature("web")
+	):
 		return
 
 	var mode := _get_mode_from_url()
