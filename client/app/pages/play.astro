@@ -71,9 +71,21 @@ import { BASE_URL } from "@/utils";
     class="fixed inset-0 top-12 bg-neutral-900 flex flex-col items-center justify-center"
   >
     <div id="custom-loader">
-      <img class="spinner spinner1" src="unit-images/transceiver.png" alt="" />
-      <img class="spinner spinner2" src="unit-images/jammer.png" alt="" />
-      <img class="spinner spinner3" src="unit-images/sensor.png" alt="" />
+      <img
+        class="spinner spinner1"
+        src={`${BASE_URL}/unit-images/transceiver.png`}
+        alt=""
+      />
+      <img
+        class="spinner spinner2"
+        src={`${BASE_URL}/unit-images/jammer.png`}
+        alt=""
+      />
+      <img
+        class="spinner spinner3"
+        src={`${BASE_URL}/unit-images/sensor.png`}
+        alt=""
+      />
     </div>
 
     <progress id="status-progress" class="w-1/2 hidden"></progress>
