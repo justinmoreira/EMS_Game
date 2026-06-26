@@ -4,11 +4,16 @@ const UNIT_ID_TRANSCEIVER := &"transceiver"
 const UNIT_ID_SENSOR := &"sensor"
 const UNIT_ID_JAMMER := &"jammer"
 
-const FIRST_TRANSCEIVER_POS := Vector2(580, 780)
-const FIRST_TRANSCEIVER_GREEN_POS := Vector2(650, 780)
-const SECOND_TRANSCEIVER_POS := Vector2(850, 780)
-const SENSOR_POS := Vector2(680, 910)
-const JAMMER_POS := Vector2(690, 690)
+# Tutorial target positions, expressed as world_uv (normalized 0..1 across the
+# map) so they track the live map transform — zoom, pan, and window/resolution
+# changes — instead of being pinned to fixed screen pixels. Authored as canonical
+# map pixels over BaseLevel.MAP_SIZE (1080x1080) and divided to normalize.
+const MAP_PX := Vector2(1080, 1080)
+const FIRST_TRANSCEIVER_POS := Vector2(280, 660) / MAP_PX
+const FIRST_TRANSCEIVER_GREEN_POS := Vector2(360, 660) / MAP_PX
+const SECOND_TRANSCEIVER_POS := Vector2(580, 660) / MAP_PX
+const SENSOR_POS := Vector2(470, 810) / MAP_PX
+const JAMMER_POS := Vector2(490, 550) / MAP_PX
 
 enum TutorialStep {
 	WELCOME,
