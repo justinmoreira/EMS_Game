@@ -57,7 +57,21 @@ definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
 
-[node name="EnemyJammer" type="Node2D" parent="." index="5" unique_id=234907007]
+[node name="EnemySensor3" type="Node2D" parent="." index="5" unique_id=2105001001]
+position = Vector2(980, 680)
+script = ExtResource("2")
+definition = ExtResource("6_mnoak")
+is_immovable = true
+is_removable = false
+
+[node name="EnemySensor4" type="Node2D" parent="." index="6" unique_id=2105001002]
+position = Vector2(1240, 340)
+script = ExtResource("2")
+definition = ExtResource("6_mnoak")
+is_immovable = true
+is_removable = false
+
+[node name="EnemyJammer" type="Node2D" parent="." index="7" unique_id=234907007]
 visible = false
 position = Vector2(1200, 500)
 script = ExtResource("2")
@@ -65,9 +79,41 @@ definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
 
-[node name="EnemyJammer2" type="Node2D" parent="." index="6" unique_id=1888613306]
+[node name="EnemyJammer2" type="Node2D" parent="." index="8" unique_id=1888613306]
 visible = false
 position = Vector2(850, 300)
+script = ExtResource("2")
+definition = ExtResource("6_t67gm")
+is_immovable = true
+is_removable = false
+
+[node name="EnemyJammer3" type="Node2D" parent="." index="9" unique_id=2105001003]
+visible = false
+position = Vector2(1080, 560)
+script = ExtResource("2")
+definition = ExtResource("6_t67gm")
+is_immovable = true
+is_removable = false
+
+[node name="EnemyJammer4" type="Node2D" parent="." index="10" unique_id=2105001004]
+visible = false
+position = Vector2(940, 470)
+script = ExtResource("2")
+definition = ExtResource("6_t67gm")
+is_immovable = true
+is_removable = false
+
+[node name="EnemyJammer5" type="Node2D" parent="." index="11" unique_id=2105001005]
+visible = false
+position = Vector2(1320, 620)
+script = ExtResource("2")
+definition = ExtResource("6_t67gm")
+is_immovable = true
+is_removable = false
+
+[node name="EnemyJammer6" type="Node2D" parent="." index="12" unique_id=2105001006]
+visible = false
+position = Vector2(760, 540)
 script = ExtResource("2")
 definition = ExtResource("6_t67gm")
 is_immovable = true

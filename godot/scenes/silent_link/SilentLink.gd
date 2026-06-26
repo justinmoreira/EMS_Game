@@ -26,6 +26,7 @@ var _player_detected := false
 var _jammed := false
 var _simulation_over := false
 var _terrain_blocked := false
+var _link_success_from_sim := false
 
 # Gameplay entities
 var _player_units: Array = []
@@ -226,11 +227,23 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 	_terrain_blocked = false
 	_link_established = false
 	_simulation_over = false
+	_link_success_from_sim = false
 
-	_parse_sim_results_for_flags(link_results, detect_results)
+	# Parse authoritative simulation outcomes
+	for result in link_results:
+		if not (result is Dictionary):
+			continue
+
+		var state: int = result.get("state", -1)
+
+		if state == SimulationManager.LinkState.SUCCESS:
+			_link_success_from_sim = true
+		elif state == SimulationManager.LinkState.TERRAIN_BLOCKED:
+			_terrain_blocked = true
+		elif state == SimulationManager.LinkState.FAILED_JAMMED:
+			_jammed = true
 
 	_update_sensor_hints()
-
 	_check_jamming()
 	_check_detection()
 
@@ -239,9 +252,9 @@ func _on_simulation_complete(link_results: Array, detect_results: Array) -> void
 		_show_hint_debounced("Link blocked by terrain! Reposition transceivers and try again.")
 		return
 
-	if not _check_link_possible():
+	if not _link_success_from_sim:
 		_step = Step.PLANNING
-		_show_hint_debounced("Link not possible - adjust transceiver placement/frequency.")
+		_show_hint_debounced("Link not established - adjust transceiver placement/frequency.")
 		return
 
 	if _jammed:
