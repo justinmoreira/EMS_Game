@@ -215,7 +215,7 @@ func _on_simulation_requested() -> void:
 	_step = Step.SIMULATING
 
 
-func _on_simulation_complete(link_results: Array, detect_results: Array) -> void:
+func _on_simulation_complete(link_results: Array, _detect_results: Array) -> void:
 	if _step != Step.SIMULATING or _simulation_over:
 		return
 
