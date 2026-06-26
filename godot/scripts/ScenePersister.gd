@@ -28,8 +28,21 @@ func _ready() -> void:
 	if _level == null:
 		push_error("ScenePersister expects a BaseLevel parent; got %s" % get_parent())
 		return
+	# Multiplayer shares the same level scene but persists its state in the
+	# matches/match_actions tables — never to the sandbox localStorage slot.
+	# Skip both the autosave hookup and the restore so an MP session can't
+	# clobber (or be seeded by) the player's sandbox snapshot.
+	if _is_multiplayer():
+		return
 	GameEvents.units_changed.connect(_queue_save)
 	_restore()
+
+
+func _is_multiplayer() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	var v: Variant = JavaScriptBridge.eval("window.GAME_MODE")
+	return v is String and (v as String) == "multiplayer"
 
 
 func _queue_save() -> void:

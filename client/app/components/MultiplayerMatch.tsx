@@ -1,10 +1,13 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { authLoading, authUser } from "@/lib/auth";
+import { createMatch } from "@/lib/matches";
+import { getProfiles, type Profile } from "@/lib/profile";
 import { supabase } from "@/lib/supabase";
 import { BASE_URL } from "@/utils";
 import type { Json, Tables } from "./../lib/database.types";
 
 type MatchRow = Tables<"matches">;
+type ActionRow = Tables<"match_actions">;
 
 declare global {
   interface Window {
@@ -12,24 +15,17 @@ declare global {
     MULTIPLAYER_PLAYER_ID?: string;
     submitMpAction?: (boardJson?: string) => Promise<void>;
     godotApplyOpponentBoard?: (boardJson: string, ownerId: string) => void;
+    godotOnTurnAdvance?: (turn: number) => void;
+    mpReportWinner?: (winnerId: string) => void;
   }
 }
 
-type ActionRow = Tables<"match_actions">;
-
-// Exposes the current match (id + seed + roles + turn) on `window` so the
-// Godot side can read it via JavaScriptBridge.eval — that's how the `?id`
-// query param becomes meaningful: it picks the row whose seed drives terrain
-// gen and whose turn counter the SUBMIT button will write into.
 function publishMatchToWindow(match: MatchRow | null) {
   if (typeof window === "undefined") return;
   if (match) window.MULTIPLAYER_MATCH = match;
   else delete window.MULTIPLAYER_MATCH;
 }
 
-// Mirrors auth.uid() to a plain global so Godot's Unit.gd can identify
-// the local player without round-tripping through the JWT cookie. Used
-// by the enemy-unit color inversion to decide which units to invert.
 function publishPlayerIdToWindow(id: string | null) {
   if (typeof window === "undefined") return;
   if (id) window.MULTIPLAYER_PLAYER_ID = id;
@@ -47,29 +43,23 @@ export default function MultiplayerMatch() {
   const [matchId] = useState<string | null>(getMatchIdFromUrl);
   const [match, setMatch] = useState<MatchRow | null>(null);
   const [loading, setLoading] = useState(true);
-  // Opponent's submitted action, held until the turn it belongs to has
-  // been completed (current_turn has moved past it). Applied by the
-  // effect below — see WEGO note next to handleOpponentInsert.
   const [pendingOpponentAction, setPendingOpponentAction] =
     useState<ActionRow | null>(null);
+  // True once we've submitted for the current turn, so the HUD can show
+  // "waiting for opponent". Cleared when the turn advances.
+  const [submittedTurn, setSubmittedTurn] = useState<number | null>(null);
+  const [profiles, setProfiles] = useState<Map<string, Profile>>(new Map());
+  const reportedWinner = useRef(false);
 
-  // Hard auth gate. Two halves:
-  //   • While `verifying` is true we haven't confirmed the session with
-  //     the server yet — the cached `user` could be stale (expired token,
-  //     supabase offline). Do NOT make redirect decisions here.
-  //   • Once `verifying` flips false, `user === null` is definitive:
-  //     either the server said we're signed out, or we couldn't reach it
-  //     and chose to fail-closed (see lib/auth.ts). Bounce to /singleplayer.
+  // Auth gate (see original notes): only redirect once verification resolves.
   useEffect(() => {
     if (verifying) return;
     if (user === null) {
-      console.log(
-        "[mp/match] auth verification done, no user — redirecting to /singleplayer",
-      );
       window.location.href = `${BASE_URL}/singleplayer`;
     }
   }, [verifying, user]);
 
+  // Initial match fetch.
   useEffect(() => {
     if (!matchId) {
       setLoading(false);
@@ -83,20 +73,6 @@ export default function MultiplayerMatch() {
         .eq("id", matchId)
         .maybeSingle();
       if (!cancelled) {
-        if (data) {
-          console.log(
-            "[mp/match] fetched match",
-            data.id,
-            "seed=",
-            data.seed,
-            "turn=",
-            data.current_turn,
-            "status=",
-            data.status,
-          );
-        } else {
-          console.warn("[mp/match] fetch returned no row for id=", matchId);
-        }
         setMatch(data);
         publishMatchToWindow(data);
         setLoading(false);
@@ -107,8 +83,19 @@ export default function MultiplayerMatch() {
     };
   }, [matchId]);
 
-  // Drop the global on unmount so navigating back to the lobby (or to
-  // /sandbox) doesn't leave stale match data on `window`.
+  // Resolve both players' display names for the HUD/overlays.
+  useEffect(() => {
+    const ids = [match?.host_id, match?.guest_id].filter(Boolean) as string[];
+    if (ids.length === 0) return;
+    let cancelled = false;
+    void getProfiles(ids).then((m) => {
+      if (!cancelled) setProfiles(m);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [match?.host_id, match?.guest_id]);
+
   useEffect(() => {
     return () => {
       publishMatchToWindow(null);
@@ -116,55 +103,21 @@ export default function MultiplayerMatch() {
     };
   }, []);
 
-  // Mirror the auth uid to a JS global the moment we know it. Done in
-  // its own effect so Godot can read it even before the match row lands.
   useEffect(() => {
     publishPlayerIdToWindow(user?.id ?? null);
   }, [user?.id]);
 
-  // Wire the Godot-side SUBMIT button (Sidebar.gd → JavaScriptBridge.eval
-  // → window.submitMpAction) to a real DB write. Each call inserts the
-  // calling player's action for the current turn; the both-submitted
-  // trigger (see 20260529000000_create_multiplayer.sql) advances
-  // matches.current_turn once both rows land. PoC payload is opaque —
-  // when the Godot side starts serializing real moves, it'll pass them
-  // through this hook instead.
+  // Wire the Godot SUBMIT button → DB write for the current turn.
   useEffect(() => {
-    if (!user || !match) {
-      console.log(
-        "[mp/submit] skipping publish — user?",
-        !!user,
-        "match?",
-        !!match,
-      );
-      return;
-    }
-    console.log(
-      "[mp/submit] publishing window.submitMpAction (turn=",
-      match.current_turn,
-      ")",
-    );
+    if (!user || !match) return;
+    const turnAtBind = match.current_turn;
     window.submitMpAction = async (boardJson?: string) => {
-      console.log(
-        "[mp/submit] inserting action for match",
-        match.id,
-        "turn",
-        match.current_turn,
-        "player",
-        user.id.slice(0, 8),
-        "board bytes:",
-        boardJson?.length ?? 0,
-      );
-      // Parse the board snapshot here so the action payload stores it as
-      // structured JSONB (queryable, indexable) instead of an escaped
-      // string. Falls back to a flag-only payload if the board didn't
-      // come through, so the turn-advance trigger still fires.
       let board: Json = null;
       if (boardJson) {
         try {
           board = JSON.parse(boardJson) as Json;
         } catch (e) {
-          console.warn("[mp/submit] board JSON parse failed, dropping:", e);
+          console.warn("[mp/submit] board JSON parse failed:", e);
         }
       }
       const { error } = await supabase.from("match_actions").insert({
@@ -178,9 +131,9 @@ export default function MultiplayerMatch() {
         },
       });
       if (error) {
-        console.error("[mp/submit] insert FAILED:", error.message, error);
+        console.error("[mp/submit] insert FAILED:", error.message);
       } else {
-        console.log("[mp/submit] insert OK — waiting on the other player");
+        setSubmittedTurn(turnAtBind);
       }
     };
     return () => {
@@ -188,48 +141,61 @@ export default function MultiplayerMatch() {
     };
   }, [user, match]);
 
+  // Register the win reporter Godot calls when it detects the end of the
+  // match. finish_match is idempotent, so both clients reporting is fine.
   useEffect(() => {
     if (!matchId) return;
-    // Wait for auth verification before subscribing: realtime.setAuth(token)
-    // only takes effect on the NEXT channel created, so subscribing before
-    // lib/auth.ts has called it leaves the channel pinned to the `anon`
-    // role. RLS-gated broadcasts on these tables (`to authenticated`) then
-    // silently drop every event despite the channel reporting SUBSCRIBED.
-    // Verified by inspecting `realtime.subscription.claims_role`.
-    if (verifying || !user) return;
-    // Filters intentionally omitted while we diagnose: when filter
-    // syntax mismatches the server's parser it silently drops every
-    // event with no client-side error, masking the real cause. We
-    // re-filter in JS below so a wildcard subscription is functionally
-    // equivalent to the filtered one but lets us actually SEE traffic.
-    // WEGO semantics: don't apply opponent's board the instant they
-    // submit — that would give the player who hasn't yet submitted free
-    // intel on the opponent's placement. Buffer the row here; the
-    // pending-apply effect below waits until matches.current_turn ticks
-    // forward (i.e. both have submitted) and only then pushes the
-    // snapshot into Godot.
+    window.mpReportWinner = (winnerId: string) => {
+      if (reportedWinner.current) return;
+      reportedWinner.current = true;
+      void supabase
+        .rpc("finish_match", {
+          p_match_id: matchId,
+          // Empty winnerId ⇒ a draw, which the function takes as a null uuid.
+          // The generated arg type narrows to string, so cast the null through.
+          p_winner_id: (winnerId || null) as string,
+        })
+        .then(({ error }) => {
+          if (error) {
+            console.error("[mp] finish_match failed:", error.message);
+            reportedWinner.current = false;
+          }
+        });
+    };
+    return () => {
+      delete window.mpReportWinner;
+    };
+  }, [matchId]);
+
+  // Realtime: opponent actions (buffered for WEGO) + match updates.
+  useEffect(() => {
+    if (!matchId || verifying || !user) return;
+
     const handleOpponentInsert = (payload: { new: ActionRow }) => {
-      console.log(
-        "[mp/match][raw] match_actions INSERT received:",
-        payload.new,
-      );
       const a = payload.new;
       if (a.match_id !== matchId) return;
-      if (user && a.player_id === user.id) return;
-      console.log(
-        "[mp/match] buffering opponent action for turn",
-        a.turn_number,
-        "— will apply once matches.current_turn advances",
-      );
+      if (a.player_id === user.id) return;
       setPendingOpponentAction(a);
     };
 
     const handleMatchUpdate = (payload: { new: MatchRow }) => {
-      console.log("[mp/match][raw] matches UPDATE received:", payload.new);
       const row = payload.new;
       if (row.id !== matchId) return;
       setMatch(row);
       publishMatchToWindow(row);
+      // Tell Godot the shared turn ticked (resets the per-turn placement cap).
+      if (typeof window.godotOnTurnAdvance === "function") {
+        window.godotOnTurnAdvance(row.current_turn);
+      }
+      // Turn-limit draw: nobody achieved the sole connection in time.
+      if (
+        row.status !== "finished" &&
+        row.current_turn >= row.max_turns &&
+        typeof window.mpReportWinner === "function" &&
+        !reportedWinner.current
+      ) {
+        window.mpReportWinner("");
+      }
     };
 
     const channel = supabase
@@ -244,74 +210,37 @@ export default function MultiplayerMatch() {
         { event: "INSERT", schema: "public", table: "match_actions" },
         handleOpponentInsert,
       )
-      .subscribe((status, err) => {
-        if (err) {
-          console.error(
-            "[mp/match] channel error (",
-            status,
-            "):",
-            err.message ?? err,
-          );
-        } else {
-          console.log("[mp/match] channel status:", status);
-        }
-      });
+      .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-    // `verifying` MUST be in the deps — when it flips false the previous
-    // (anon) channel is torn down and a new one subscribes under the
-    // authenticated session, which is when broadcasts actually start
-    // arriving. Dropping it from deps reintroduces the silent-anon bug.
   }, [matchId, user?.id, verifying]);
 
-  // WEGO commit: apply the buffered opponent board only after the DB
-  // trigger has advanced past its turn (i.e. both players submitted).
-  // The buffer + this effect together enforce "no peeking" — the
-  // opponent's units stay invisible on your map until your own SUBMIT
-  // has joined theirs to tick the turn.
+  // Clear the local "submitted" flag once the turn actually advances.
+  useEffect(() => {
+    if (match && submittedTurn !== null && match.current_turn > submittedTurn) {
+      setSubmittedTurn(null);
+    }
+  }, [match?.current_turn, submittedTurn]);
+
+  // WEGO commit: apply the buffered opponent board only after the turn advances.
   useEffect(() => {
     if (!match || !pendingOpponentAction) return;
     if (match.current_turn <= pendingOpponentAction.turn_number) return;
 
     const action = pendingOpponentAction.action as { board?: Json } | null;
     if (!action || action.board == null) {
-      console.log(
-        "[mp/match] pending opponent action has no board (turn=",
-        pendingOpponentAction.turn_number,
-        ") — dropping",
-      );
       setPendingOpponentAction(null);
       return;
     }
     const fn = window.godotApplyOpponentBoard;
-    if (typeof fn !== "function") {
-      console.warn(
-        "[mp/match] turn advanced + opponent board pending, but godotApplyOpponentBoard isn't registered yet — will retry once it is",
-      );
-      return;
-    }
-    console.log(
-      "[mp/match] applying opponent board (turn=",
-      pendingOpponentAction.turn_number,
-      "→ current_turn=",
-      match.current_turn,
-      "owner=",
-      pendingOpponentAction.player_id.slice(0, 8),
-      ")",
-    );
+    if (typeof fn !== "function") return;
     fn(JSON.stringify(action.board), pendingOpponentAction.player_id);
     setPendingOpponentAction(null);
   }, [match?.current_turn, pendingOpponentAction]);
 
-  // Replay-on-load: rebuild both boards from the DB so a reconnect/reload
-  // isn't an empty canvas until the next turn streams in. Applies each
-  // player's LATEST action — your own always, the opponent's only for turns
-  // already committed (turn_number < current_turn) so reload can't peek at
-  // their pending submit (WEGO). owner_player_id is embedded in each board,
-  // so the blue/red glow restores correctly. apply_opponent_board is
-  // wipe-by-owner + re-add, so this stays idempotent with the live path.
-  // Keyed to matchId/user only — runs once per match load, not per turn.
+  // Replay-on-load: rebuild both boards from the DB (own always; opponent only
+  // for already-committed turns, preserving no-peek).
   useEffect(() => {
     if (!matchId || !user) return;
     const myId = user.id;
@@ -319,8 +248,6 @@ export default function MultiplayerMatch() {
     let pollTimer: ReturnType<typeof setInterval> | null = null;
 
     (async () => {
-      // Read current_turn fresh rather than off the mutable `match` object,
-      // so this effect needn't depend on (and re-run with) every turn bump.
       const { data: m } = await supabase
         .from("matches")
         .select("current_turn")
@@ -335,8 +262,6 @@ export default function MultiplayerMatch() {
         .order("turn_number", { ascending: true });
       if (cancelled || error || !data) return;
 
-      // Latest action per player (ascending order → last write wins). Drop
-      // the opponent's not-yet-committed turns to preserve no-peek.
       const latest = new Map<string, ActionRow>();
       for (const a of data) {
         if (a.player_id !== myId && a.turn_number >= currentTurn) continue;
@@ -351,16 +276,9 @@ export default function MultiplayerMatch() {
           const board = (a.action as { board?: Json } | null)?.board;
           if (board != null) fn(JSON.stringify(board), a.player_id);
         }
-        console.log(
-          "[mp/match] replayed",
-          latest.size,
-          "board(s) from DB on load",
-        );
         return true;
       };
 
-      // The Godot bridge fn may not be registered yet on a cold load; poll
-      // briefly until it is, then apply exactly once.
       if (!applyAll()) {
         pollTimer = setInterval(() => {
           if (cancelled || applyAll()) {
@@ -377,32 +295,26 @@ export default function MultiplayerMatch() {
     };
   }, [matchId, user?.id]);
 
-  // Block ALL match UI until the auth gate has resolved. While verifying
-  // we don't know whether the user is actually signed in; once verified
-  // and null, the redirect effect above is already firing — render a
-  // brief holding card rather than the match flow so nothing leaks.
+  // ── Render ──────────────────────────────────────────────────────────────
+
   if (verifying) {
     return (
       <Overlay>
-        <Card title="Verifying session...">
-          <p class="text-sm text-neutral-400">
-            Checking your authentication with the server.
-          </p>
+        <Card title="Verifying session…">
+          <p class="text-sm text-neutral-400">Checking your authentication.</p>
         </Card>
       </Overlay>
     );
   }
-
   if (user === null) {
     return (
       <Overlay>
         <Card title="Signed out">
-          <p class="text-sm text-neutral-400">Returning to singleplayer...</p>
+          <p class="text-sm text-neutral-400">Returning to singleplayer…</p>
         </Card>
       </Overlay>
     );
   }
-
   if (!matchId) {
     return (
       <Overlay>
@@ -415,24 +327,22 @@ export default function MultiplayerMatch() {
       </Overlay>
     );
   }
-
   if (loading) {
     return (
       <Overlay>
-        <Card title="Loading match...">
+        <Card title="Loading match…">
           <p class="text-sm text-neutral-400">Fetching lobby state.</p>
         </Card>
       </Overlay>
     );
   }
-
   if (!match) {
     return (
       <Overlay>
         <Card title="Match not found">
           <p class="text-sm text-neutral-400">
             Lobby <span class="font-mono text-white">{matchId}</span> doesn't
-            exist. It may have been deleted.
+            exist.
           </p>
           <BackToLobbiesButton />
         </Card>
@@ -440,32 +350,214 @@ export default function MultiplayerMatch() {
     );
   }
 
-  // Once both seats are claimed, the trigger flips status to 'active' —
-  // dismiss the overlay so the Godot canvas underneath is interactable.
-  if (match.status === "active") return null;
-
-  const isHost = user?.id === match.host_id;
-  const isGuest = user?.id === match.guest_id;
+  const isHost = user.id === match.host_id;
+  const isGuest = user.id === match.guest_id;
   const role = isHost ? "Host (P1)" : isGuest ? "Guest (P2)" : "Spectator";
+  const oppId = isHost ? match.guest_id : match.host_id;
+  const myName = profiles.get(user.id)?.display_name ?? "You";
+  const oppName = oppId
+    ? (profiles.get(oppId)?.display_name ?? "Opponent")
+    : null;
 
+  // Finished → result modal.
+  if (match.status === "finished") {
+    const draw = !match.winner_id;
+    const won = match.winner_id === user.id;
+    return (
+      <Overlay>
+        <Card title={draw ? "Draw" : won ? "Victory" : "Defeat"}>
+          <div
+            class={`text-3xl font-black ${
+              draw
+                ? "text-neutral-300"
+                : won
+                  ? "text-emerald-400"
+                  : "text-red-400"
+            }`}
+          >
+            {draw ? "Stalemate" : won ? "You won!" : "You lost"}
+          </div>
+          <p class="text-sm text-neutral-400">
+            {draw
+              ? "The turn limit was reached with no sole connection."
+              : won
+                ? "You held the only source → target connection."
+                : `${oppName ?? "Your opponent"} held the only connection.`}
+          </p>
+          <RematchButtons hostId={user.id} name={match.name} />
+        </Card>
+      </Overlay>
+    );
+  }
+
+  // Active → non-blocking HUD over the canvas.
+  if (match.status === "active") {
+    const waiting = submittedTurn === match.current_turn;
+    return (
+      <MatchHud
+        name={match.name}
+        turn={match.current_turn}
+        maxTurns={match.max_turns}
+        role={role}
+        myName={myName}
+        oppName={oppName}
+        waiting={waiting}
+      />
+    );
+  }
+
+  // Waiting for a second player.
+  const inviteCode = match.invite_code ?? match.id;
+  const shareUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}${BASE_URL}/multiplayer/play?id=${encodeURIComponent(match.id)}`
+      : "";
   return (
     <Overlay>
-      <Card title="Waiting for second player...">
+      <Card title="Waiting for a second player…">
         <dl class="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
           <dt class="text-neutral-500">Lobby</dt>
-          <dd class="font-mono text-white">{match.id}</dd>
-          <dt class="text-neutral-500">Terrain seed</dt>
-          <dd class="font-mono text-emerald-400">{match.seed}</dd>
+          <dd class="text-white">{match.name}</dd>
           <dt class="text-neutral-500">You</dt>
-          <dd class="text-white">{role}</dd>
+          <dd class="text-white">
+            {myName} — {role}
+          </dd>
+          <dt class="text-neutral-500">Visibility</dt>
+          <dd class="text-white capitalize">{match.visibility}</dd>
         </dl>
+        <CopyField label="Invite code" value={inviteCode} mono />
+        <CopyField label="Invite link" value={shareUrl} />
         <div class="flex items-center gap-2 text-xs text-neutral-400">
           <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-yellow-500" />
-          Share this URL with the other player to fill the guest seat.
+          Share either with the other player to fill the guest seat.
         </div>
         <BackToLobbiesButton />
       </Card>
     </Overlay>
+  );
+}
+
+// ── In-match HUD (non-blocking) ──────────────────────────────────────────
+function MatchHud({
+  name,
+  turn,
+  maxTurns,
+  role,
+  myName,
+  oppName,
+  waiting,
+}: {
+  name: string;
+  turn: number;
+  maxTurns: number;
+  role: string;
+  myName: string;
+  oppName: string | null;
+  waiting: boolean;
+}) {
+  return (
+    <div class="pointer-events-none fixed left-1/2 top-16 z-30 -translate-x-1/2">
+      <div class="flex items-center gap-4 rounded-xl border border-white/10 bg-black/70 px-5 py-2.5 text-sm text-white shadow-xl backdrop-blur-md">
+        <div class="font-semibold">{name}</div>
+        <div class="h-4 w-px bg-white/15" />
+        <div class="text-neutral-300">
+          Turn <span class="font-mono text-emerald-400">{turn + 1}</span>
+          <span class="text-neutral-500"> / {maxTurns}</span>
+        </div>
+        <div class="h-4 w-px bg-white/15" />
+        <div class="text-neutral-300">
+          {myName} <span class="text-neutral-500">({role})</span>
+          {oppName && <span class="text-neutral-500"> vs {oppName}</span>}
+        </div>
+        <div class="h-4 w-px bg-white/15" />
+        {waiting ? (
+          <div class="flex items-center gap-2 text-yellow-300">
+            <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-yellow-400" />
+            Waiting for opponent…
+          </div>
+        ) : (
+          <div class="text-emerald-300">Place a unit, then SUBMIT</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RematchButtons({ hostId, name }: { hostId: string; name: string }) {
+  const [busy, setBusy] = useState(false);
+  const rematch = async () => {
+    setBusy(true);
+    try {
+      const m = await createMatch({
+        name: name || "Rematch",
+        visibility: "public",
+        hostId,
+      });
+      window.location.href = `${BASE_URL}/multiplayer/play?id=${encodeURIComponent(m.id)}`;
+    } catch {
+      setBusy(false);
+    }
+  };
+  return (
+    <div class="flex gap-2">
+      <button
+        type="button"
+        onClick={rematch}
+        disabled={busy}
+        class="flex-1 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-black hover:bg-emerald-400 disabled:opacity-50"
+      >
+        {busy ? "…" : "Rematch"}
+      </button>
+      <a
+        href={`${BASE_URL}/multiplayer`}
+        class="flex-1 rounded-lg border border-neutral-700 px-4 py-2 text-center text-sm font-semibold text-neutral-300 hover:border-neutral-500"
+      >
+        Lobbies
+      </a>
+    </div>
+  );
+}
+
+function CopyField({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard blocked — the field is still selectable
+    }
+  };
+  return (
+    <div>
+      <div class="text-xs text-neutral-500">{label}</div>
+      <div class="mt-1 flex gap-2">
+        <input
+          readOnly
+          value={value}
+          onFocusCapture={(e) => (e.target as HTMLInputElement).select()}
+          class={`flex-1 rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-sm text-white ${
+            mono ? "font-mono uppercase tracking-widest" : ""
+          }`}
+        />
+        <button
+          type="button"
+          onClick={copy}
+          class="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs font-semibold text-neutral-300 hover:border-emerald-400 hover:text-emerald-300"
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+    </div>
   );
 }
 

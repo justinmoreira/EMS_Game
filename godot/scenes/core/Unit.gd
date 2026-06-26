@@ -224,10 +224,20 @@ func _setup_selection_area() -> void:
 	_selection_area.input_event.connect(_on_selection_input)
 
 
+func is_immutable() -> bool:
+	return bool(physical_state.get(&"immutable", false))
+
+
 func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
 	# Only the initial press starts a drag here. Release and motion live in
 	# _input so they keep working when the cursor leaves the shape mid-drag.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		# Immutable units (the MP source/target) can be inspected but never
+		# moved — select for the read-only panel and stop, no drag.
+		if is_immutable():
+			GameEvents.select(self)
+			get_tree().root.set_input_as_handled()
+			return
 		_is_being_dragged = true
 		_drag_start_pos = get_global_mouse_position()
 		_drag_start_unit_pos = global_position

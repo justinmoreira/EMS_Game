@@ -70,3 +70,9 @@ signal message_dispatched(from_unit: Node, to_unit: Node, delay: float)
 # bridges the JSON to JS (window.mpSubmitBoard → window.submitMpAction).
 @warning_ignore("unused_signal")
 signal mp_submit_requested
+
+# Multiplayer placement cap — BaseLevel emits when the one-unit-per-turn
+# limit is reached (or the match ends). Sidebar greys the entity tray, the
+# same way the tutorial disables placement.
+@warning_ignore("unused_signal")
+signal mp_placement_locked(locked: bool)

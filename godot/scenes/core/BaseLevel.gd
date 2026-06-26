@@ -47,6 +47,19 @@ var terrain_heatmap_enabled: bool = false
 
 var _opponent_board_cb: Variant = null
 
+# ── Multiplayer match state ──────────────────────────────────────────
+# Only meaningful when window.GAME_MODE == "multiplayer". The immutable
+# source/target are the shared objective; placement is capped at one unit
+# per resolved turn; the win is evaluated each time the board merges.
+const MP_MAX_PLACEMENTS_PER_TURN := 1
+var _mp_active: bool = false
+var _mp_finished: bool = false
+var _mp_source: Unit = null
+var _mp_target: Unit = null
+var _mp_seed: int = 0
+var _mp_current_turn: int = -1
+var _turn_cb: Variant = null
+
 
 func _ready():
 	get_tree().get_root().size_changed.connect(_on_window_resized)
@@ -60,6 +73,10 @@ func _ready():
 	_on_window_resized()
 
 	toggle_suggestions(suggestions_enabled)
+
+	# Defer MP setup one frame so the terrain/layout from subclass _ready()
+	# (ContourDemo) is in place before we position the seed-placed objective.
+	_mp_setup.call_deferred()
 
 
 # Exposes window.godotApplyOpponentBoard so MultiplayerMatch.tsx (which
@@ -103,9 +120,8 @@ func _on_js_apply_opponent_board(args: Array) -> void:
 # Additively applies a remote player's snapshot. Existing units owned by
 # the SAME remote player are wiped first (so each opponent submit
 # replaces their previous state rather than stacking), but your own
-# units (no owner_player_id) are left alone. The unit-color scaffolding
-# in Unit._resolve_circle_color reads physical_state.owner_player_id
-# and inverts RGB when it doesn't match window.MULTIPLAYER_PLAYER_ID.
+# units and the neutral immutable seed units are left alone. Ownership
+# (physical_state.owner_player_id) drives the blue/red glow.
 func apply_opponent_board(snapshot: Array, owner_id: String) -> void:
 	for child in get_children():
 		if not (child is Unit):
@@ -116,40 +132,12 @@ func apply_opponent_board(snapshot: Array, owner_id: String) -> void:
 	await get_tree().process_frame
 
 	for entry in snapshot:
-		if not (entry is Dictionary):
-			continue
-		var type_id := StringName(String((entry as Dictionary).get("type", "")))
-		var scene: PackedScene = _UNIT_SCENES.get(type_id)
-		if scene == null:
-			continue
-		var state: Dictionary = (entry as Dictionary).get("state", {})
-		var world_uv := Vector2.ZERO
-		var uv_raw: Variant = state.get("world_uv", null)
-		if uv_raw is Dictionary:
-			world_uv = Vector2(
-				float((uv_raw as Dictionary).get("x", 0.0)),
-				float((uv_raw as Dictionary).get("y", 0.0))
-			)
-
-		var unit: Unit = scene.instantiate()
-		unit.owner = null
-		# Seed owner_player_id into physical_state BEFORE add_child so
-		# Unit._ready → _spawn_visual → _resolve_circle_color sees the
-		# tag on the very first draw and inverts the color. Unit._set
-		# only writes pre-existing keys; physical_state is a plain Dict
-		# at this stage so direct assignment is the way in.
-		unit.physical_state[&"owner_player_id"] = owner_id
-		for k in state:
-			if String(k) == "world_uv":
-				continue
-			unit.set(k, state[k])
-		add_child(unit)
-		unit.set_value(&"world_uv", world_uv)
-		unit.global_position = world_uv_to_screen(world_uv)
+		_spawn_unit_from_entry(entry, owner_id)
 
 	# Opponent geometry changed — rerun the sim so link lines, detection, and
-	# range rings reflect the merged board.
+	# range rings reflect the merged board, then re-check the win condition.
 	GameEvents.simulation_requested.emit()
+	_evaluate_win_condition()
 
 
 # Multiplayer SUBMIT: snapshot the current unit layout and ship it to JS,
@@ -182,6 +170,217 @@ func _local_mp_player_id() -> String:
 		return ""
 	var v: Variant = JavaScriptBridge.eval("window.MULTIPLAYER_PLAYER_ID || ''")
 	return (v as String) if v is String else ""
+
+
+# ── Multiplayer match gameplay ───────────────────────────────────────
+
+
+func _is_multiplayer() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	var v: Variant = JavaScriptBridge.eval("window.GAME_MODE")
+	return v is String and (v as String) == "multiplayer"
+
+
+func _mp_setup() -> void:
+	if not _is_multiplayer():
+		return
+	_mp_active = true
+	_mp_seed = _read_match_number("seed")
+	_register_turn_hook()
+	_spawn_immutable_objective()
+	# Sync to the turn we joined on, then watch for advances via the JS hook.
+	_mp_on_turn_advance(_read_match_number("current_turn"))
+
+
+func _read_match_number(field: String) -> int:
+	if not OS.has_feature("web"):
+		return 0
+	var v: Variant = JavaScriptBridge.eval(
+		"window.MULTIPLAYER_MATCH ? (window.MULTIPLAYER_MATCH." + field + " || 0) : 0"
+	)
+	var t := typeof(v)
+	if t == TYPE_FLOAT or t == TYPE_INT:
+		return int(v)
+	return 0
+
+
+func _read_match_string(field: String) -> String:
+	if not OS.has_feature("web"):
+		return ""
+	var v: Variant = JavaScriptBridge.eval(
+		"window.MULTIPLAYER_MATCH ? (window.MULTIPLAYER_MATCH." + field + " || '') : ''"
+	)
+	return (v as String) if v is String else ""
+
+
+func _opponent_id() -> String:
+	var me := _local_mp_player_id()
+	var host := _read_match_string("host_id")
+	var guest := _read_match_string("guest_id")
+	if me == host:
+		return guest
+	if me == guest:
+		return host
+	return ""
+
+
+# Registers window.godotOnTurnAdvance(turn) so MultiplayerMatch.tsx can notify
+# Godot when the shared turn counter ticks (both players submitted) — that's
+# when the placement cap resets and the next placement is allowed.
+func _register_turn_hook() -> void:
+	if not OS.has_feature("web"):
+		return
+	var window: Variant = JavaScriptBridge.get_interface("window")
+	if window == null:
+		return
+	_turn_cb = JavaScriptBridge.create_callback(_on_js_turn_advance)
+	window.godotOnTurnAdvance = _turn_cb
+
+
+func _on_js_turn_advance(args: Array) -> void:
+	var turn := 0
+	if args.size() >= 1:
+		turn = int(args[0])
+	_mp_on_turn_advance(turn)
+
+
+func _mp_on_turn_advance(turn: int) -> void:
+	if turn == _mp_current_turn:
+		return
+	_mp_current_turn = turn
+	# Fresh turn → one new placement is allowed again.
+	_refresh_placement_lock()
+
+
+# Number of own, non-immutable units placed during the current (unresolved)
+# turn — what the one-per-turn cap counts. Units from earlier turns carry a
+# lower placed_turn and don't count; the immutable objective never counts.
+func _mp_pending_count() -> int:
+	var me := _local_mp_player_id()
+	var n := 0
+	for child in get_children():
+		if not (child is Unit):
+			continue
+		var ps: Dictionary = (child as Unit).physical_state
+		if bool(ps.get(&"immutable", false)):
+			continue
+		var o: Variant = ps.get(&"owner_player_id", null)
+		if not (o is String and String(o) == me):
+			continue
+		if int(ps.get(&"placed_turn", -1)) == _mp_current_turn:
+			n += 1
+	return n
+
+
+func _refresh_placement_lock() -> void:
+	if not _mp_active:
+		return
+	var locked := _mp_finished or _mp_pending_count() >= MP_MAX_PLACEMENTS_PER_TURN
+	GameEvents.mp_placement_locked.emit(locked)
+
+
+# Deterministic source(transmitter)/target(sensor) from the match seed so both
+# clients place them identically. Immutable + neutral (no owner) — the shared
+# objective each side races to bridge.
+func _spawn_immutable_objective() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _mp_seed
+	var src_y := 0.30 + rng.randf() * 0.40
+	var tgt_y := 0.30 + rng.randf() * 0.40
+	var freq := 1000.0
+	_mp_source = _spawn_immutable_unit(
+		&"transceiver",
+		Vector2(0.16, src_y),
+		{
+			&"unit_name": "SOURCE",
+			&"power": 9,
+			&"frequency": freq,
+			&"height": 10,
+			&"transceiver_bandwidth": 2,
+		}
+	)
+	_mp_target = _spawn_immutable_unit(
+		&"sensor",
+		Vector2(0.84, tgt_y),
+		{
+			&"unit_name": "TARGET",
+			&"sensitivity": 8,
+			&"tuning_frequency": freq,
+			&"height": 10,
+			&"sensor_bandwidth": 2,
+			&"is_scanning": true,
+		}
+	)
+	GameEvents.simulation_requested.emit()
+
+
+func _spawn_immutable_unit(type_id: StringName, world_uv: Vector2, attrs: Dictionary) -> Unit:
+	var scene: PackedScene = _UNIT_SCENES.get(type_id)
+	if scene == null:
+		return null
+	var unit: Unit = scene.instantiate()
+	unit.owner = null
+	var state := {}
+	for k in attrs:
+		state[k] = attrs[k]
+	state[&"immutable"] = true
+	state[&"world_uv"] = world_uv
+	unit.physical_state = state
+	add_child(unit)
+	unit.set_value(&"world_uv", world_uv)
+	unit.global_position = world_uv_to_screen(world_uv)
+	return unit
+
+
+# Removes only the current player's still-uncommitted (this-turn) placement —
+# the MP meaning of the relabelled UNDO button. Never touches the immutable
+# objective or already-submitted units.
+func _mp_undo_pending() -> void:
+	var me := _local_mp_player_id()
+	for child in get_children():
+		if not (child is Unit):
+			continue
+		var ps: Dictionary = (child as Unit).physical_state
+		if bool(ps.get(&"immutable", false)):
+			continue
+		var o: Variant = ps.get(&"owner_player_id", null)
+		if o is String and String(o) == me and int(ps.get(&"placed_turn", -1)) == _mp_current_turn:
+			child.queue_free()
+	GameEvents.clear_selection()
+	_refresh_placement_lock.call_deferred()
+
+
+# Win check: run after every board merge. The match ends the first resolved
+# turn where exactly one side holds a source→target connection. Both clients
+# evaluate the same merged board, so they agree on the winner; finish_match()
+# on the DB side is idempotent, so the duplicate report is harmless.
+func _evaluate_win_condition() -> void:
+	if not _mp_active or _mp_finished:
+		return
+	if not (is_instance_valid(_mp_source) and is_instance_valid(_mp_target)):
+		return
+	var me := _local_mp_player_id()
+	var opp := _opponent_id()
+	var txs := get_tree().get_nodes_in_group(&"transceivers")
+	var jammers := get_tree().get_nodes_in_group(&"jammers")
+	var outcome := WinEvaluator.evaluate(
+		SimulationManager, _mp_source, _mp_target, txs, jammers, me, opp
+	)
+	if outcome == WinEvaluator.OUTCOME_NONE:
+		return
+	var winner_id := me if outcome == WinEvaluator.OUTCOME_MINE else opp
+	_mp_finished = true
+	_refresh_placement_lock()
+	_report_winner(winner_id)
+
+
+func _report_winner(winner_id: String) -> void:
+	if not OS.has_feature("web"):
+		return
+	JavaScriptBridge.eval(
+		"window.mpReportWinner && window.mpReportWinner(" + JSON.stringify(winner_id) + ")"
+	)
 
 
 func _on_sidebar_resized(width: float) -> void:
@@ -287,6 +486,13 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 	if at_position.x < sidebar_width:
 		return false
 
+	# Multiplayer: one placement per turn, and nothing once the match is over.
+	if _mp_active:
+		if _mp_finished:
+			return false
+		if _mp_pending_count() >= MP_MAX_PLACEMENTS_PER_TURN:
+			return false
+
 	# The map is world_uv ∈ [0,1]; outside that is the shader's void border.
 	# Reject drops there so units can't be placed off the map.
 	var world_uv := screen_to_world_uv(at_position)
@@ -324,9 +530,13 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	# In a multiplayer match, stamp the unit with the local player's id so
 	# ownership is explicit and durable: it rides in serialize_units → the
 	# match_actions board JSON → the DB. Sandbox/singleplayer leaves it unset.
+	# placed_turn tags which turn it belongs to so the one-per-turn cap (and
+	# UNDO) can tell this turn's placement from already-committed ones.
 	var mp_id := _local_mp_player_id()
 	if mp_id != "":
 		unit.physical_state[&"owner_player_id"] = mp_id
+	if _mp_active:
+		unit.physical_state[&"placed_turn"] = _mp_current_turn
 
 	add_child(unit)
 
@@ -339,6 +549,11 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	_on_unit_placed(unit)
 	# Newly-placed unit is treated as selected so its panel opens.
 	GameEvents.select(unit)
+
+	# Hitting the per-turn cap greys the entity tray (mirrors the tutorial's
+	# placement gating) until SUBMIT resolves the turn.
+	if _mp_active:
+		_refresh_placement_lock()
 
 
 func _on_unit_placed(unit: Unit) -> void:
@@ -458,19 +673,31 @@ func _get_unit_component(unit: Node) -> Node:
 
 func _on_reset_requested() -> void:
 	# LinkRenderer also subscribes to reset_requested and clears its own visuals.
+	# In MP, the relabelled UNDO only pulls back this turn's own placement; the
+	# shared objective and committed units stay put.
+	if _mp_active:
+		_mp_undo_pending()
+		return
 	UnitNameManager.reset()
 	for group in [&"transceivers", &"jammers", &"sensors"]:
 		for unit in get_tree().get_nodes_in_group(group):
+			if unit is Unit and bool((unit as Unit).physical_state.get(&"immutable", false)):
+				continue
 			unit.queue_free()
 	GameEvents.clear_selection()
 
 
 func _on_delete_requested(unit: Node) -> void:
+	# Never delete the immutable objective.
+	if unit is Unit and bool((unit as Unit).physical_state.get(&"immutable", false)):
+		return
 	# LinkRenderer's per-frame purge will drop links involving this unit
 	# once is_instance_valid returns false post-queue_free.
 	if unit:
 		unit.queue_free()
 	GameEvents.clear_selection()
+	if _mp_active:
+		_refresh_placement_lock.call_deferred()
 
 
 # --- Inputs (Camera Control) ---
@@ -631,59 +858,74 @@ func serialize_units(own_only: bool = false) -> Array:
 	for child in get_children():
 		if not (child is Unit and child.definition):
 			continue
-		# In multiplayer, skip units owned by the OPPONENT — a submit must
-		# carry only this player's own units, never echo the opponent's back
-		# to them (which duplicated and desynced both boards every turn).
 		if own_only:
+			# Immutable seed units (source/target) exist identically on both
+			# clients — regenerated from the match seed — so a submit must never
+			# carry them, or they'd duplicate and desync the board.
+			if bool((child as Unit).physical_state.get(&"immutable", false)):
+				continue
+			# Skip units owned by the OPPONENT — a submit carries only this
+			# player's own units, never echoes the opponent's back to them.
 			var o: Variant = (child as Unit).physical_state.get(&"owner_player_id", null)
 			if o is String and (o as String) != local_id:
 				continue
-		var state: Dictionary = child.physical_state.duplicate()
-		var uv = state.get(&"world_uv", null)
-		if uv is Vector2:
-			state[&"world_uv"] = {"x": uv.x, "y": uv.y}
-		out.append({"type": String(child.definition.id), "state": state})
+		out.append({"type": String(child.definition.id), "state": _serialize_state(child)})
 	return out
+
+
+# JSON-friendly snapshot of a unit's FULL physical_state. Every key is
+# preserved (attributes, owner_player_id, immutable, …) — earlier versions
+# only round-tripped declared definition attributes, which silently dropped
+# custom state and reset pre-placed units to defaults on reload (bug E). The
+# round-trip itself lives in UnitSnapshot so it's unit-testable headlessly.
+func _serialize_state(unit: Unit) -> Dictionary:
+	return UnitSnapshot.state_to_json(unit.physical_state)
+
+
+# Inverse of _serialize_state: rebuild a physical_state Dictionary (StringName
+# keys, world_uv as Vector2) from a stored entry.
+func _entry_to_state(entry: Dictionary) -> Dictionary:
+	return UnitSnapshot.state_from_entry(entry)
+
+
+# Instantiate one unit from a serialized entry, seed its full physical_state
+# BEFORE add_child (so _ready's default/name fallback sees the restored
+# values), add it, and position it. `forced_owner` stamps ownership when the
+# caller knows it out-of-band (opponent snapshots). Returns the Unit (or null).
+func _spawn_unit_from_entry(entry: Variant, forced_owner: String = "") -> Unit:
+	if not (entry is Dictionary):
+		return null
+	var type_id := StringName(String((entry as Dictionary).get("type", "")))
+	var scene: PackedScene = _UNIT_SCENES.get(type_id)
+	if scene == null:
+		return null
+	var state := _entry_to_state(entry as Dictionary)
+	if forced_owner != "":
+		state[&"owner_player_id"] = forced_owner
+	var unit: Unit = scene.instantiate()
+	unit.owner = null
+	unit.physical_state = state
+	add_child(unit)
+	var world_uv: Vector2 = state.get(&"world_uv", Vector2.ZERO)
+	unit.set_value(&"world_uv", world_uv)
+	unit.global_position = world_uv_to_screen(world_uv)
+	return unit
 
 
 func deserialize_units(snapshot: Array) -> void:
 	# Wipe the current scene before instantiating from the snapshot. queue_free
 	# is deferred so we wait a frame before adding the replacements; otherwise
 	# the new units race with the doomed ones and units_changed double-fires.
+	# Immutable seed units are preserved — they belong to the match, not the
+	# saved layout (a sandbox snapshot never contains them anyway).
 	for group in [&"transceivers", &"jammers", &"sensors"]:
 		for u in get_tree().get_nodes_in_group(group):
+			if u is Unit and bool((u as Unit).physical_state.get(&"immutable", false)):
+				continue
 			u.queue_free()
 	await get_tree().process_frame
 
 	for entry in snapshot:
-		if not (entry is Dictionary):
-			continue
-		var type_id := StringName(String(entry.get("type", "")))
-		var scene: PackedScene = _UNIT_SCENES.get(type_id)
-		if scene == null:
-			continue
-		var state: Dictionary = entry.get("state", {})
-		var world_uv := Vector2.ZERO
-		var uv_raw = state.get("world_uv", null)
-		if uv_raw is Dictionary:
-			world_uv = Vector2(float(uv_raw.get("x", 0.0)), float(uv_raw.get("y", 0.0)))
-
-		var unit: Unit = scene.instantiate()
-		unit.owner = null
-		# Seed physical_state BEFORE add_child so _ready sees the user's saved
-		# values and skips the auto-name fallback.
-		for k in state:
-			if String(k) == "world_uv":
-				continue
-			unit.set(k, state[k])
-		# owner_player_id isn't a definition attribute, so Unit._set drops it.
-		# Restore it directly so the blue/red ownership glow survives the
-		# snapshot round-trip (otherwise restored units all read as "mine").
-		var owner_v: Variant = state.get("owner_player_id", null)
-		if owner_v is String and not (owner_v as String).is_empty():
-			unit.physical_state[&"owner_player_id"] = owner_v
-		add_child(unit)
-		unit.set_value(&"world_uv", world_uv)
-		unit.global_position = world_uv_to_screen(world_uv)
+		_spawn_unit_from_entry(entry)
 
 	GameEvents.simulation_requested.emit()

@@ -58,11 +58,13 @@ var _attr_placeholder: Label
 var _entity_cards: Dictionary = {}  # EntityType -> Control
 var _attr_content: VBoxContainer
 var _tutorial_active: bool = false
+var _placement_locked: bool = false
 
 
 func _ready() -> void:
 	GameEvents.units_changed.connect(_update_reset_button)
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
+	GameEvents.mp_placement_locked.connect(_on_mp_placement_locked)
 	GameEvents.selection_changed.connect(_on_selection_changed)
 	resized.connect(func(): GameEvents.sidebar_resized.emit(size.x))
 	_build_sidebar()
@@ -443,6 +445,18 @@ func _refresh_attribute_panel() -> void:
 	_attr_placeholder.visible = false
 	_attr_header.visible = true
 
+	# The immutable MP objective (SOURCE/TARGET) is inspectable but not
+	# editable: hide the action buttons and disable the inputs.
+	var is_immutable := (
+		selected_node is Unit
+		and (selected_node as Unit).has_method("is_immutable")
+		and (selected_node as Unit).is_immutable()
+	)
+	if _delete_btn:
+		_delete_btn.visible = _delete_btn.visible and not is_immutable
+	if _confirm_btn:
+		_confirm_btn.visible = _confirm_btn.visible and not is_immutable
+
 	var def := _definition_for(selected_entity)
 	if def == null:
 		return
@@ -455,9 +469,13 @@ func _refresh_attribute_panel() -> void:
 		_add_attribute_input(spec, def)
 
 	# Transceivers get a "Send Message" button that visualizes frequency-
-	# dependent transmission delay. Only meaningful for placed units.
-	if selected_node is Unit and def.id == &"transceiver":
+	# dependent transmission delay. Only meaningful for placed, mutable units.
+	if selected_node is Unit and def.id == &"transceiver" and not is_immutable:
 		_add_send_message_button(def.color)
+
+	# Lock the inputs for an immutable unit after they're built.
+	_attr_body.modulate.a = 0.7 if is_immutable else 1.0
+	_set_interactivity(_attr_body, not is_immutable)
 
 
 func _add_send_message_button(accent: Color) -> void:
@@ -820,13 +838,23 @@ func _on_tutorial_filter(allowed_ids: Array) -> void:
 		var card = _entity_cards[type]
 		var def := _definition_for(type)
 		var enabled = not _tutorial_active or (def and def.id in allowed_ids)
-		card.modulate.a = 1.0 if enabled else 0.3
-		card.set_process_input(enabled)
-		card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
-		for child in card.get_children():
-			child.mouse_filter = (
-				Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
-			)
+		_set_card_enabled(card, enabled)
+
+
+# Multiplayer one-per-turn cap: grey the whole entity tray while the player
+# has already placed their unit for this turn (re-enabled on turn advance).
+func _on_mp_placement_locked(locked: bool) -> void:
+	_placement_locked = locked
+	for type in _entity_cards:
+		_set_card_enabled(_entity_cards[type], not locked)
+
+
+func _set_card_enabled(card, enabled: bool) -> void:
+	card.modulate.a = 1.0 if enabled else 0.3
+	card.set_process_input(enabled)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+	for child in card.get_children():
+		child.mouse_filter = Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
 
 
 func _set_interactivity(node: Control, enabled: bool) -> void:

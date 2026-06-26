@@ -81,36 +81,119 @@ export type Database = {
           },
         ]
       }
+      match_results: {
+        Row: {
+          finished_at: string
+          is_draw: boolean
+          loser_id: string | null
+          match_id: string
+          winner_id: string | null
+        }
+        Insert: {
+          finished_at?: string
+          is_draw?: boolean
+          loser_id?: string | null
+          match_id: string
+          winner_id?: string | null
+        }
+        Update: {
+          finished_at?: string
+          is_draw?: boolean
+          loser_id?: string | null
+          match_id?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_results_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: true
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           created_at: string
           current_turn: number
+          finished_at: string | null
           guest_id: string | null
           host_id: string | null
           id: string
+          invite_code: string | null
+          max_turns: number
+          name: string
           seed: number
           status: string
           updated_at: string
+          visibility: string
+          winner_id: string | null
         }
         Insert: {
           created_at?: string
           current_turn?: number
+          finished_at?: string | null
           guest_id?: string | null
           host_id?: string | null
           id: string
+          invite_code?: string | null
+          max_turns?: number
+          name?: string
           seed: number
           status?: string
           updated_at?: string
+          visibility?: string
+          winner_id?: string | null
         }
         Update: {
           created_at?: string
           current_turn?: number
+          finished_at?: string | null
           guest_id?: string | null
           host_id?: string | null
           id?: string
+          invite_code?: string | null
+          max_turns?: number
+          name?: string
           seed?: number
           status?: string
           updated_at?: string
+          visibility?: string
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string
+          draws: number
+          games_played: number
+          id: string
+          losses: number
+          updated_at: string
+          wins: number
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string
+          draws?: number
+          games_played?: number
+          id: string
+          losses?: number
+          updated_at?: string
+          wins?: number
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          draws?: number
+          games_played?: number
+          id?: string
+          losses?: number
+          updated_at?: string
+          wins?: number
         }
         Relationships: []
       }
@@ -170,7 +253,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      finish_match: {
+        Args: { p_match_id: string; p_winner_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
