@@ -445,17 +445,17 @@ func _refresh_attribute_panel() -> void:
 	_attr_placeholder.visible = false
 	_attr_header.visible = true
 
-	# The immutable MP objective (SOURCE/TARGET) is inspectable but not
-	# editable: hide the action buttons and disable the inputs.
-	var is_immutable := (
+	# Locked pieces (the objective, already-submitted pieces, the opponent's)
+	# are inspectable but not editable: hide the action buttons, disable inputs.
+	var is_locked := (
 		selected_node is Unit
-		and (selected_node as Unit).has_method("is_immutable")
-		and (selected_node as Unit).is_immutable()
+		and (selected_node as Unit).has_method("is_locked")
+		and (selected_node as Unit).is_locked()
 	)
 	if _delete_btn:
-		_delete_btn.visible = _delete_btn.visible and not is_immutable
+		_delete_btn.visible = _delete_btn.visible and not is_locked
 	if _confirm_btn:
-		_confirm_btn.visible = _confirm_btn.visible and not is_immutable
+		_confirm_btn.visible = _confirm_btn.visible and not is_locked
 
 	var def := _definition_for(selected_entity)
 	if def == null:
@@ -469,13 +469,13 @@ func _refresh_attribute_panel() -> void:
 		_add_attribute_input(spec, def)
 
 	# Transceivers get a "Send Message" button that visualizes frequency-
-	# dependent transmission delay. Only meaningful for placed, mutable units.
-	if selected_node is Unit and def.id == &"transceiver" and not is_immutable:
+	# dependent transmission delay. Only meaningful for placed, editable units.
+	if selected_node is Unit and def.id == &"transceiver" and not is_locked:
 		_add_send_message_button(def.color)
 
-	# Lock the inputs for an immutable unit after they're built.
-	_attr_body.modulate.a = 0.7 if is_immutable else 1.0
-	_set_interactivity(_attr_body, not is_immutable)
+	# Lock the inputs for a locked unit after they're built.
+	_attr_body.modulate.a = 0.7 if is_locked else 1.0
+	_set_interactivity(_attr_body, not is_locked)
 
 
 func _add_send_message_button(accent: Color) -> void:
@@ -693,6 +693,12 @@ func _make_row_container() -> VBoxContainer:
 
 
 func _on_reset_pressed() -> void:
+	# In multiplayer this button is "UNDO": pull back the current turn's
+	# unsubmitted placement immediately — no confirmation dialog.
+	if _get_game_mode() == "multiplayer":
+		GameEvents.reset_requested.emit()
+		return
+
 	var dialog := ConfirmationDialog.new()
 	dialog.title = "Reset Scene"
 	dialog.dialog_text = "Remove all units from the scene?"

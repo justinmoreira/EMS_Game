@@ -54,8 +54,12 @@ var _opponent_board_cb: Variant = null
 const MP_MAX_PLACEMENTS_PER_TURN := 1
 var _mp_active: bool = false
 var _mp_finished: bool = false
+# This player's own comms line (the one they must complete to win) …
 var _mp_source: Unit = null
 var _mp_target: Unit = null
+# … and the opponent's line (so the win check can test "only I connected").
+var _mp_opp_source: Unit = null
+var _mp_opp_target: Unit = null
 var _mp_seed: int = 0
 var _mp_current_turn: int = -1
 var _turn_cb: Variant = null
@@ -147,6 +151,21 @@ func apply_opponent_board(snapshot: Array, owner_id: String) -> void:
 func _on_mp_submit_requested() -> void:
 	if not OS.has_feature("web"):
 		return
+	# Lock this player's own pieces the instant they're committed: a submitted
+	# piece is part of the shared board now, so it can no longer be moved,
+	# edited, deleted, or undone. (locked rides along in the snapshot, so it
+	# survives reloads too.)
+	var me := _local_mp_player_id()
+	for child in get_children():
+		if not (child is Unit):
+			continue
+		var ps: Dictionary = (child as Unit).physical_state
+		if bool(ps.get(&"immutable", false)):
+			continue
+		var o: Variant = ps.get(&"owner_player_id", null)
+		if o is String and String(o) == me:
+			ps[&"locked"] = true
+	_refresh_placement_lock()
 	var snapshot := serialize_units(true)
 	# Double-stringify: inner produces the snapshot JSON; outer wraps it
 	# as a JS string literal so the eval'd source carries it intact.
@@ -280,39 +299,77 @@ func _refresh_placement_lock() -> void:
 	GameEvents.mp_placement_locked.emit(locked)
 
 
-# Deterministic source(transmitter)/target(sensor) from the match seed so both
-# clients place them identically. Immutable + neutral (no owner) — the shared
-# objective each side races to bridge.
+# Each player owns a PRIVATE comms line they must complete to win: a SOURCE
+# (transmitter) in one corner and a TARGET (sensor) in the opposite one.
+# Host (P1) runs top-left → bottom-right; guest (P2) runs top-right →
+# bottom-left, so the two lines cross in the middle and the players' relays and
+# jammers contend over the same ground. The four corners are fixed (no seed
+# randomness — only the terrain varies), so both clients place them identically;
+# labels and glow are viewer-relative (YOUR vs ENEMY), which is safe because
+# immutable units are never serialized.
 func _spawn_immutable_objective() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = _mp_seed
-	var src_y := 0.30 + rng.randf() * 0.40
-	var tgt_y := 0.30 + rng.randf() * 0.40
+	var m := 0.12
+	var host_is_me := _is_host()
 	var freq := 1000.0
-	_mp_source = _spawn_immutable_unit(
-		&"transceiver",
-		Vector2(0.16, src_y),
-		{
-			&"unit_name": "SOURCE",
-			&"power": 9,
-			&"frequency": freq,
-			&"height": 10,
-			&"transceiver_bandwidth": 2,
-		}
-	)
-	_mp_target = _spawn_immutable_unit(
+
+	var h_src := _spawn_objective_unit(true, true, Vector2(m, m), freq, host_is_me)
+	var h_tgt := _spawn_objective_unit(true, false, Vector2(1.0 - m, 1.0 - m), freq, host_is_me)
+	var g_src := _spawn_objective_unit(false, true, Vector2(1.0 - m, m), freq, host_is_me)
+	var g_tgt := _spawn_objective_unit(false, false, Vector2(m, 1.0 - m), freq, host_is_me)
+
+	if host_is_me:
+		_mp_source = h_src
+		_mp_target = h_tgt
+		_mp_opp_source = g_src
+		_mp_opp_target = g_tgt
+	else:
+		_mp_source = g_src
+		_mp_target = g_tgt
+		_mp_opp_source = h_src
+		_mp_opp_target = h_tgt
+	GameEvents.simulation_requested.emit()
+
+
+func _is_host() -> bool:
+	var me := _local_mp_player_id()
+	return me != "" and me == _read_match_string("host_id")
+
+
+# Spawns one objective unit. `is_host_line` selects which player's line it
+# belongs to and `is_source` its kind; `host_is_me` makes the label and glow
+# viewer-relative.
+func _spawn_objective_unit(
+	is_host_line: bool, is_source: bool, uv: Vector2, freq: float, host_is_me: bool
+) -> Unit:
+	var mine := is_host_line == host_is_me
+	var glow := UnitVisual.Owner.MINE if mine else UnitVisual.Owner.ENEMY
+	var who := "YOUR" if mine else "ENEMY"
+	if is_source:
+		return _spawn_immutable_unit(
+			&"transceiver",
+			uv,
+			{
+				&"unit_name": who + " SOURCE",
+				&"power": 9,
+				&"frequency": freq,
+				&"height": 10,
+				&"transceiver_bandwidth": 2,
+				&"glow_kind": glow,
+			}
+		)
+	return _spawn_immutable_unit(
 		&"sensor",
-		Vector2(0.84, tgt_y),
+		uv,
 		{
-			&"unit_name": "TARGET",
+			&"unit_name": who + " TARGET",
 			&"sensitivity": 8,
 			&"tuning_frequency": freq,
 			&"height": 10,
 			&"sensor_bandwidth": 2,
 			&"is_scanning": true,
+			&"glow_kind": glow,
 		}
 	)
-	GameEvents.simulation_requested.emit()
 
 
 func _spawn_immutable_unit(type_id: StringName, world_uv: Vector2, attrs: Dictionary) -> Unit:
@@ -335,7 +392,7 @@ func _spawn_immutable_unit(type_id: StringName, world_uv: Vector2, attrs: Dictio
 
 # Removes only the current player's still-uncommitted (this-turn) placement —
 # the MP meaning of the relabelled UNDO button. Never touches the immutable
-# objective or already-submitted units.
+# objective, the opponent's pieces, or already-submitted (locked) pieces.
 func _mp_undo_pending() -> void:
 	var me := _local_mp_player_id()
 	for child in get_children():
@@ -344,6 +401,8 @@ func _mp_undo_pending() -> void:
 		var ps: Dictionary = (child as Unit).physical_state
 		if bool(ps.get(&"immutable", false)):
 			continue
+		if bool(ps.get(&"locked", false)):
+			continue
 		var o: Variant = ps.get(&"owner_player_id", null)
 		if o is String and String(o) == me and int(ps.get(&"placed_turn", -1)) == _mp_current_turn:
 			child.queue_free()
@@ -351,10 +410,12 @@ func _mp_undo_pending() -> void:
 	_refresh_placement_lock.call_deferred()
 
 
-# Win check: run after every board merge. The match ends the first resolved
-# turn where exactly one side holds a source→target connection. Both clients
-# evaluate the same merged board, so they agree on the winner; finish_match()
-# on the DB side is idempotent, so the duplicate report is harmless.
+# Win check: run after every board merge. Each player has their OWN line; the
+# match ends the first resolved turn where exactly ONE player has completed
+# theirs (source → target through their own relays, with everyone's jammers in
+# play). Both clients evaluate the same merged board, so they agree on the
+# winner; finish_match() on the DB side is idempotent, so a duplicate report is
+# harmless.
 func _evaluate_win_condition() -> void:
 	if not _mp_active or _mp_finished:
 		return
@@ -362,10 +423,30 @@ func _evaluate_win_condition() -> void:
 		return
 	var me := _local_mp_player_id()
 	var opp := _opponent_id()
-	var txs := get_tree().get_nodes_in_group(&"transceivers")
+	# Partition the relays by owner — your relays only extend your line.
+	var my_relays: Array = []
+	var opp_relays: Array = []
+	for t in get_tree().get_nodes_in_group(&"transceivers"):
+		var ps: Dictionary = (t as Unit).physical_state
+		if bool(ps.get(&"immutable", false)):
+			continue
+		var o: Variant = ps.get(&"owner_player_id", null)
+		if not (o is String):
+			continue
+		if String(o) == me:
+			my_relays.append(t)
+		elif opp != "" and String(o) == opp:
+			opp_relays.append(t)
 	var jammers := get_tree().get_nodes_in_group(&"jammers")
 	var outcome := WinEvaluator.evaluate(
-		SimulationManager, _mp_source, _mp_target, txs, jammers, me, opp
+		SimulationManager,
+		_mp_source,
+		_mp_target,
+		my_relays,
+		_mp_opp_source,
+		_mp_opp_target,
+		opp_relays,
+		jammers
 	)
 	if outcome == WinEvaluator.OUTCOME_NONE:
 		return
@@ -688,8 +769,8 @@ func _on_reset_requested() -> void:
 
 
 func _on_delete_requested(unit: Node) -> void:
-	# Never delete the immutable objective.
-	if unit is Unit and bool((unit as Unit).physical_state.get(&"immutable", false)):
+	# Never delete a locked piece (objective, already-submitted, or opponent's).
+	if unit is Unit and (unit as Unit).is_locked():
 		return
 	# LinkRenderer's per-frame purge will drop links involving this unit
 	# once is_instance_valid returns false post-queue_free.
@@ -850,6 +931,18 @@ func _get_or_create_attribute_label(unit: Unit) -> UnitAttributesLabel:
 # Snapshot shape:  Array of { "type": StringName id, "state": Dictionary }
 # `state` is the unit's physical_state.duplicate(), with any Vector2 entries
 # (currently just world_uv) split into {"x", "y"} for JSON friendliness.
+
+
+# Terrain-seed persistence hooks for ScenePersister. A level with procedural
+# terrain overrides these so a saved scene reloads onto the SAME terrain its
+# units sat on (ContourDemo does). Levels without procedural terrain leave the
+# defaults: -1 means "no seed to persist", and applying one is a no-op.
+func get_persist_seed() -> int:
+	return -1
+
+
+func apply_persist_seed(_seed: int) -> void:
+	pass
 
 
 func serialize_units(own_only: bool = false) -> Array:

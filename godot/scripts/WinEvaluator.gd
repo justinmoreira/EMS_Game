@@ -1,22 +1,22 @@
 class_name WinEvaluator
 extends RefCounted
 
-# Pure win-condition logic for the multiplayer "establish the link" mode.
+# Pure win-condition logic for the multiplayer "complete your line" mode.
 #
-# The board carries two immutable, neutral units placed deterministically from
-# the match seed: a SOURCE transceiver (transmitter) and a TARGET sensor. Each
-# player races to build a chain that carries the source's signal to the target
-# — relays (their own transceivers) extend reach, jammers (anyone's) break it.
+# Each player owns a PRIVATE line: an immutable SOURCE transceiver in one corner
+# and an immutable TARGET sensor in the opposite one (host runs TL→BR, guest
+# TR→BL, so the lines cross). A player completes their line by building a chain
+# of their own relays (transceivers) that carries their source's signal to their
+# target — and they can drop jammers to sever the opponent's chain.
 #
-# A side "has a connection" when, BFS-ing out from the SOURCE over SUCCESS links
-# that pass only through the SOURCE and that side's own transceivers, it reaches
-# a transceiver the TARGET sensor can detect. All jammers on the board are fed
-# into the link physics, so the opponent's jammers can sever your chain even
-# though their transceivers aren't part of it.
+# A line is "complete" when, BFS-ing from its SOURCE over SUCCESS links through
+# only that player's own transceivers, it reaches a transceiver the line's TARGET
+# can detect. Every jammer on the board is fed into the link physics, so either
+# player's jammers can break either line.
 #
-# Win rule (see evaluate): the FIRST resolved turn in which exactly ONE side is
-# connected — "the only connection" — decides the match. Both connected at once
-# is not a win; neither is nobody connected.
+# Win rule (see evaluate): the FIRST resolved turn in which exactly ONE line is
+# complete — "the only connection" — decides the match. Both complete at once is
+# not a win; neither is nobody complete.
 #
 # Everything here is a static function over a SimulationManager instance, so it
 # is fully exercisable headlessly (SimulationManager.calculate_link /
@@ -60,46 +60,34 @@ static func chain_connected(sim, source, target, own_txs: Array, jammers: Array)
 	return false
 
 
-# Partition the board and decide the outcome of the just-resolved turn.
+# Decide the outcome of the just-resolved turn for two PRIVATE lines.
 #
-#   source / target          immutable neutral units
-#   all_transceivers         every transceiver Unit on the board (incl. source)
-#   all_jammers              every jammer Unit on the board
-#   my_id / opp_id           owner_player_id strings ("" opp_id ⇒ solo/testing)
-#
-# Ownership lives in physical_state.owner_player_id; the immutable source has
-# none and is shared by both sides.
+# Each player has their own source→target pair and their own relays; a player's
+# relays only extend their own line. `jammers` is every jammer on the board, so
+# either player's jammers can sever either line. The match is decided the first
+# turn exactly ONE line is complete ("the only connection").
 static func evaluate(
-	sim, source, target, all_transceivers: Array, all_jammers: Array, my_id: String, opp_id: String
+	sim,
+	my_source,
+	my_target,
+	my_relays: Array,
+	opp_source,
+	opp_target,
+	opp_relays: Array,
+	jammers: Array
 ) -> int:
-	var mine := connectivity_for(sim, source, target, all_transceivers, all_jammers, my_id)
+	var my_txs: Array = [my_source]
+	my_txs.append_array(my_relays)
+	var mine := chain_connected(sim, my_source, my_target, my_txs, jammers)
+
 	var theirs := false
-	if opp_id != "":
-		theirs = connectivity_for(sim, source, target, all_transceivers, all_jammers, opp_id)
+	if is_instance_valid(opp_source) and is_instance_valid(opp_target):
+		var opp_txs: Array = [opp_source]
+		opp_txs.append_array(opp_relays)
+		theirs = chain_connected(sim, opp_source, opp_target, opp_txs, jammers)
 
 	if mine and not theirs:
 		return OUTCOME_MINE
 	if theirs and not mine:
 		return OUTCOME_ENEMY
 	return OUTCOME_NONE
-
-
-# Connectivity for a single side: source + that side's transceivers only.
-static func connectivity_for(
-	sim, source, target, all_transceivers: Array, all_jammers: Array, side_id: String
-) -> bool:
-	var side_txs: Array = []
-	if source != null:
-		side_txs.append(source)
-	for t in all_transceivers:
-		if t == null or t == source or not is_instance_valid(t):
-			continue
-		var owner_v = t.physical_state.get(&"owner_player_id", null)
-		# A side owns a transceiver when its owner tag matches. With an empty
-		# side_id (solo/headless test), unowned transceivers count as "mine".
-		if side_id == "":
-			if owner_v == null:
-				side_txs.append(t)
-		elif owner_v is String and String(owner_v) == side_id:
-			side_txs.append(t)
-	return chain_connected(sim, source, target, side_txs, all_jammers)

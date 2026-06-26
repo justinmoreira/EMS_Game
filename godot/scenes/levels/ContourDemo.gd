@@ -25,6 +25,13 @@ var grid_h: int = 150
 var cell_size: int = 8
 var height_grid: Array = []
 
+# Terrain seed bookkeeping for sandbox persistence. `_active_seed` is whatever
+# seed the current terrain was built from (saved with the scene); `_pending_seed`
+# is a seed restored from a saved scene, applied by ScenePersister before terrain
+# generation. -1 means "none restored — pick a fresh random one".
+var _active_seed: int = 0
+var _pending_seed: int = -1
+
 @onready var contour_rect: TextureRect = $BackgroundTexture
 @onready var map_container = $BackgroundTexture
 
@@ -74,11 +81,15 @@ func _ready() -> void:
 # is in place. Falls back to randi() for sandbox or any non-web build.
 func _terrain_seed() -> int:
 	if not OS.has_feature("web"):
-		return randi()
+		_active_seed = randi()
+		return _active_seed
 	var mode: Variant = JavaScriptBridge.eval("window.GAME_MODE")
 	if not (mode is String) or (mode as String) != "multiplayer":
-		print("[ContourDemo] sandbox / non-MP — using randi() seed")
-		return randi()
+		# Sandbox: reuse a seed restored from the saved scene so units reload
+		# onto the same terrain; otherwise pick a fresh one and remember it so
+		# the next autosave persists it.
+		_active_seed = _pending_seed if _pending_seed >= 0 else randi()
+		return _active_seed
 	# JS numbers come through as Variant float (sometimes int for integer
 	# values); typeof() check is more robust than `is float` against the
 	# Variant null returned when MULTIPLAYER_MATCH isn't published yet.
@@ -87,12 +98,23 @@ func _terrain_seed() -> int:
 	)
 	var t := typeof(v)
 	if t == TYPE_FLOAT or t == TYPE_INT:
-		print("[ContourDemo] MP seed from window.MULTIPLAYER_MATCH = ", int(v))
-		return int(v)
+		_active_seed = int(v)
+		return _active_seed
 	push_warning(
 		"[ContourDemo] MP mode but no seed on window.MULTIPLAYER_MATCH — fell through to randi()"
 	)
-	return randi()
+	_active_seed = randi()
+	return _active_seed
+
+
+# ScenePersister persistence hooks (sandbox): report the seed the current
+# terrain was built from, and accept a restored seed to rebuild it identically.
+func get_persist_seed() -> int:
+	return _active_seed
+
+
+func apply_persist_seed(seed: int) -> void:
+	_pending_seed = seed
 
 
 func _generate_terrain(w: int, h: int) -> Array:

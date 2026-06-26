@@ -57,10 +57,17 @@ func _queue_save() -> void:
 func _save_now() -> void:
 	if not OS.has_feature("web") or _level == null:
 		return
-	var snapshot := _level.serialize_units()
+	# Envelope (v2): carries the terrain seed alongside the units so a reloaded
+	# scene regenerates the SAME terrain its units were placed on. Older saves
+	# are a bare units array; _restore reads both (see below).
+	var envelope := {
+		"v": 2,
+		"seed": _level.get_persist_seed(),
+		"units": _level.serialize_units(),
+	}
 	# Double-stringify: inner produces the snapshot JSON; outer wraps it as a
 	# JS string literal so quotes/backslashes survive into the eval'd source.
-	var snapshot_json := JSON.stringify(snapshot)
+	var snapshot_json := JSON.stringify(envelope)
 	var js_literal := JSON.stringify(snapshot_json)
 	var mode_literal := JSON.stringify(gamemode)
 	JavaScriptBridge.eval(
@@ -74,7 +81,25 @@ func _restore() -> void:
 	var raw = JavaScriptBridge.eval('window.getSandbox ? window.getSandbox() : ""')
 	if not (raw is String) or raw == "":
 		return
-	var snapshot = JSON.parse_string(raw)
-	if not (snapshot is Array) or snapshot.is_empty():
+	var parsed = JSON.parse_string(raw)
+
+	var units: Array = []
+	if parsed is Array:
+		# Legacy format: a bare units array, no terrain seed.
+		units = parsed
+	elif parsed is Dictionary:
+		# v2 envelope: apply the seed BEFORE the level generates terrain (this
+		# runs in ScenePersister._ready, which fires before the parent level's
+		# _ready), then restore the units.
+		var seed_v = (parsed as Dictionary).get("seed", -1)
+		if typeof(seed_v) == TYPE_FLOAT or typeof(seed_v) == TYPE_INT:
+			var s := int(seed_v)
+			if s >= 0:
+				_level.apply_persist_seed(s)
+		var u = (parsed as Dictionary).get("units", [])
+		if u is Array:
+			units = u
+
+	if units.is_empty():
 		return
-	_level.deserialize_units(snapshot)
+	_level.deserialize_units(units)

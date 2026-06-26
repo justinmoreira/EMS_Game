@@ -107,11 +107,18 @@ func _spawn_visual() -> void:
 # thing that encodes WHO owns the unit. Outside a multiplayer match (no
 # MULTIPLAYER_PLAYER_ID) there's no owner, so no glow.
 func _owner_kind() -> int:
+	# Immutable objective units carry an explicit, viewer-relative glow hint
+	# (glow_kind) set by the level. They have no owner_player_id on purpose —
+	# that would make apply_opponent_board treat them as a player's units and
+	# wipe them — so honor the hint directly.
+	var forced: Variant = physical_state.get(&"glow_kind", null)
+	if forced != null:
+		return int(forced)
 	var local_id := _local_mp_player_id()
 	if local_id == "":
 		return UnitVisual.Owner.NONE
-	var owner: Variant = physical_state.get(&"owner_player_id", null)
-	if owner is String and (owner as String) != local_id:
+	var owner_v: Variant = physical_state.get(&"owner_player_id", null)
+	if owner_v is String and (owner_v as String) != local_id:
 		return UnitVisual.Owner.ENEMY
 	return UnitVisual.Owner.MINE
 
@@ -228,13 +235,29 @@ func is_immutable() -> bool:
 	return bool(physical_state.get(&"immutable", false))
 
 
+# Cannot be moved / edited / deleted by the local player. True for the immutable
+# objective, for pieces this player has already submitted (the `locked` flag),
+# and — in a match — for the opponent's pieces. Nothing is locked in
+# sandbox / singleplayer (no local player id).
+func is_locked() -> bool:
+	if is_immutable():
+		return true
+	if bool(physical_state.get(&"locked", false)):
+		return true
+	var local := _local_mp_player_id()
+	if local == "":
+		return false
+	var owner_v: Variant = physical_state.get(&"owner_player_id", null)
+	return not (owner_v is String and String(owner_v) == local)
+
+
 func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
 	# Only the initial press starts a drag here. Release and motion live in
 	# _input so they keep working when the cursor leaves the shape mid-drag.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		# Immutable units (the MP source/target) can be inspected but never
-		# moved — select for the read-only panel and stop, no drag.
-		if is_immutable():
+		# Locked pieces (objective, already-submitted, opponent's) can be
+		# inspected but never moved — select for the read-only panel and stop.
+		if is_locked():
 			GameEvents.select(self)
 			get_tree().root.set_input_as_handled()
 			return

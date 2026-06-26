@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { authLoading, authUser } from "@/lib/auth";
 import { createMatch } from "@/lib/matches";
 import { getProfiles, type Profile } from "@/lib/profile";
@@ -50,6 +50,43 @@ export default function MultiplayerMatch() {
   const [submittedTurn, setSubmittedTurn] = useState<number | null>(null);
   const [profiles, setProfiles] = useState<Map<string, Profile>>(new Map());
   const reportedWinner = useRef(false);
+  // Mirror of `match` for closures (the poll) that must read the latest row
+  // without re-subscribing on every change.
+  const matchRef = useRef<MatchRow | null>(null);
+  matchRef.current = match;
+
+  // Single place that reconciles an incoming match row — called from both the
+  // realtime UPDATE handler and the polling fallback, so they can't drift.
+  const applyMatchRow = useCallback(
+    (row: MatchRow) => {
+      if (row.id !== matchId) return;
+      const prev = matchRef.current;
+      const changed =
+        !prev ||
+        prev.status !== row.status ||
+        prev.current_turn !== row.current_turn ||
+        prev.guest_id !== row.guest_id ||
+        prev.winner_id !== row.winner_id;
+      if (changed) {
+        setMatch(row);
+        publishMatchToWindow(row);
+      }
+      // Godot dedupes by turn, so calling this each time is safe.
+      if (typeof window.godotOnTurnAdvance === "function") {
+        window.godotOnTurnAdvance(row.current_turn);
+      }
+      // Turn-limit draw: nobody achieved the sole connection in time.
+      if (
+        row.status !== "finished" &&
+        row.current_turn >= row.max_turns &&
+        typeof window.mpReportWinner === "function" &&
+        !reportedWinner.current
+      ) {
+        window.mpReportWinner("");
+      }
+    },
+    [matchId],
+  );
 
   // Auth gate (see original notes): only redirect once verification resolves.
   useEffect(() => {
@@ -179,23 +216,7 @@ export default function MultiplayerMatch() {
     };
 
     const handleMatchUpdate = (payload: { new: MatchRow }) => {
-      const row = payload.new;
-      if (row.id !== matchId) return;
-      setMatch(row);
-      publishMatchToWindow(row);
-      // Tell Godot the shared turn ticked (resets the per-turn placement cap).
-      if (typeof window.godotOnTurnAdvance === "function") {
-        window.godotOnTurnAdvance(row.current_turn);
-      }
-      // Turn-limit draw: nobody achieved the sole connection in time.
-      if (
-        row.status !== "finished" &&
-        row.current_turn >= row.max_turns &&
-        typeof window.mpReportWinner === "function" &&
-        !reportedWinner.current
-      ) {
-        window.mpReportWinner("");
-      }
+      applyMatchRow(payload.new);
     };
 
     const channel = supabase
@@ -214,7 +235,26 @@ export default function MultiplayerMatch() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [matchId, user?.id, verifying]);
+  }, [matchId, user?.id, verifying, applyMatchRow]);
+
+  // Polling fallback: a realtime UPDATE can be missed (channel still
+  // subscribing when the guest joins, a dropped socket, etc.). While the match
+  // isn't finished, reconcile the row from the DB every few seconds so the
+  // waiting screen and turn state can never get permanently stuck.
+  useEffect(() => {
+    if (!matchId || verifying || !user) return;
+    if (match?.status === "finished") return;
+    const tick = async () => {
+      const { data } = await supabase
+        .from("matches")
+        .select("*")
+        .eq("id", matchId)
+        .maybeSingle();
+      if (data) applyMatchRow(data);
+    };
+    const id = setInterval(tick, 3000);
+    return () => clearInterval(id);
+  }, [matchId, verifying, user?.id, match?.status, applyMatchRow]);
 
   // Clear the local "submitted" flag once the turn actually advances.
   useEffect(() => {

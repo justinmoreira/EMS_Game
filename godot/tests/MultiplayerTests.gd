@@ -124,96 +124,106 @@ func test_snapshot_round_trip() -> void:
 	print("")
 
 
-# ── Win condition: source→target connectivity & outcome ──────────────────
+# ── Win condition: private-line completion & outcome ─────────────────────
+# Each test builds my line (my_src→my_tgt + my relays) and the opponent's line
+# (opp_src→opp_tgt + their relays); evaluate() decides the turn.
 
 
-func _source() -> Unit:
-	# Immutable, unowned transmitter — shared by both sides.
+func _imm_tx() -> Unit:
 	var u := make_unit("transceiver", Vector2.ZERO, {})
 	u.physical_state[&"immutable"] = true
 	return _track(u)
 
 
-func _target() -> Unit:
+func _imm_sensor() -> Unit:
 	var u := make_unit("sensor", Vector2.ZERO, {})
 	u.physical_state[&"immutable"] = true
 	return _track(u)
 
 
-func _relay(owner_id: String) -> Unit:
-	var u := make_unit("transceiver", Vector2.ZERO, {})
-	if owner_id != "":
-		u.physical_state[&"owner_player_id"] = owner_id
-	return _track(u)
+func _relay() -> Unit:
+	return _track(make_unit("transceiver", Vector2.ZERO, {}))
 
 
 func test_win_direct() -> void:
-	print("Running Win: direct detection...")
+	print("Running Win: my target sees my source directly...")
 	var sim := StubSim.new()
-	var src := _source()
-	var tgt := _target()
-	sim.detect(src)  # target sees the source directly
-	var outcome := WinEvaluator.evaluate(sim, src, tgt, [src], [], "", "")
-	assert_eq(outcome, WinEvaluator.OUTCOME_MINE, "Direct source detection ⇒ MINE.")
+	var msrc := _imm_tx()
+	var mtgt := _imm_sensor()
+	var osrc := _imm_tx()
+	var otgt := _imm_sensor()
+	sim.detect(msrc)  # my target sees my source
+	var outcome := WinEvaluator.evaluate(sim, msrc, mtgt, [], osrc, otgt, [], [])
+	assert_eq(outcome, WinEvaluator.OUTCOME_MINE, "My line complete, opp empty ⇒ MINE.")
 
 
 func test_win_none() -> void:
-	print("Running Win: no connection...")
+	print("Running Win: neither line complete...")
 	var sim := StubSim.new()
-	var src := _source()
-	var tgt := _target()
-	var outcome := WinEvaluator.evaluate(sim, src, tgt, [src], [], "", "")
+	var msrc := _imm_tx()
+	var mtgt := _imm_sensor()
+	var osrc := _imm_tx()
+	var otgt := _imm_sensor()
+	var outcome := WinEvaluator.evaluate(sim, msrc, mtgt, [], osrc, otgt, [], [])
 	assert_eq(outcome, WinEvaluator.OUTCOME_NONE, "Nothing detected ⇒ NONE.")
 
 
 func test_win_relay_mine_only() -> void:
-	print("Running Win: my relay completes the chain...")
+	print("Running Win: my relay completes my line...")
 	var sim := StubSim.new()
-	var src := _source()
-	var tgt := _target()
-	var r1 := _relay("P1")
-	sim.link(src, r1)  # source links to my relay
-	sim.detect(r1)  # target detects my relay (but NOT the source)
-	var outcome := WinEvaluator.evaluate(sim, src, tgt, [src, r1], [], "P1", "P2")
-	assert_eq(outcome, WinEvaluator.OUTCOME_MINE, "My relay bridges source→target ⇒ MINE.")
+	var msrc := _imm_tx()
+	var mtgt := _imm_sensor()
+	var osrc := _imm_tx()
+	var otgt := _imm_sensor()
+	var r1 := _relay()
+	sim.link(msrc, r1)  # my source links to my relay
+	sim.detect(r1)  # my target detects my relay (not the source)
+	var outcome := WinEvaluator.evaluate(sim, msrc, mtgt, [r1], osrc, otgt, [], [])
+	assert_eq(outcome, WinEvaluator.OUTCOME_MINE, "My relay bridges my line ⇒ MINE.")
 
 
 func test_win_both_connected_is_no_win() -> void:
-	print("Running Win: both connected is not 'the only connection'...")
+	print("Running Win: both lines complete is not 'the only connection'...")
 	var sim := StubSim.new()
-	var src := _source()
-	var tgt := _target()
-	var r1 := _relay("P1")
-	var r2 := _relay("P2")
-	sim.link(src, r1)
-	sim.link(src, r2)
+	var msrc := _imm_tx()
+	var mtgt := _imm_sensor()
+	var osrc := _imm_tx()
+	var otgt := _imm_sensor()
+	var r1 := _relay()
+	var r2 := _relay()
+	sim.link(msrc, r1)
 	sim.detect(r1)
+	sim.link(osrc, r2)
 	sim.detect(r2)
-	var outcome := WinEvaluator.evaluate(sim, src, tgt, [src, r1, r2], [], "P1", "P2")
-	assert_eq(outcome, WinEvaluator.OUTCOME_NONE, "Both connected ⇒ NONE (no sole connection).")
+	var outcome := WinEvaluator.evaluate(sim, msrc, mtgt, [r1], osrc, otgt, [r2], [])
+	assert_eq(outcome, WinEvaluator.OUTCOME_NONE, "Both lines complete ⇒ NONE.")
 
 
 func test_win_enemy_only() -> void:
-	print("Running Win: opponent's sole connection...")
+	print("Running Win: only the opponent's line is complete...")
 	var sim := StubSim.new()
-	var src := _source()
-	var tgt := _target()
-	var r2 := _relay("P2")
-	sim.link(src, r2)
+	var msrc := _imm_tx()
+	var mtgt := _imm_sensor()
+	var osrc := _imm_tx()
+	var otgt := _imm_sensor()
+	var r2 := _relay()
+	sim.link(osrc, r2)
 	sim.detect(r2)
-	var outcome := WinEvaluator.evaluate(sim, src, tgt, [src, r2], [], "P1", "P2")
-	assert_eq(outcome, WinEvaluator.OUTCOME_ENEMY, "Only opponent connected ⇒ ENEMY.")
+	var outcome := WinEvaluator.evaluate(sim, msrc, mtgt, [], osrc, otgt, [r2], [])
+	assert_eq(outcome, WinEvaluator.OUTCOME_ENEMY, "Only opp line complete ⇒ ENEMY.")
 
 
 func test_win_jammed_chain_breaks() -> void:
-	print("Running Win: a severed link denies the connection...")
+	print("Running Win: a severed link denies my line...")
 	var sim := StubSim.new()
-	var src := _source()
-	var tgt := _target()
-	var r1 := _relay("P1")
-	# Target detects my relay, but the source→relay hop is down (jammed/range),
-	# so the relay is unreachable from the source and there is no chain.
+	var msrc := _imm_tx()
+	var mtgt := _imm_sensor()
+	var osrc := _imm_tx()
+	var otgt := _imm_sensor()
+	var r1 := _relay()
+	# My target detects my relay, but the source→relay hop is down (jammed), so
+	# the relay is unreachable from my source and my line isn't complete.
 	sim.detect(r1)
-	var outcome := WinEvaluator.evaluate(sim, src, tgt, [src, r1], [], "P1", "P2")
+	var outcome := WinEvaluator.evaluate(sim, msrc, mtgt, [r1], osrc, otgt, [], [])
 	assert_eq(outcome, WinEvaluator.OUTCOME_NONE, "Detected-but-unlinked relay ⇒ NONE.")
 	print("")
