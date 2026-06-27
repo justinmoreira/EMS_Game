@@ -1,8 +1,8 @@
-[gd_scene format=3 uid="uid://batemdpml4578"]
+[gd_scene format=3 uid="uid://y6cs3gktvndb"]
 
 [ext_resource type="PackedScene" uid="uid://cscdegdlpq00e" path="res://scenes/core/BaseLevel.tscn" id="1"]
 [ext_resource type="Script" uid="uid://be2d1wayxpq4p" path="res://scenes/core/Unit.gd" id="2"]
-[ext_resource type="Script" uid="uid://ddqox1i38acoc" path="res://scenes/silent_link/SilentLink.gd" id="2_2d5dm"]
+[ext_resource type="Script" uid="uid://ddqox1i38acoc" path="res://scenes/silent-link/SilentLink.gd" id="2_2d5dm"]
 [ext_resource type="Shader" uid="uid://ccadptf4j2ywd" path="res://shaders/ContourLine.gdshader" id="3"]
 [ext_resource type="Resource" uid="uid://dwr12u2th8xdx" path="res://data/units/sensor.tres" id="6_mnoak"]
 [ext_resource type="Resource" uid="uid://1480ftm8p2yd" path="res://data/units/jammer.tres" id="6_t67gm"]
@@ -29,7 +29,7 @@ shader_parameter/line_color = Color(0, 0, 0, 0.6)
 
 [sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_pb6d8"]
 
-[node name="Level4" unique_id=1691616856 instance=ExtResource("1")]
+[node name="Level3" unique_id=1691616856 instance=ExtResource("1")]
 script = ExtResource("2_2d5dm")
 
 [node name="BackgroundTexture" parent="." index="0" unique_id=2008967764]
@@ -44,60 +44,35 @@ size_flags_horizontal = 1
 size_flags_vertical = 1
 
 [node name="EnemySensor" type="Node2D" parent="." index="3" unique_id=839980744]
-position = Vector2(750, 950)
+position = Vector2(1260, 320)
 script = ExtResource("2")
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
 
 [node name="EnemySensor2" type="Node2D" parent="." index="4" unique_id=2024476142]
-position = Vector2(1480, 260)
+position = Vector2(940, 740)
 script = ExtResource("2")
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
 
-[node name="EnemySensor3" type="Node2D" parent="." index="5" unique_id=2104001001]
-position = Vector2(1120, 860)
-script = ExtResource("2")
-definition = ExtResource("6_mnoak")
-is_immovable = true
-is_removable = false
-
-[node name="EnemySensor4" type="Node2D" parent="." index="6" unique_id=2104001002]
-position = Vector2(1320, 540)
-script = ExtResource("2")
-definition = ExtResource("6_mnoak")
-is_immovable = true
-is_removable = false
-
-[node name="EnemyJammer" type="Node2D" parent="." index="7" unique_id=234907007]
-visible = false
-position = Vector2(930, 500)
+[node name="EnemyJammer" type="Node2D" parent="." index="5" unique_id=234907007]
+position = Vector2(1450, 580)
 script = ExtResource("2")
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
 
-[node name="EnemyJammer2" type="Node2D" parent="." index="8" unique_id=2104001003]
-visible = false
-position = Vector2(1040, 690)
+[node name="EnemyJammer2" type="Node2D" parent="." index="6" unique_id=1888613306]
+position = Vector2(730, 420)
 script = ExtResource("2")
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
 
-[node name="EnemyJammer3" type="Node2D" parent="." index="9" unique_id=2104001004]
-visible = false
-position = Vector2(860, 760)
-script = ExtResource("2")
-definition = ExtResource("6_t67gm")
-is_immovable = true
-is_removable = false
-
-[node name="EnemyJammer4" type="Node2D" parent="." index="10" unique_id=2104001005]
-visible = false
-position = Vector2(1260, 380)
+[node name="EnemyJammer3" type="Node2D" parent="." index="7" unique_id=843531445]
+position = Vector2(1400, 1000)
 script = ExtResource("2")
 definition = ExtResource("6_t67gm")
 is_immovable = true
