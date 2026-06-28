@@ -318,27 +318,63 @@ _hmr_serve:
     PORT=$(python3 scripts/find_port.py)
     echo "🌐 Starting dev server on port $PORT (health-check-supervised)..."
 
-    # Supervised loop: if 3 consecutive HC probes fail, kill the tree and
-    # respawn. Editing astro.config.mjs can crash vite's reload but leave
-    # bun alive in a broken state — the HC catches that.
+    # Supervised loop with two distinct phases so a slow boot is never mistaken
+    # for a crash:
+    #   1. Warmup grace — POLL for the port to bind without counting failures.
+    #      The first cold compile builds every page/island and can be slow
+    #      (much slower right after a big merge), so the ceiling is generous and
+    #      only the first boot gets the longest one. We only restart here if it
+    #      never binds at all.
+    #   2. Steady-state — once bound, require SUSTAINED failures before
+    #      restarting, so a brief vite recompile/hiccup doesn't trip it.
+    first_start=1
     while true; do
         (cd {{client_path}} && PORT=$PORT bun run dev --port $PORT) &
         DEV_PID=$!
-        # Warmup must exceed astro's cold-start (~16s observed). Probes
-        # before astro binds will all fail and trip the restart spuriously.
-        sleep 20
-        fails=0
-        while kill -0 $DEV_PID 2>/dev/null; do
+
+        if [ "$first_start" = "1" ]; then
+            warmup_ceiling=120   # first cold compile — be very patient
+        else
+            warmup_ceiling=60    # warm restarts compile less
+        fi
+        first_start=0
+
+        # Phase 1: wait (don't kill) until the port binds or the ceiling passes.
+        waited=0
+        bound=0
+        while kill -0 $DEV_PID 2>/dev/null && [ $waited -lt $warmup_ceiling ]; do
             # TCP probe via bash's /dev/tcp — purely "is the port bound?",
             # no HTTP request, no curl timeout. Avoids false positives from
-            # vite's lazy first-request compile (which can blow past any
-            # reasonable HTTP timeout).
+            # vite's lazy first-request compile.
+            if (exec 3<>/dev/tcp/localhost/$PORT) 2>/dev/null; then
+                exec 3<&-; exec 3>&-
+                bound=1
+                break
+            fi
+            sleep 3
+            waited=$((waited + 3))
+        done
+
+        if [ "$bound" != "1" ]; then
+            echo "⚠️  Dev server didn't bind within ${warmup_ceiling}s — restarting..."
+            _kill_tree $DEV_PID
+            wait $DEV_PID 2>/dev/null
+            DEV_PID=""
+            sleep 2
+            continue
+        fi
+        echo "✅ Dev server is up on port $PORT"
+
+        # Phase 2: steady-state supervision. 6 consecutive misses (~30s) before
+        # we treat it as wedged — generous enough to ride out recompiles.
+        fails=0
+        while kill -0 $DEV_PID 2>/dev/null; do
             if (exec 3<>/dev/tcp/localhost/$PORT) 2>/dev/null; then
                 exec 3<&-; exec 3>&-
                 fails=0
             else
                 fails=$((fails + 1))
-                if [ $fails -ge 3 ]; then
+                if [ $fails -ge 6 ]; then
                     echo "⚠️  Dev server unhealthy after $fails HC fails — restarting..."
                     _kill_tree $DEV_PID
                     break
