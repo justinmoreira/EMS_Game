@@ -63,7 +63,7 @@ func _restore() -> void:
 		return
 	var mode_literal := JSON.stringify(gamemode)
 	var raw = JavaScriptBridge.eval(
-		'window.getSandbox ? window.getSandbox(' + mode_literal + ') : ""'
+		"window.getSandbox ? window.getSandbox(" + mode_literal + ') : ""'
 	)
 	if not (raw is String) or raw == "":
 		_on_restore_complete(false)

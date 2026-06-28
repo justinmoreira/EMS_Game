@@ -85,7 +85,7 @@ func start_fresh() -> void:
 	_remove_sandbox_intro_popups()
 	intro_popup_open = false
 	_enter_step(TUTORIAL_STEP.WELCOME)
-	
+
 
 func _unit_children() -> Array:
 	var units := []
@@ -182,8 +182,8 @@ func restore_tutorial_state(data: Dictionary) -> void:
 
 	var step := int(data.get("step", TUTORIAL_STEP.WELCOME))
 	_enter_step(step)
-	
-		
+
+
 func _connect_tutorial_signals() -> void:
 	if not GameEvents.units_changed.is_connected(_on_units_changed):
 		GameEvents.units_changed.connect(_on_units_changed)
@@ -210,25 +210,25 @@ func _check_placement(unit: Node, target: Vector2) -> void:
 	else:
 		_pending_placement_unit = unit
 		_show_wrong_placement_popup()
-		
 
-func _find_unassigned_unit(unit_id: StringName) -> Node: 
-	for unit in _unit_children(): 
-		if not (unit is Unit and unit.definition): 
-			continue 
-		if unit.definition.id != unit_id: 
-			continue 
-		
-		# Skip units already assigned to tutorial roles 
-		if unit == _first_transceiver: 
-			continue 
-		if unit == _second_transceiver: 
-			continue 
-		if unit == _sensor: 
-			continue 
-		if unit == _jammer: 
-			continue 
-		return unit 
+
+func _find_unassigned_unit(unit_id: StringName) -> Node:
+	for unit in _unit_children():
+		if not (unit is Unit and unit.definition):
+			continue
+		if unit.definition.id != unit_id:
+			continue
+
+		# Skip units already assigned to tutorial roles
+		if unit == _first_transceiver:
+			continue
+		if unit == _second_transceiver:
+			continue
+		if unit == _sensor:
+			continue
+		if unit == _jammer:
+			continue
+		return unit
 	return null
 
 
@@ -250,15 +250,13 @@ func _on_units_changed() -> void:
 		TUTORIAL_STEP.MOVE_FIRST_TRANSCEIVER_CLOSER:
 			_check_transceiver_move_target()
 
-					
+
 func _mark_tutorial_complete() -> void:
 	if not OS.has_feature("web"):
 		return
 	var progress_json := JSON.stringify({"tutorial_complete": true})
 	var js_literal := JSON.stringify(progress_json)
-	JavaScriptBridge.eval(
-		"window.setProgress && window.setProgress(" + js_literal + ")"
-	)
+	JavaScriptBridge.eval("window.setProgress && window.setProgress(" + js_literal + ")")
 	var persister := _tutorial_persister()
 	if persister != null:
 		persister.clear_save()
