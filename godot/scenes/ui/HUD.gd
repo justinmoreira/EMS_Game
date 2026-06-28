@@ -30,7 +30,7 @@ func _ready():
 	%SuggestionsToggle.toggled.connect(_on_suggestions_toggled)
 	%HeatmapToggle.toggled.connect(_on_heatmap_toggled)
 	%SpectrumToggle.toggled.connect(_on_spectrum_toggled)
-	
+
 	if get_parent().get_script() == Sandbox:
 		%GenerateTerrain.button_down.connect(_on_regenerate_clicked)
 	else:
