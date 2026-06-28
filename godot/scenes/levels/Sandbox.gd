@@ -26,6 +26,7 @@ var grid_w: int = 150
 var grid_h: int = 150
 var cell_size: int = 8
 var height_grid: Array = []
+var _terrain_seed: int = 0
 
 var _sandbox_popup_open := false
 
@@ -46,12 +47,7 @@ func _ready() -> void:
 
 	super._ready()
 
-	height_grid = _generate_terrain(grid_w, grid_h)
-	set_terrain_data(height_grid)
-	_update_terrain_transform()
-
-	var tex := _create_height_texture(height_grid, grid_w, grid_h)
-	contour_rect.material.set_shader_parameter("height_map", tex)
+	_init_terrain()
 
 	# Terrain colors
 	contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))  # green
@@ -66,10 +62,35 @@ func _ready() -> void:
 	contour_rect.material.set_shader_parameter("max_height", 500.0)
 	contour_rect.material.set_shader_parameter("mid_point", 0.6)
 
-	_label_tactical_points(height_grid, grid_w, grid_h)
-
 	if get_script() == Sandbox:
 		open_popup()
+
+
+func _init_terrain() -> void:
+	if _terrain_seed == 0:
+		_terrain_seed = randi()
+	_regenerate_terrain()
+
+
+func _regenerate_terrain() -> void:
+	height_grid = _generate_terrain(grid_w, grid_h, _terrain_seed)
+	set_terrain_data(height_grid)
+
+	_update_terrain_transform()
+
+	var tex := _create_height_texture(height_grid, grid_w, grid_h)
+	contour_rect.material.set_shader_parameter("height_map", tex)
+
+	call_deferred("_label_tactical_points", height_grid, grid_w, grid_h)
+
+
+func get_terrain_seed() -> int:
+	return _terrain_seed
+
+
+func set_terrain_seed(value: int) -> void:
+	_terrain_seed = value
+	_regenerate_terrain()
 
 
 func open_popup() -> void:
@@ -110,9 +131,9 @@ func _on_sandbox_popup_closed() -> void:
 # ── Terrain generation ────────────────────────────────────────────────────────
 
 
-func _generate_terrain(w: int, h: int) -> Array:
+func _generate_terrain(w: int, h: int, seed: int) -> Array:
 	var noise := FastNoiseLite.new()
-	noise.seed = randi()
+	noise.seed = seed
 	noise.frequency = 0.025
 	noise.fractal_octaves = 3
 
@@ -130,6 +151,8 @@ func _generate_terrain(w: int, h: int) -> Array:
 
 
 func _label_tactical_points(grid: Array, w: int, h: int) -> void:
+	_clear_labels()
+
 	# Step 1 – collect raw candidates
 	var peak_candidates: Array[Dictionary] = []
 	var valley_candidates: Array[Dictionary] = []
@@ -210,9 +233,14 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 	var kept := _deconflict(label_descs)
 
 	# Step 5 – spawn
-	await get_tree().process_frame
 	for desc in kept:
 		_spawn_label(desc)
+
+
+func _clear_labels() -> void:
+	for child in get_children():
+		if child is Label:
+			child.queue_free()
 
 
 # ── Non-maximum suppression ───────────────────────────────────────────────────
