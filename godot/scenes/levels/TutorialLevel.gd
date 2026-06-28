@@ -1,4 +1,6 @@
+class_name Tutorial
 extends Sandbox
+
 const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/HintPopup.tscn")
 const TUTORIAL_COMPLETION_POPUP := preload("res://scenes/ui/TutorialCompletionPopup.tscn")
 const TUTORIAL_TEXT := preload("res://scenes/levels/TutorialText.gd")
@@ -61,10 +63,130 @@ func _ready() -> void:
 	intro_popup_open = false
 	_connect_tutorial_signals()
 	call_deferred("_create_repeat_instruction_button")
-	call_deferred("_start_tutorial")
+	if not _has_tutorial_persister():
+		call_deferred("start_fresh")
 
 
+func _has_tutorial_persister() -> bool:
+	for child in get_children():
+		if child is TutorialPersister:
+			return true
+	return false
+
+
+func _tutorial_persister() -> TutorialPersister:
+	for child in get_children():
+		if child is TutorialPersister:
+			return child
+	return null
+
+
+func start_fresh() -> void:
+	_remove_sandbox_intro_popups()
+	intro_popup_open = false
+	_enter_step(TUTORIAL_STEP.WELCOME)
+	
+
+func _unit_children() -> Array:
+	var units := []
+	for child in get_children():
+		if child is Unit and child.definition:
+			units.append(child)
+	return units
+
+
+func _unit_at_index(units: Array, idx: int) -> Node:
+	if idx >= 0 and idx < units.size():
+		return units[idx]
+	return null
+
+
+func _unit_for_role(role: String) -> Node:
+	match role:
+		"first_transceiver":
+			return _first_transceiver
+		"second_transceiver":
+			return _second_transceiver
+		"sensor":
+			return _sensor
+		"jammer":
+			return _jammer
+		_:
+			return null
+
+
+func _tutorial_role_indices() -> Dictionary:
+	var units := _unit_children()
+	var indices := {}
+	for role in ["first_transceiver", "second_transceiver", "sensor", "jammer"]:
+		var unit := _unit_for_role(role)
+		if unit != null and is_instance_valid(unit):
+			indices[role] = units.find(unit)
+	return indices
+
+
+func _restore_tutorial_unit_refs(role_indices: Dictionary) -> void:
+	var units := _unit_children()
+	_first_transceiver = _unit_at_index(units, int(role_indices.get("first_transceiver", -1)))
+	_second_transceiver = _unit_at_index(units, int(role_indices.get("second_transceiver", -1)))
+	_sensor = _unit_at_index(units, int(role_indices.get("sensor", -1)))
+	_jammer = _unit_at_index(units, int(role_indices.get("jammer", -1)))
+
+
+func serialize_tutorial_state() -> Dictionary:
+	var locked := {}
+	for unit in _locked_unit_targets.keys():
+		if not is_instance_valid(unit):
+			continue
+		for role in ["first_transceiver", "second_transceiver", "sensor", "jammer"]:
+			if _unit_for_role(role) == unit:
+				var uv: Vector2 = _locked_unit_targets[unit]
+				locked[role] = {"x": uv.x, "y": uv.y}
+				break
+
+	return {
+		"step": _tutorial_step,
+		"role_indices": _tutorial_role_indices(),
+		"locked_units": locked,
+		"frequency_went_outside_range": _frequency_went_outside_range,
+		"lock_transceiver_frequency": _lock_transceiver_frequency,
+		"lock_jammer_frequency": _lock_jammer_frequency,
+		"original_power": _original_power,
+		"original_height": _original_height,
+		"original_sensor_sensitivity": _original_sensor_sensitivity,
+		"original_sensor_tuning": _original_sensor_tuning,
+	}
+
+
+func restore_tutorial_state(data: Dictionary) -> void:
+	_restore_tutorial_unit_refs(data.get("role_indices", {}))
+
+	_locked_unit_targets.clear()
+	var locked_raw: Dictionary = data.get("locked_units", {})
+	for role in locked_raw.keys():
+		var unit := _unit_for_role(role)
+		if unit == null:
+			continue
+		var pos: Dictionary = locked_raw[role]
+		var world_uv := Vector2(float(pos.get("x", 0.0)), float(pos.get("y", 0.0)))
+		_locked_unit_targets[unit] = world_uv
+		_snap_unit_to_world_uv(unit, world_uv)
+
+	_frequency_went_outside_range = bool(data.get("frequency_went_outside_range", false))
+	_lock_transceiver_frequency = bool(data.get("lock_transceiver_frequency", false))
+	_lock_jammer_frequency = bool(data.get("lock_jammer_frequency", false))
+	_original_power = float(data.get("original_power", 10.0))
+	_original_height = float(data.get("original_height", 10.0))
+	_original_sensor_sensitivity = float(data.get("original_sensor_sensitivity", 10.0))
+	_original_sensor_tuning = float(data.get("original_sensor_tuning", TUTORIAL_FREQUENCY))
+
+	var step := int(data.get("step", TUTORIAL_STEP.WELCOME))
+	_enter_step(step)
+	
+		
 func _connect_tutorial_signals() -> void:
+	if not GameEvents.units_changed.is_connected(_on_units_changed):
+		GameEvents.units_changed.connect(_on_units_changed)
 	if not GameEvents.unit_placed.is_connected(_on_tutorial_unit_placed):
 		GameEvents.unit_placed.connect(_on_tutorial_unit_placed)
 	if GameEvents.has_signal("unit_selected"):
@@ -77,10 +199,69 @@ func _connect_tutorial_signals() -> void:
 		GameEvents.simulation_requested.connect(_on_tutorial_confirm_pressed)
 
 
-func _start_tutorial() -> void:
-	_remove_sandbox_intro_popups()
-	intro_popup_open = false
-	_enter_step(TUTORIAL_STEP.WELCOME)
+func _check_placement(unit: Node, target: Vector2) -> void:
+	if unit == null:
+		return
+
+	if _is_near_target(unit, target):
+		_wrong_placement_popup_open = false
+		_snap_unit_to_world_uv(unit, target)
+		_accept_placement(unit)
+	else:
+		_pending_placement_unit = unit
+		_show_wrong_placement_popup()
+		
+
+func _find_unassigned_unit(unit_id: StringName) -> Node: 
+	for unit in _unit_children(): 
+		if not (unit is Unit and unit.definition): 
+			continue 
+		if unit.definition.id != unit_id: 
+			continue 
+		
+		# Skip units already assigned to tutorial roles 
+		if unit == _first_transceiver: 
+			continue 
+		if unit == _second_transceiver: 
+			continue 
+		if unit == _sensor: 
+			continue 
+		if unit == _jammer: 
+			continue 
+		return unit 
+	return null
+
+
+func _on_units_changed() -> void:
+	match _tutorial_step:
+		TUTORIAL_STEP.PLACE_FIRST_TRANSCEIVER:
+			if _first_transceiver == null:
+				_check_placement(_find_unassigned_unit(UNIT_ID_TRANSCEIVER), FIRST_TRANSCEIVER_POS)
+
+		TUTORIAL_STEP.PLACE_SECOND_TRANSCEIVER:
+			_check_placement(_find_unassigned_unit(UNIT_ID_TRANSCEIVER), SECOND_TRANSCEIVER_POS)
+
+		TUTORIAL_STEP.PLACE_SENSOR:
+			_check_placement(_find_unassigned_unit(UNIT_ID_SENSOR), SENSOR_POS)
+
+		TUTORIAL_STEP.PLACE_JAMMER:
+			_check_placement(_find_unassigned_unit(UNIT_ID_JAMMER), JAMMER_POS)
+
+		TUTORIAL_STEP.MOVE_FIRST_TRANSCEIVER_CLOSER:
+			_check_transceiver_move_target()
+
+					
+func _mark_tutorial_complete() -> void:
+	if not OS.has_feature("web"):
+		return
+	var progress_json := JSON.stringify({"tutorial_complete": true})
+	var js_literal := JSON.stringify(progress_json)
+	JavaScriptBridge.eval(
+		"window.setProgress && window.setProgress(" + js_literal + ")"
+	)
+	var persister := _tutorial_persister()
+	if persister != null:
+		persister.clear_save()
 
 
 func _process(_delta: float) -> void:
@@ -133,6 +314,7 @@ func _enter_step(step: int) -> void:
 		_current_instruction_text = ""
 		_update_repeat_instruction_button_visibility()
 		_show_completion_popup()
+		_mark_tutorial_complete()
 		return
 
 	if TUTORIAL_TEXT.should_run_simulation_on_enter(step):

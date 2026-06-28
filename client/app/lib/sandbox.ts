@@ -24,7 +24,7 @@ import { supabase } from "./supabase";
 
 const isBrowser = typeof window !== "undefined";
 // Keep this in sync with godot-bridge.js's KEY constant.
-const LS_KEY = "sandbox_current";
+const LS_KEY_PREFIX = "sandbox_current";
 const CURRENT_ID = "current";
 // Default mode tag for any caller that doesn't specify one. Lets the rest of
 // the app stay mode-agnostic until a non-sandbox mode actually exists.
@@ -39,22 +39,25 @@ export interface SandboxSlot {
 }
 
 // ── localStorage layer (instant, always available) ──────────────────────
-
-function readLocal(): string {
-  if (!isBrowser) return "";
-  return localStorage.getItem(LS_KEY) ?? "";
+function lsKey(gamemode: string): string {
+  return `${LS_KEY_PREFIX}:${gamemode}`;
 }
 
-function writeLocal(json: string) {
-  if (isBrowser) localStorage.setItem(LS_KEY, json);
+function readLocal(gamemode: string = DEFAULT_GAMEMODE): string {
+  if (!isBrowser) return "";
+  return localStorage.getItem(lsKey(gamemode)) ?? "";
+}
+
+function writeLocal(json: string, gamemode: string = DEFAULT_GAMEMODE) {
+  if (isBrowser) localStorage.setItem(lsKey(gamemode), json);
 }
 
 export const currentSandbox = signal<string>(readLocal());
 
 // ── Public API ──────────────────────────────────────────────────────────
 
-export function getCurrent(): string {
-  return readLocal();
+export function getCurrent(gamemode: string = DEFAULT_GAMEMODE): string {
+  return readLocal(gamemode);
 }
 
 export async function setCurrent(
@@ -62,7 +65,7 @@ export async function setCurrent(
   gamemode: string = DEFAULT_GAMEMODE,
 ): Promise<void> {
   currentSandbox.value = stateJson;
-  writeLocal(stateJson);
+  writeLocal(stateJson, gamemode);
   await persistCurrent(stateJson, gamemode);
 }
 
@@ -104,7 +107,7 @@ export async function saveAsSlot(
   gamemode: string = DEFAULT_GAMEMODE,
 ): Promise<string> {
   if (!isBrowser) throw new Error("saveAsSlot called outside browser");
-  const json = readLocal();
+  const json = readLocal(gamemode);
   if (!json) throw new Error("No live sandbox to snapshot");
   const id = crypto.randomUUID();
   await db.sandboxStates.put({
@@ -121,13 +124,16 @@ export async function saveAsSlot(
 
 // Overwrite an existing named slot's state with the current live snapshot.
 // Keeps the slot's id and name; bumps updated_at so syncAll wins last-writer.
-export async function overrideSlot(id: string): Promise<void> {
+export async function overrideSlot(
+  id: string,
+  gamemode: string = DEFAULT_GAMEMODE,
+): Promise<void> {
   if (!isBrowser || id === CURRENT_ID) {
     throw new Error("Cannot override the auto-save slot");
   }
   const existing = await db.sandboxStates.get(id);
   if (!existing) throw new Error("Slot not found");
-  const json = readLocal();
+  const json = readLocal(gamemode);
   if (!json) throw new Error("No live sandbox to snapshot");
   await db.sandboxStates.put({
     id,
@@ -300,7 +306,7 @@ if (isBrowser) {
     const detail = (e as CustomEvent<{ json: string; mode?: string }>).detail;
     const json = detail?.json ?? "";
     const mode = detail?.mode ?? DEFAULT_GAMEMODE;
-    currentSandbox.value = json;
+    if (mode === DEFAULT_GAMEMODE) currentSandbox.value = json;
     void persistCurrent(json, mode);
   });
 
