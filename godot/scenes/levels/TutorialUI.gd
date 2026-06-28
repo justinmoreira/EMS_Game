@@ -12,8 +12,10 @@ var completion_popup: Control = null
 var placement_marker: Control = null
 var placement_marker_world_uv := Vector2.ZERO
 
+
 func _init(p_level: Node) -> void:
 	level = p_level
+
 
 func create_repeat_instruction_button() -> void:
 	if repeat_instruction_button != null and is_instance_valid(repeat_instruction_button):
@@ -43,29 +45,32 @@ func create_repeat_instruction_button() -> void:
 	repeat_instruction_button = button
 	update_repeat_instruction_button_visibility()
 
+
 func update_repeat_instruction_button_visibility() -> void:
 	if repeat_instruction_button == null or not is_instance_valid(repeat_instruction_button):
 		return
 
-	var has_instruction : bool = not level._current_instruction_text.strip_edges().is_empty()
-	var tutorial_finished : bool = level._tutorial_step == level.TUTORIAL_STEP.COMPLETE
+	var has_instruction: bool = not level._current_instruction_text.strip_edges().is_empty()
+	var tutorial_finished: bool = level._tutorial_step == level.TUTORIAL_STEP.COMPLETE
 	repeat_instruction_button.visible = (
 		has_instruction and not level.intro_popup_open and not tutorial_finished
 	)
+
 
 func _on_repeat_instruction_button_pressed() -> void:
 	if level.intro_popup_open:
 		return
 
-	var text : String = level._current_instruction_text.strip_edges()
+	var text: String = level._current_instruction_text.strip_edges()
 	if text.is_empty():
-		var data : Dictionary = level._step_data(level._tutorial_step)
+		var data: Dictionary = level._step_data(level._tutorial_step)
 		text = str(data.get("text", "")).strip_edges()
 
 	if text.is_empty():
 		return
 
 	show_repeat_instruction_popup(text)
+
 
 func show_repeat_instruction_popup(text: String) -> void:
 	TutorialUtils.remove_sandbox_intro_popups(level.get_tree())
@@ -89,6 +94,7 @@ func show_repeat_instruction_popup(text: String) -> void:
 			update_repeat_instruction_button_visibility()
 	)
 
+
 func show_popup(text: String, next_step: int = -1) -> void:
 	TutorialUtils.remove_sandbox_intro_popups(level.get_tree())
 	if level.intro_popup_open:
@@ -96,6 +102,7 @@ func show_popup(text: String, next_step: int = -1) -> void:
 	popup_history.append({"text": text, "next_step": next_step})
 	popup_history_index = popup_history.size() - 1
 	display_popup_history_entry()
+
 
 func display_popup_history_entry() -> void:
 	TutorialUtils.remove_sandbox_intro_popups(level.get_tree())
@@ -122,12 +129,14 @@ func display_popup_history_entry() -> void:
 			update_repeat_instruction_button_visibility()
 	)
 
+
 func _on_popup_previous_requested() -> void:
 	level.intro_popup_open = false
 	if popup_history_index <= 0:
 		return
 	popup_history_index -= 1
 	call_deferred("display_popup_history_entry")
+
 
 func _on_popup_next_requested() -> void:
 	level.intro_popup_open = false
@@ -147,6 +156,7 @@ func _on_popup_next_requested() -> void:
 	if not level._attributes_for_current_step().is_empty():
 		level.call_deferred("_restore_current_edit_state")
 
+
 func has_tutorial_popup_open() -> bool:
 	if not level.has_node("CanvasLayer"):
 		return false
@@ -155,6 +165,7 @@ func has_tutorial_popup_open() -> bool:
 		if child_name.contains("tutorial") and child_name.contains("popup"):
 			return true
 	return false
+
 
 func show_completion_popup() -> void:
 	TutorialUtils.remove_sandbox_intro_popups(level.get_tree())
@@ -170,6 +181,7 @@ func show_completion_popup() -> void:
 			level.intro_popup_open = false
 			update_repeat_instruction_button_visibility()
 	)
+
 
 func show_placement_marker(world_uv: Vector2, label_text: String) -> void:
 	clear_placement_marker()
@@ -196,17 +208,22 @@ func show_placement_marker(world_uv: Vector2, label_text: String) -> void:
 	placement_marker_world_uv = world_uv
 	position_placement_marker()
 
+
 func position_placement_marker() -> void:
 	if placement_marker == null or not is_instance_valid(placement_marker):
 		return
-	var global_pos: Vector2 = level.global_position + level.world_uv_to_screen(placement_marker_world_uv)
+	var global_pos: Vector2 = (
+		level.global_position + level.world_uv_to_screen(placement_marker_world_uv)
+	)
 	var container_local: Vector2 = global_pos - level.map_container.global_position
 	placement_marker.position = container_local - placement_marker.custom_minimum_size * 0.5
+
 
 func clear_placement_marker() -> void:
 	if placement_marker != null and is_instance_valid(placement_marker):
 		placement_marker.queue_free()
 	placement_marker = null
+
 
 func show_wrong_placement_popup() -> void:
 	if level._wrong_placement_popup_open:

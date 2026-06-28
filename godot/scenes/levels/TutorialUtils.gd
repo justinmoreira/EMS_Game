@@ -1,14 +1,18 @@
 class_name TutorialUtils
 extends RefCounted
 
+
 static func is_transceiver(unit: Node) -> bool:
 	return unit_matches(unit, "transceiver", "transceivers")
+
 
 static func is_sensor(unit: Node) -> bool:
 	return unit_matches(unit, "sensor", "sensors")
 
+
 static func is_jammer(unit: Node) -> bool:
 	return unit_matches(unit, "jammer", "jammers")
+
 
 static func unit_matches(unit: Node, name_text: String, group_name: String) -> bool:
 	if unit == null:
@@ -22,6 +26,7 @@ static func unit_matches(unit: Node, name_text: String, group_name: String) -> b
 		if child.name.to_lower().contains(name_text):
 			return true
 	return false
+
 
 static func read_number_from_unit(unit: Node, possible_names: Array, fallback: float) -> float:
 	if unit == null or not is_instance_valid(unit):
@@ -42,6 +47,7 @@ static func read_number_from_unit(unit: Node, possible_names: Array, fallback: f
 				return variant_to_float(child_value, fallback)
 	return fallback
 
+
 static func variant_to_float(value: Variant, fallback: float) -> float:
 	if value == null:
 		return fallback
@@ -49,6 +55,7 @@ static func variant_to_float(value: Variant, fallback: float) -> float:
 		return float(value)
 	var text := str(value)
 	return text.to_float() if text.is_valid_float() else fallback
+
 
 static func set_number_on_unit(unit: Node, possible_names: Array, new_value: float) -> void:
 	if unit == null or not is_instance_valid(unit):
@@ -70,6 +77,7 @@ static func set_number_on_unit(unit: Node, possible_names: Array, new_value: flo
 				child.set(property_name, new_value)
 				return
 
+
 static func find_node_by_name(root: Node, wanted_name: String) -> Node:
 	if root == null:
 		return null
@@ -81,9 +89,11 @@ static func find_node_by_name(root: Node, wanted_name: String) -> Node:
 			return found
 	return null
 
+
 static func remove_sandbox_intro_popups(tree: SceneTree) -> void:
 	if tree != null:
 		remove_sandbox_intro_popups_recursive(tree.root)
+
 
 static func remove_sandbox_intro_popups_recursive(node: Node) -> void:
 	if node == null:
@@ -92,6 +102,7 @@ static func remove_sandbox_intro_popups_recursive(node: Node) -> void:
 		remove_sandbox_intro_popups_recursive(child)
 		if is_sandbox_intro_popup(child):
 			child.queue_free()
+
 
 static func is_sandbox_intro_popup(node: Node) -> bool:
 	if node == null:
@@ -107,6 +118,7 @@ static func is_sandbox_intro_popup(node: Node) -> bool:
 		var script_path := str(script.resource_path).to_lower()
 		return script_path.contains("sandbox") and script_path.contains("intro")
 	return false
+
 
 static func get_unit_position(unit: Node) -> Vector2:
 	if unit is Node2D or unit is Control:

@@ -57,11 +57,13 @@ func _ready() -> void:
 	if not _has_tutorial_persister():
 		call_deferred("start_fresh")
 
+
 func _has_tutorial_persister() -> bool:
 	for child in get_children():
 		if child is TutorialPersister:
 			return true
 	return false
+
 
 func _tutorial_persister() -> TutorialPersister:
 	for child in get_children():
@@ -69,10 +71,12 @@ func _tutorial_persister() -> TutorialPersister:
 			return child
 	return null
 
+
 func start_fresh() -> void:
 	TutorialUtils.remove_sandbox_intro_popups(get_tree())
 	intro_popup_open = false
 	_enter_step(TUTORIAL_STEP.WELCOME)
+
 
 func _unit_children() -> Array:
 	var units := []
@@ -81,10 +85,12 @@ func _unit_children() -> Array:
 			units.append(child)
 	return units
 
+
 func _unit_at_index(units: Array, idx: int) -> Node:
 	if idx >= 0 and idx < units.size():
 		return units[idx]
 	return null
+
 
 func _unit_for_role(role: String) -> Node:
 	match role:
@@ -99,6 +105,7 @@ func _unit_for_role(role: String) -> Node:
 		_:
 			return null
 
+
 func _tutorial_role_indices() -> Dictionary:
 	var units := _unit_children()
 	var indices := {}
@@ -108,12 +115,14 @@ func _tutorial_role_indices() -> Dictionary:
 			indices[role] = units.find(unit)
 	return indices
 
+
 func _restore_tutorial_unit_refs(role_indices: Dictionary) -> void:
 	var units := _unit_children()
 	_first_transceiver = _unit_at_index(units, int(role_indices.get("first_transceiver", -1)))
 	_second_transceiver = _unit_at_index(units, int(role_indices.get("second_transceiver", -1)))
 	_sensor = _unit_at_index(units, int(role_indices.get("sensor", -1)))
 	_jammer = _unit_at_index(units, int(role_indices.get("jammer", -1)))
+
 
 func serialize_tutorial_state() -> Dictionary:
 	var locked := {}
@@ -139,6 +148,7 @@ func serialize_tutorial_state() -> Dictionary:
 		"original_sensor_tuning": _original_sensor_tuning,
 	}
 
+
 func restore_tutorial_state(data: Dictionary) -> void:
 	_restore_tutorial_unit_refs(data.get("role_indices", {}))
 	_locked_unit_targets.clear()
@@ -163,6 +173,7 @@ func restore_tutorial_state(data: Dictionary) -> void:
 	var step := int(data.get("step", TUTORIAL_STEP.WELCOME))
 	_enter_step(step)
 
+
 func _connect_tutorial_signals() -> void:
 	if not GameEvents.units_changed.is_connected(_on_units_changed):
 		GameEvents.units_changed.connect(_on_units_changed)
@@ -177,6 +188,7 @@ func _connect_tutorial_signals() -> void:
 	if not GameEvents.simulation_requested.is_connected(_on_tutorial_confirm_pressed):
 		GameEvents.simulation_requested.connect(_on_tutorial_confirm_pressed)
 
+
 func _check_placement(unit: Node, target: Vector2) -> void:
 	if unit == null:
 		return
@@ -187,6 +199,7 @@ func _check_placement(unit: Node, target: Vector2) -> void:
 	else:
 		_pending_placement_unit = unit
 		_ui.show_wrong_placement_popup()
+
 
 func _find_unassigned_unit(unit_id: StringName) -> Node:
 	for unit in _unit_children():
@@ -205,6 +218,7 @@ func _find_unassigned_unit(unit_id: StringName) -> Node:
 		return unit
 	return null
 
+
 func _on_units_changed() -> void:
 	match _tutorial_step:
 		TUTORIAL_STEP.PLACE_FIRST_TRANSCEIVER:
@@ -219,6 +233,7 @@ func _on_units_changed() -> void:
 		TUTORIAL_STEP.MOVE_FIRST_TRANSCEIVER_CLOSER:
 			_check_transceiver_move_target()
 
+
 func _mark_tutorial_complete() -> void:
 	if not OS.has_feature("web"):
 		return
@@ -228,6 +243,7 @@ func _mark_tutorial_complete() -> void:
 	var persister := _tutorial_persister()
 	if persister != null:
 		persister.clear_save()
+
 
 func _process(_delta: float) -> void:
 	TutorialUtils.remove_sandbox_intro_popups(get_tree())
@@ -241,15 +257,18 @@ func _process(_delta: float) -> void:
 	if _lock_jammer_frequency:
 		TutorialUtils.set_number_on_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
 
+
 func _input(event: InputEvent) -> void:
 	if intro_popup_open:
 		return
 	super._input(event)
 
+
 func _unhandled_input(event: InputEvent) -> void:
 	if intro_popup_open:
 		return
 	super._unhandled_input(event)
+
 
 func _generate_terrain(w: int, h: int) -> Array:
 	var noise := FastNoiseLite.new()
@@ -263,6 +282,7 @@ func _generate_terrain(w: int, h: int) -> Array:
 			var n := noise.get_noise_2d(float(x), float(y))
 			grid[x].append((n + 1.0) * 0.5 * 500.0)
 	return grid
+
 
 func _enter_step(step: int) -> void:
 	TutorialUtils.remove_sandbox_intro_popups(get_tree())
@@ -300,6 +320,7 @@ func _enter_step(step: int) -> void:
 
 	_ui.update_repeat_instruction_button_visibility()
 	_say([data.get("text", "")], int(data.get("next", -1)))
+
 
 func _restore_current_edit_state() -> void:
 	_edit_refresh_generation += 1
@@ -339,11 +360,14 @@ func _restore_current_edit_state() -> void:
 
 	_tutorial_selection_refreshing = false
 
+
 func _edit_refresh_is_stale(refresh_generation: int, requested_step: int) -> bool:
 	return refresh_generation != _edit_refresh_generation or requested_step != _tutorial_step
 
+
 func _can_restore_edit_state(unit: Node, attributes: Array) -> bool:
 	return unit != null and is_instance_valid(unit) and not attributes.is_empty()
+
 
 func _apply_step_start_side_effects(step: int) -> void:
 	match step:
@@ -353,13 +377,21 @@ func _apply_step_start_side_effects(step: int) -> void:
 			_lock_transceiver_frequencies()
 			_run_simulation_if_possible()
 		TUTORIAL_STEP.EXPLAIN_POWER:
-			_original_power = TutorialUtils.read_number_from_unit(_first_transceiver, ["power"], 10.0)
+			_original_power = TutorialUtils.read_number_from_unit(
+				_first_transceiver, ["power"], 10.0
+			)
 		TUTORIAL_STEP.EXPLAIN_HEIGHT:
-			_original_height = TutorialUtils.read_number_from_unit(_first_transceiver, ["height"], 10.0)
+			_original_height = TutorialUtils.read_number_from_unit(
+				_first_transceiver, ["height"], 10.0
+			)
 		TUTORIAL_STEP.EXPLAIN_SENSOR_SENSITIVITY:
-			_original_sensor_sensitivity = TutorialUtils.read_number_from_unit(_sensor, ["sensitivity", "detection_sensitivity"], 10.0)
+			_original_sensor_sensitivity = TutorialUtils.read_number_from_unit(
+				_sensor, ["sensitivity", "detection_sensitivity"], 10.0
+			)
 		TUTORIAL_STEP.EXPLAIN_SENSOR_TUNING:
-			_original_sensor_tuning = TutorialUtils.read_number_from_unit(_sensor, ["tuning_frequency"], TUTORIAL_FREQUENCY)
+			_original_sensor_tuning = TutorialUtils.read_number_from_unit(
+				_sensor, ["tuning_frequency"], TUTORIAL_FREQUENCY
+			)
 		TUTORIAL_STEP.CHANGE_JAMMER_FREQUENCY_AWAY:
 			_lock_jammer_frequency = false
 			TutorialUtils.set_number_on_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
@@ -367,13 +399,16 @@ func _apply_step_start_side_effects(step: int) -> void:
 		_:
 			pass
 
+
 func _step_data(step: int) -> Dictionary:
 	return TUTORIAL_TEXT.step_data(step)
+
 
 func _on_tutorial_unit_placed(unit: Node) -> void:
 	var target = _placement_target_for_current_step(unit)
 	if target != null:
 		_handle_placement(unit, target)
+
 
 func _placement_target_for_current_step(unit: Node) -> Variant:
 	match _tutorial_step:
@@ -388,6 +423,7 @@ func _placement_target_for_current_step(unit: Node) -> Variant:
 		_:
 			return null
 
+
 func _handle_placement(unit: Node, target_position: Vector2) -> void:
 	if _is_near_target(unit, target_position):
 		_wrong_placement_popup_open = false
@@ -396,6 +432,7 @@ func _handle_placement(unit: Node, target_position: Vector2) -> void:
 		return
 	_pending_placement_unit = unit
 	_ui.show_wrong_placement_popup()
+
 
 func _check_pending_placement() -> void:
 	if intro_popup_open or _pending_placement_unit == null:
@@ -414,6 +451,7 @@ func _check_pending_placement() -> void:
 		_snap_unit_to_world_uv(_pending_placement_unit, target)
 		_accept_placement(_pending_placement_unit)
 
+
 func _check_transceiver_move_target() -> void:
 	if intro_popup_open:
 		return
@@ -426,6 +464,7 @@ func _check_transceiver_move_target() -> void:
 		_lock_unit_to(_first_transceiver, FIRST_TRANSCEIVER_GREEN_POS)
 		_run_simulation_if_possible()
 		_enter_step(TUTORIAL_STEP.EXPLAIN_SUCCESSFUL_LINK)
+
 
 func _accept_placement(unit: Node) -> void:
 	_pending_placement_unit = null
@@ -452,6 +491,7 @@ func _accept_placement(unit: Node) -> void:
 			_lock_unit_to(unit, JAMMER_POS)
 			_run_simulation_if_possible()
 			_enter_step(TUTORIAL_STEP.CHANGE_JAMMER_FREQUENCY_AWAY)
+
 
 func _on_tutorial_unit_selected(unit: Node) -> void:
 	if _tutorial_selection_refreshing:
@@ -487,31 +527,58 @@ func _on_tutorial_unit_selected(unit: Node) -> void:
 		_selected_tutorial_unit = unit
 		_lock_all_attributes()
 
+
 func _on_tutorial_confirm_pressed() -> void:
 	match _tutorial_step:
 		TUTORIAL_STEP.CHANGE_FREQUENCY_AWAY:
-			var value := TutorialUtils.read_number_from_unit(_first_transceiver, ["frequency"], TUTORIAL_FREQUENCY)
+			var value := TutorialUtils.read_number_from_unit(
+				_first_transceiver, ["frequency"], TUTORIAL_FREQUENCY
+			)
 			if _outside_match_range(value):
 				_frequency_went_outside_range = true
 				_run_simulation_if_possible()
 				_say([TUTORIAL_TEXT.frequency_outside_text()], TUTORIAL_STEP.CHANGE_FREQUENCY_BACK)
 		TUTORIAL_STEP.CHANGE_FREQUENCY_BACK:
-			var value := TutorialUtils.read_number_from_unit(_first_transceiver, ["frequency"], TUTORIAL_FREQUENCY)
+			var value := TutorialUtils.read_number_from_unit(
+				_first_transceiver, ["frequency"], TUTORIAL_FREQUENCY
+			)
 			if _frequency_went_outside_range and _inside_match_range(value):
 				_lock_transceiver_frequencies()
 				_lock_transceiver_frequency = true
 				_run_simulation_if_possible()
 				_say([TUTORIAL_TEXT.frequency_restored_text()], TUTORIAL_STEP.EXPLAIN_POWER)
 		TUTORIAL_STEP.LOWER_POWER:
-			_confirm_number_less(_first_transceiver, ["power"], _original_power, TUTORIAL_STEP.RAISE_POWER)
+			_confirm_number_less(
+				_first_transceiver, ["power"], _original_power, TUTORIAL_STEP.RAISE_POWER
+			)
 		TUTORIAL_STEP.RAISE_POWER:
-			_confirm_number_at_least(_first_transceiver, ["power"], _original_power, [TUTORIAL_TEXT.power_restored_text()], TUTORIAL_STEP.EXPLAIN_HEIGHT)
+			_confirm_number_at_least(
+				_first_transceiver,
+				["power"],
+				_original_power,
+				[TUTORIAL_TEXT.power_restored_text()],
+				TUTORIAL_STEP.EXPLAIN_HEIGHT
+			)
 		TUTORIAL_STEP.INCREASE_HEIGHT:
-			_confirm_number_greater(_first_transceiver, ["height"], _original_height, [TUTORIAL_TEXT.height_increased_text()], TUTORIAL_STEP.INTRO_SENSOR)
+			_confirm_number_greater(
+				_first_transceiver,
+				["height"],
+				_original_height,
+				[TUTORIAL_TEXT.height_increased_text()],
+				TUTORIAL_STEP.INTRO_SENSOR
+			)
 		TUTORIAL_STEP.LOWER_SENSOR_SENSITIVITY:
-			_confirm_number_less(_sensor, ["sensitivity", "detection_sensitivity"], _original_sensor_sensitivity, TUTORIAL_STEP.EXPLAIN_SENSOR_TUNING, [TUTORIAL_TEXT.sensitivity_lowered_text()])
+			_confirm_number_less(
+				_sensor,
+				["sensitivity", "detection_sensitivity"],
+				_original_sensor_sensitivity,
+				TUTORIAL_STEP.EXPLAIN_SENSOR_TUNING,
+				[TUTORIAL_TEXT.sensitivity_lowered_text()]
+			)
 		TUTORIAL_STEP.CHANGE_SENSOR_TUNING_AWAY:
-			var tuning := TutorialUtils.read_number_from_unit(_sensor, ["tuning_frequency"], TUTORIAL_FREQUENCY)
+			var tuning := TutorialUtils.read_number_from_unit(
+				_sensor, ["tuning_frequency"], TUTORIAL_FREQUENCY
+			)
 			if abs(tuning - _original_sensor_tuning) >= FREQUENCY_TOLERANCE:
 				_run_simulation_if_possible()
 				_say([TUTORIAL_TEXT.sensor_tuning_changed_text()], TUTORIAL_STEP.EXPLAIN_BANDWIDTH)
@@ -519,19 +586,29 @@ func _on_tutorial_confirm_pressed() -> void:
 			_run_simulation_if_possible()
 			_say([TUTORIAL_TEXT.bandwidth_increased_text()], TUTORIAL_STEP.INTRO_JAMMER)
 		TUTORIAL_STEP.CHANGE_JAMMER_FREQUENCY_AWAY:
-			var value := TutorialUtils.read_number_from_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
+			var value := TutorialUtils.read_number_from_unit(
+				_jammer, ["frequency"], TUTORIAL_FREQUENCY
+			)
 			if _outside_match_range(value):
 				_run_simulation_if_possible()
-				_say([TUTORIAL_TEXT.jammer_moved_away_text()], TUTORIAL_STEP.CHANGE_JAMMER_FREQUENCY_BACK)
+				_say(
+					[TUTORIAL_TEXT.jammer_moved_away_text()],
+					TUTORIAL_STEP.CHANGE_JAMMER_FREQUENCY_BACK
+				)
 		TUTORIAL_STEP.CHANGE_JAMMER_FREQUENCY_BACK:
-			var value := TutorialUtils.read_number_from_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
+			var value := TutorialUtils.read_number_from_unit(
+				_jammer, ["frequency"], TUTORIAL_FREQUENCY
+			)
 			if _inside_match_range(value):
 				_lock_jammer_frequency = true
 				TutorialUtils.set_number_on_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
 				_run_simulation_if_possible()
 				_say([TUTORIAL_TEXT.jammer_restored_text()], TUTORIAL_STEP.INTRO_DISPLAY_SETTINGS)
 
-func _confirm_number_less(unit: Node, fields: Array, original: float, next_step: int, message: Array = []) -> void:
+
+func _confirm_number_less(
+	unit: Node, fields: Array, original: float, next_step: int, message: Array = []
+) -> void:
 	if TutorialUtils.read_number_from_unit(unit, fields, original) < original:
 		_run_simulation_if_possible()
 		if message.is_empty():
@@ -539,17 +616,29 @@ func _confirm_number_less(unit: Node, fields: Array, original: float, next_step:
 		else:
 			_say(message, next_step)
 
-func _confirm_number_greater(unit: Node, fields: Array, original: float, message: Array, next_step: int) -> void:
+
+func _confirm_number_greater(
+	unit: Node, fields: Array, original: float, message: Array, next_step: int
+) -> void:
 	if TutorialUtils.read_number_from_unit(unit, fields, original) > original:
 		_run_simulation_if_possible()
 		_say(message, next_step)
 
-func _confirm_number_at_least(unit: Node, fields: Array, original: float, message: Array, next_step: int) -> void:
+
+func _confirm_number_at_least(
+	unit: Node, fields: Array, original: float, message: Array, next_step: int
+) -> void:
 	if TutorialUtils.read_number_from_unit(unit, fields, original) >= original:
 		_run_simulation_if_possible()
 		_say(message, next_step)
 
-func _setup(sidebar_ids: Array = [], attributes: Array = [], marker_pos: Variant = null, marker_label: String = "") -> void:
+
+func _setup(
+	sidebar_ids: Array = [],
+	attributes: Array = [],
+	marker_pos: Variant = null,
+	marker_label: String = ""
+) -> void:
 	if sidebar_ids.is_empty():
 		_unlock_sidebar()
 	else:
@@ -560,14 +649,18 @@ func _setup(sidebar_ids: Array = [], attributes: Array = [], marker_pos: Variant
 	else:
 		_ui.clear_placement_marker()
 
+
 func _apply_attribute_filter(attributes: Array) -> void:
 	_lock_attributes(attributes)
+
 
 func _lock_all_attributes() -> void:
 	_apply_attribute_filter([LOCK_ALL_ATTRIBUTES])
 
+
 func _attributes_for_current_step() -> Array:
 	return TUTORIAL_TEXT.attributes_for_step(_tutorial_step)
+
 
 func _expected_edit_unit_for_current_step() -> Node:
 	match TUTORIAL_TEXT.edit_target_for_step(_tutorial_step):
@@ -580,8 +673,10 @@ func _expected_edit_unit_for_current_step() -> Node:
 		_:
 			return null
 
+
 func _say(parts: Array, next_step: int = -1) -> void:
 	_ui.show_popup(_join_text(parts), next_step)
+
 
 func _join_text(parts: Array) -> String:
 	var text := ""
@@ -589,12 +684,14 @@ func _join_text(parts: Array) -> String:
 		text += str(part)
 	return text
 
+
 func _is_near_target(unit: Node, world_uv: Vector2, tolerance: float = PLACEMENT_TOLERANCE) -> bool:
 	if unit == null or not is_instance_valid(unit):
 		return false
 	var target := global_position + world_uv_to_screen(world_uv)
 	var unit_pos := TutorialUtils.get_unit_position(unit)
 	return unit_pos.distance_to(target) <= tolerance
+
 
 func _snap_unit_to_world_uv(unit: Node, world_uv: Vector2) -> void:
 	if unit == null or not is_instance_valid(unit):
@@ -609,15 +706,18 @@ func _snap_unit_to_world_uv(unit: Node, world_uv: Vector2) -> void:
 	if unit is Unit:
 		unit.set_value(&"world_uv", world_uv)
 
+
 func _lock_unit_to(unit: Node, world_uv: Vector2) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
 	_locked_unit_targets[unit] = world_uv
 	_snap_unit_to_world_uv(unit, world_uv)
 
+
 func _unlock_unit(unit: Node) -> void:
 	if unit != null and _locked_unit_targets.has(unit):
 		_locked_unit_targets.erase(unit)
+
 
 func _lock_placed_units() -> void:
 	for unit in _locked_unit_targets.keys():
@@ -626,35 +726,49 @@ func _lock_placed_units() -> void:
 			continue
 		_snap_unit_to_world_uv(unit, _locked_unit_targets[unit])
 
+
 func _outside_match_range(value: float) -> bool:
 	return abs(value - TUTORIAL_FREQUENCY) > FREQUENCY_TOLERANCE
 
+
 func _inside_match_range(value: float) -> bool:
 	return abs(value - TUTORIAL_FREQUENCY) <= FREQUENCY_TOLERANCE
+
 
 func _lock_transceiver_frequencies() -> void:
 	TutorialUtils.set_number_on_unit(_first_transceiver, ["frequency"], TUTORIAL_FREQUENCY)
 	TutorialUtils.set_number_on_unit(_second_transceiver, ["frequency"], TUTORIAL_FREQUENCY)
 
+
 func _lock_sidebar_to(ids: Array) -> void:
 	GameEvents.tutorial_filter_sidebar.emit(ids)
+
 
 func _unlock_sidebar() -> void:
 	GameEvents.tutorial_filter_sidebar.emit([])
 
+
 func _lock_attributes(attributes: Array) -> void:
 	GameEvents.tutorial_filter_attributes.emit(attributes)
+
 
 func _run_simulation_if_possible() -> void:
 	if SimulationManager:
 		SimulationManager.simulate()
 
+
 func _is_tutorial_map_unit(unit: Node) -> bool:
-	return TutorialUtils.is_transceiver(unit) or TutorialUtils.is_sensor(unit) or TutorialUtils.is_jammer(unit)
+	return (
+		TutorialUtils.is_transceiver(unit)
+		or TutorialUtils.is_sensor(unit)
+		or TutorialUtils.is_jammer(unit)
+	)
+
 
 func _begin_display_setting_trial(setting_key: String) -> void:
 	_waiting_display_setting_key = setting_key
 	_waiting_display_setting_original = _read_hud_setting(setting_key, null)
+
 
 func _check_display_setting_change() -> void:
 	if intro_popup_open or _waiting_display_setting_key == "":
@@ -674,6 +788,7 @@ func _check_display_setting_change() -> void:
 	var result := TUTORIAL_TEXT.display_setting_result(completed_key, _tutorial_step)
 	_say([result.get("text", "Good. That display setting changed.")], result.get("next", -1))
 
+
 func _read_hud_setting(setting_key: String, fallback: Variant = null) -> Variant:
 	var hud := TutorialUtils.find_node_by_name(get_tree().root, "HUD")
 	if hud == null:
@@ -689,6 +804,7 @@ func _read_hud_setting(setting_key: String, fallback: Variant = null) -> Variant
 		if button_pressed != null:
 			return bool(button_pressed)
 	return fallback
+
 
 func _display_toggle_node_names(setting_key: String) -> Array[String]:
 	return TUTORIAL_TEXT.display_toggle_node_names(setting_key)
