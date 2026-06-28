@@ -1,0 +1,76 @@
+[gd_scene format=3 uid="uid://spbhfekeloky"]
+
+[ext_resource type="PackedScene" uid="uid://cscdegdlpq00e" path="res://scenes/core/BaseLevel.tscn" id="1_kapnp"]
+[ext_resource type="Script" uid="uid://cytqvcfri4rbe" path="res://scenes/enemy-hunter/enemy-hunter.gd" id="2_v6n6w"]
+[ext_resource type="Shader" uid="uid://ccadptf4j2ywd" path="res://shaders/ContourLine.gdshader" id="3_sc0sq"]
+[ext_resource type="PackedScene" path="res://scenes/core/units/TransceiverUnit.tscn" id="4_v3l5i"]
+[ext_resource type="PackedScene" path="res://scenes/core/units/JammerUnit.tscn" id="5_v6n6w"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_l1"]
+shader = ExtResource("3_sc0sq")
+shader_parameter/zoom = 1.0
+shader_parameter/offset = Vector2(0, 0)
+shader_parameter/aspect_ratio = 1.0
+shader_parameter/color_low = Color(0, 0, 0, 1)
+shader_parameter/color_mid = Color(0, 0, 0, 1)
+shader_parameter/color_high = Color(0, 0, 0, 1)
+shader_parameter/water_color = Color(0, 0, 0, 1)
+shader_parameter/max_height = 500.0
+shader_parameter/sea_level = 100.0
+shader_parameter/low_point = 0.3
+shader_parameter/mid_point = 0.6
+shader_parameter/high_point = 0.85
+shader_parameter/gray_mode = false
+shader_parameter/gray_mode_color = Color(0, 0, 0, 1)
+shader_parameter/contour_interval = 50.0
+shader_parameter/line_thickness = 1.0
+shader_parameter/line_color = Color(0, 0, 0, 0.6)
+
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_pb6d8"]
+
+[node name="Level3" unique_id=1441387089 instance=ExtResource("1_kapnp")]
+script = ExtResource("2_v6n6w")
+
+[node name="BackgroundTexture" parent="." index="0" unique_id=2008967764]
+material = SubResource("ShaderMaterial_l1")
+texture = SubResource("PlaceholderTexture2D_pb6d8")
+expand_mode = 2
+
+[node name="Sidebar" parent="CanvasLayer/Control" parent_id_path=PackedInt32Array(860915758) index="0" unique_id=831222554]
+size_flags_horizontal = 1
+size_flags_vertical = 1
+
+[node name="TransceiverUnit" parent="." index="3" unique_id=2117697803 instance=ExtResource("4_v3l5i")]
+visible = false
+position = Vector2(1605, 693)
+frequency = 200.0
+is_immovable = true
+is_removable = false
+
+[node name="TransceiverUnit2" parent="." index="4" unique_id=1393893384 instance=ExtResource("4_v3l5i")]
+visible = false
+position = Vector2(1496, 839)
+frequency = 200.0
+is_immovable = true
+is_removable = false
+
+[node name="JammerUnit" parent="." index="5" unique_id=1423769516 instance=ExtResource("5_v6n6w")]
+visible = false
+position = Vector2(639, 317)
+frequency = 1500.0
+is_immovable = true
+is_removable = false
+
+[node name="JammerUnit2" parent="." index="6" unique_id=938633145 instance=ExtResource("5_v6n6w")]
+visible = false
+position = Vector2(755, 604)
+frequency = 2500.0
+is_immovable = true
+is_removable = false
+
+[node name="JammerUnit3" parent="." index="7" unique_id=1872076416 instance=ExtResource("5_v6n6w")]
+visible = false
+position = Vector2(956, 298)
+frequency = 500.0
+is_immovable = true
+is_removable = false

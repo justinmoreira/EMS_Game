@@ -1,15 +1,15 @@
 [gd_scene format=3 uid="uid://bv7hog3yvvesb"]
 
-[ext_resource type="Script" uid="uid://b4gpau4rlxmkd" path="res://scenes/ui/SandboxIntroPopup.gd" id="1"]
+[ext_resource type="Script" uid="uid://b4gpau4rlxmkd" path="res://scenes/ui/IntroPopup.gd" id="1_iumml"]
 
-[node name="SandboxIntroPopup" type="Control" unique_id=594745470]
+[node name="IntroPopup" type="Control" unique_id=594745470]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1")
+script = ExtResource("1_iumml")
 
 [node name="Dim" type="ColorRect" parent="." unique_id=1883281244]
 layout_mode = 1
@@ -44,12 +44,13 @@ layout_mode = 2
 theme_override_constants/separation = 16
 
 [node name="Title" type="Label" parent="CenterContainer/Panel/Margin/VBox" unique_id=1841829086]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
-text = "Sandbox Mode"
 horizontal_alignment = 1
 
 [node name="Body" type="RichTextLabel" parent="CenterContainer/Panel/Margin/VBox" unique_id=92805605]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 220)
 layout_mode = 2
 size_flags_vertical = 3
@@ -71,4 +72,4 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 size_flags_horizontal = 4
-text = "Continue"
+text = "Continute"

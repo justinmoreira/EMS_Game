@@ -60,13 +60,19 @@ export default defineConfig({
           '**/*.{js,wasm,pck,css,html,svg,png,ico,woff2,json}',
         ],
         navigateFallback: '/',
-        // Don't let the SW intercept navigations to the game routes — it
-        // would otherwise serve `/` and the canvas never mounts.
-        navigateFallbackDenylist: [
-          /^\/sandbox/,
-          /^\/multiplayer\/play/,
-          /^\/godot\//,
-        ],
+        // Two reasons a route is kept off the `/` fallback:
+        //   • Game-canvas routes (/sandbox, /godot/*) must serve their OWN
+        //     page or the canvas never mounts — they're precached, so they
+        //     still work offline; they just must not get the `/` fallback.
+        //   • Multiplayer (/multiplayer*) must always reach the live server,
+        //     so it gets neither the fallback nor a precache entry (see
+        //     globIgnores) — offline it fails fast, which is intended.
+        navigateFallbackDenylist: [/^\/play/, /^\/multiplayer/, /^\/godot\//],
+        // Offline support for the whole game EXCEPT multiplayer: precache
+        // everything but the multiplayer pages, so sandbox / singleplayer /
+        // tutorial / leaderboards work offline while multiplayer requires a
+        // connection. registerType:'autoUpdate' keeps it fresh when online.
+        globIgnores: ['**/multiplayer/**'],
         maximumFileSizeToCacheInBytes: 50 * 1024 * 1024,
         clientsClaim: false,
         skipWaiting: false,

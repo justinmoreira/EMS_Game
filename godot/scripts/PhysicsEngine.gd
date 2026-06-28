@@ -50,13 +50,14 @@ static func is_detected(
 	dis: float,
 	terrain_loss: float = 1,
 	z_tx: float = -1.0,
-	z_srx: float = -1.0
-) -> bool:
+	z_srx: float = -1.0,
+	interference: float = 0.0
+) -> Dictionary:
 	var frequency_diff = abs(tx.frequency - srx.tuning_frequency)
 	var bandwidth_half = BANDWIDTH_MHZ[srx.sensor_bandwidth] / 2.0
 
 	if frequency_diff > bandwidth_half:
-		return false
+		return {"detected": false, "fully_detected": false}
 
 	var threshold = (
 		lerpf(3.0, NOISE_FLOOR, srx.sensitivity / 10.0) + bandwidth_penalty(srx.sensor_bandwidth)
@@ -72,7 +73,14 @@ static func is_detected(
 	var received_power = calculate_received_power(
 		tx.power, h_tx, h_srx, tx.frequency, dis, terrain_loss
 	)
-	return SENSOR_BALANCE_RATIO * received_power > threshold
+
+	var detected = SENSOR_BALANCE_RATIO * received_power > PhysicsEngine.NOISE_FLOOR
+	var fully_detected = SENSOR_BALANCE_RATIO * received_power > threshold
+
+	if !tx.is_in_group("jammers"):
+		fully_detected = SENSOR_BALANCE_RATIO * received_power > threshold + interference
+
+	return {"detected": detected, "fully_detected": fully_detected}
 
 
 static func calculate_received_power(
@@ -159,10 +167,10 @@ static func calculate_interference(
 		var jam_height: float
 		var jammer_px: Vector2 = Vector2.ZERO
 
-		jam_power = float(jammer.get("power", 0.0))
-		jam_freq = float(jammer.get("frequency", 0.0))
-		bw_idx = int(jammer.get("jammer_bandwidth", 0))
-		jam_height = float(jammer.get("height", 0.0))
+		jam_power = float(jammer.get("power"))
+		jam_freq = float(jammer.get("frequency"))
+		bw_idx = int(jammer.get("jammer_bandwidth"))
+		jam_height = float(jammer.get("height"))
 		var terrain_px = jammer.get("terrain_px")
 		if terrain_px != null:
 			jammer_px = terrain_px

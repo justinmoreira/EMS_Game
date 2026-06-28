@@ -6,6 +6,8 @@ const CLICK_DRAG_THRESHOLD_PX := 5.0
 const SELECTION_RADIUS := 32.0
 
 @export var definition: UnitDefinition
+@export var is_immovable: bool = false  # If true, this unit cannot be dragged
+@export var is_removable: bool = true  # If false, this unit cannot be removed
 var physical_state: Dictionary = {}
 
 var _unit_visual: UnitVisual
@@ -242,6 +244,9 @@ func is_immutable() -> bool:
 func is_locked() -> bool:
 	if is_immutable():
 		return true
+	# main's design-time "can't be moved" flag (e.g. enemy-hunter targets).
+	if is_immovable:
+		return true
 	if bool(physical_state.get(&"locked", false)):
 		return true
 	var local := _local_mp_player_id()
@@ -255,12 +260,15 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 	# Only the initial press starts a drag here. Release and motion live in
 	# _input so they keep working when the cursor leaves the shape mid-drag.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		# Locked pieces (objective, already-submitted, opponent's) can be
-		# inspected but never moved — select for the read-only panel and stop.
+		# Locked pieces (objective, already-submitted, opponent's, or a unit
+		# main flags immovable) can be inspected but never moved — select for
+		# the read-only panel and stop.
 		if is_locked():
 			GameEvents.select(self)
 			get_tree().root.set_input_as_handled()
 			return
+
+		# Preserve main #61's UX: clear stale link visuals on drag-press.
 		_is_being_dragged = true
 		_drag_start_pos = get_global_mouse_position()
 		_drag_start_unit_pos = global_position
@@ -270,7 +278,7 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 
 
 func _input(event: InputEvent) -> void:
-	if not _is_being_dragged:
+	if not _is_being_dragged or is_immovable:
 		return
 
 	# Right-click during a drag → cancel: snap back, leave links untouched
@@ -325,8 +333,11 @@ func _input(event: InputEvent) -> void:
 			mouse_pos.y, screen_rect.position.y, screen_rect.position.y + screen_rect.size.y
 		)
 
-		set_value(&"world_uv", base_level.screen_to_world_uv(mouse_pos))
-		global_position = mouse_pos
+		var world_uv: Vector2 = base_level.screen_to_world_uv(mouse_pos)
+
+		if world_uv.x >= 0.0 and world_uv.x <= 1.0 and world_uv.y >= 0.0 and world_uv.y <= 1.0:
+			set_value(&"world_uv", world_uv)
+			global_position = mouse_pos
 		_drag_distance = _drag_start_pos.distance_to(global_position)
 
 		# Fire-once: clear stale link visuals as soon as we know this is a real

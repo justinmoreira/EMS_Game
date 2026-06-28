@@ -10,45 +10,86 @@ import { BASE_URL } from "@/utils";
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
   </Fragment>
 
-  <!-- Mode flag — read by Sidebar.gd (via JavaScriptBridge.eval) before
-       it lays out the SAVES/RESET buttons. Must be set BEFORE the engine
-       boots, so it lives in an is:inline script ahead of godot/index.js. -->
-  <script is:inline>
-    window.GAME_MODE = "sandbox";
-  </script>
-
   <script is:inline src={`${BASE_URL}/godot-bridge.js`}></script>
   <!-- Side-effect import: hooks sandbox-saved → Dexie/Supabase so live
-       Godot saves get to durable storage while playing. Saves are
-       sandbox-only — /multiplayer/play deliberately omits this import. -->
+       Godot saves get to durable storage while playing. -->
   <script>
     import "@/lib/sandbox";
   </script>
-  <!-- Modal picker — Godot's SAVES button dispatches `open-saves-picker`. -->
+  <!-- Modal picker — Godot calls window.openSavesPicker() to show it. -->
   <SavesPicker client:only="preact" />
   <!-- Game canvas -->
   <canvas
     id="canvas"
     class="block w-screen h-[calc(100vh-3rem)] touch-none outline-none"
   ></canvas>
+  <style>
+    #custom-loader {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      gap: 40px;
+    }
 
+    .spinner {
+      width: 180px;
+      height: 180px;
+      animation: spin 3s linear infinite;
+    }
+
+    /* Different speeds/directions */
+    .spinner1 {
+      animation-duration: 2.5s;
+    }
+
+    .spinner2 {
+      animation-duration: 4s;
+      animation-direction: reverse;
+    }
+
+    .spinner3 {
+      animation-duration: 3s;
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    #status-progress {
+      display: none !important;
+    }
+  </style>
   <!-- Loading overlay -->
   <div
     id="status"
     class="fixed inset-0 top-12 bg-neutral-900 flex flex-col items-center justify-center"
   >
-    <img
-      id="status-splash"
-      src={`${BASE_URL}/godot/index.png`}
-      alt=""
-      class="max-h-full max-w-full m-auto"
-    />
-    <progress id="status-progress" class="w-1/2 hidden"></progress>
-    <div
-      id="status-notice"
-      class="hidden bg-red-900/80 border border-red-700 rounded-lg text-neutral-200 mx-8 p-4 text-center"
-    >
+    <div id="custom-loader">
+      <img
+        class="spinner spinner1"
+        src={`${BASE_URL}/unit-images/transceiver.png`}
+        alt=""
+      />
+      <img
+        class="spinner spinner2"
+        src={`${BASE_URL}/unit-images/jammer.png`}
+        alt=""
+      />
+      <img
+        class="spinner spinner3"
+        src={`${BASE_URL}/unit-images/sensor.png`}
+        alt=""
+      />
     </div>
+
+    <progress id="status-progress" class="w-1/2 hidden"></progress>
+    <div id="status-notice"></div>
   </div>
 
   <!-- Load Godot engine (sets window.Engine globally) -->
@@ -56,6 +97,9 @@ import { BASE_URL } from "@/utils";
 
   <!-- Bootstrap the game -->
   <script is:inline define:vars={{ BASE_URL }}>
+    // Scene loading is handled by Godot's SceneLoader autoload script
+    // based on the 'scene' query parameter
+
     const GODOT_CONFIG = {
       args: [],
       canvasResizePolicy: 0,

@@ -16,6 +16,7 @@ const C_OUT_OF_RANGE := Color.DARK_ORANGE
 const C_JAMMED := Color.RED
 const C_FREQUENCY_DIFF := Color.CYAN
 const C_BANDWIDTH_PENALTY := Color.MAGENTA
+const C_TERRAIN_BLOCKED := Color.BLACK
 
 var active_links: Dictionary = {}
 var links_visible: bool = true
@@ -137,6 +138,7 @@ func _set_link_visual_state(key: String, state: int) -> void:
 	if not active_links.has(key):
 		return
 	var data = active_links[key]
+
 	# Each state maps to a color AND a line pattern (LinkVisuals): success is a
 	# solid green line, connecting scrolls a moving dash, failures use static
 	# dashes, and a jam zigzags.
@@ -157,6 +159,9 @@ func _set_link_visual_state(key: String, state: int) -> void:
 			pattern = LinkVisuals.LINE_PATTERN_DASHED
 		SimulationManager.LinkState.BANDWIDTH_PENALTY:
 			color = LinkVisuals.C_BANDWIDTH_PENALTY
+			pattern = LinkVisuals.LINE_PATTERN_DASHED
+		SimulationManager.LinkState.TERRAIN_BLOCKED:
+			color = LinkVisuals.C_TERRAIN_BLOCKED
 			pattern = LinkVisuals.LINE_PATTERN_DASHED
 	if is_instance_valid(data.line):
 		data.line.set_visual(color, pattern)

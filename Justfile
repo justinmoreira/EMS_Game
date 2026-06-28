@@ -154,21 +154,6 @@ db-reset:
 db-types:
     supabase gen types typescript --local > {{client_path}}/app/lib/database.types.ts
 
-[group('dev')]
-[doc('Autogen a migration file from current local schema drift (usage: just db-gen-migration <name>). Apply your DDL via psql first; this captures the diff vs the recorded migrations as a new file under supabase/migrations/.')]
-db-gen-migration name:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    # Same shadow-DB cleanup as migrations-check — the CLI leaks the
-    # container on interrupt and the next diff would hit a port conflict.
-    main_db=$(docker ps --filter "name=supabase_db_" -q | head -1)
-    for c in $(docker ps -aq --filter "publish=54320"); do
-        if [ "$c" != "$main_db" ]; then
-            docker rm -f "$c" >/dev/null 2>&1 || true
-        fi
-    done
-    supabase db diff -f {{name}}
-
 [group('quality')]
 [doc('Verify migration files reproduce the live local schema (catches: ALTER applied locally but no migration written for it)')]
 migrations-check:
@@ -262,6 +247,21 @@ _apply_pending_migrations:
     if ! supabase migration up; then
         supabase db reset
     fi
+
+[group('dev')]
+[doc('Autogen a migration file from current local schema drift (usage: just db-gen-migration <name>). Apply your DDL via psql first; this captures the diff vs the recorded migrations as a new file under supabase/migrations/.')]
+db-gen-migration name:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Same shadow-DB cleanup as migrations-check — the CLI leaks the
+    # container on interrupt and the next diff would hit a port conflict.
+    main_db=$(docker ps --filter "name=supabase_db_" -q | head -1)
+    for c in $(docker ps -aq --filter "publish=54320"); do
+        if [ "$c" != "$main_db" ]; then
+            docker rm -f "$c" >/dev/null 2>&1 || true
+        fi
+    done
+    supabase db diff -f {{name}}
 
 [group('dev')]
 [doc('Wait for local Supabase auth to become healthy')]

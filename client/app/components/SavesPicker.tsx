@@ -10,13 +10,13 @@ import {
 } from "@/lib/sandbox";
 import { BASE_URL } from "@/utils";
 
-// Mode filter for the in-game picker. /sandbox is the only page that mounts
-// this component, so we scope to "sandbox" saves. A future mission UI would
-// mount its own picker instance with `gamemode="mission"` (or accept a prop).
+// Mode filter for the in-game picker. /play hosts the sandbox scene, so we
+// scope to "sandbox" saves. A future mission UI would mount its own picker
+// instance with `gamemode="mission"` (or accept a prop).
 const PICKER_MODE = DEFAULT_GAMEMODE;
 
 // In-game saves modal — opened from Godot via `window.openSavesPicker()`.
-// Mounts once via sandbox.astro; visibility is event-driven so Godot doesn't
+// Mounts once via play.astro; visibility is event-driven so Godot doesn't
 // need to know about Preact internals (or vice versa).
 //
 // UX: click a row to select it; click again to deselect. The bottom toolbar
@@ -103,7 +103,7 @@ export default function SavesPicker() {
     setBusy(true);
     try {
       await loadSlot(selectedId);
-      window.location.href = `${BASE_URL}/sandbox`;
+      window.location.href = `${BASE_URL}/play?mode=sandbox`;
     } finally {
       setBusy(false);
     }

@@ -4,6 +4,7 @@ extends Control
 # Unit attribute controls
 const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
 const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
+const ERROR_POPUP := preload("res://scenes/ui/HintPopup.tscn")
 const SUGGESTIONS_PANEL_SCENE := preload("res://scenes/ui/SuggestionsDialog.tscn")
 
 const MAP_SIZE = Vector2(1080, 1080)
@@ -31,6 +32,11 @@ var suggestions_panel: Control = null
 @export var base_hover_radius: float = 32.0
 @export var show_signal_ranges: bool = false
 @export var suggestions_enabled: bool = false
+
+@export var spectrum_enabled: bool = false
+
+var spectrum_analyzer: SpectrumAnalyzer
+
 # Sidebar layout — populated via signal, no global find_child reach.
 # Width is the live x-size of the sidebar; 0 if no sidebar in this scene.
 var sidebar_width: float = 0.0
@@ -42,6 +48,9 @@ var unit_attributes_visible: bool = false
 var terrain_heatmap_enabled: bool = false
 
 @onready var background := $BackgroundTexture
+
+const DESIGN_MAP_ORIGIN = Vector2(300.0, 0.0)
+const DESIGN_MAP_SIZE = Vector2(1620.0, 1080.0)
 
 # --- Initialization ---
 
@@ -68,18 +77,31 @@ var _turn_cb: Variant = null
 func _ready():
 	get_tree().get_root().size_changed.connect(_on_window_resized)
 	GameEvents.selection_changed.connect(_on_selection_changed)
-	GameEvents.simulation_requested.connect(SimulationManager.simulate)
 	GameEvents.reset_requested.connect(_on_reset_requested)
 	GameEvents.delete_requested.connect(_on_delete_requested)
 	GameEvents.sidebar_resized.connect(_on_sidebar_resized)
 	GameEvents.mp_submit_requested.connect(_on_mp_submit_requested)
 	_register_mp_receive_hook()
+
+	for child in get_children():
+		if child is Unit:
+			# If world_uv is null, it means it was pre-placed and not dragged/spawned
+			if child.get_value(&"world_uv") == null:
+				# Calculate UV purely based on the 1620x1080 Editor space
+				var u = (child.global_position.x - DESIGN_MAP_ORIGIN.x) / DESIGN_MAP_SIZE.x
+				var v = (child.global_position.y - DESIGN_MAP_ORIGIN.y) / DESIGN_MAP_SIZE.y
+
+				# Inject it into the Unit's physical_state dictionary
+				child.set_value(&"world_uv", Vector2(u, v))
+
 	_on_window_resized()
+
+	spectrum_analyzer = get_tree().get_root().find_child("SpectrumAnalyzer", true, false)
 
 	toggle_suggestions(suggestions_enabled)
 
 	# Defer MP setup one frame so the terrain/layout from subclass _ready()
-	# (ContourDemo) is in place before we position the seed-placed objective.
+	# (Sandbox) is in place before we position the seed-placed objective.
 	_mp_setup.call_deferred()
 
 
@@ -470,6 +492,8 @@ func _on_sidebar_resized(width: float) -> void:
 
 
 func _on_window_resized() -> void:
+	if !is_inside_tree():
+		return
 	self.size = get_viewport_rect().size
 	if background:
 		background.offset_left = sidebar_width
@@ -485,14 +509,12 @@ func _on_window_resized() -> void:
 # offset_left set in _on_window_resized.
 
 
-#TODO: Fix to give accurate representation of map origin
 func _map_origin() -> Vector2:
-	return background.position if background else Vector2(sidebar_width, 0)
+	return Vector2(sidebar_width, 0)
 
 
-#TODO: Fix to give accurate representation of map size
 func get_map_size() -> Vector2:
-	return background.size if background else Vector2(size.x - sidebar_width, size.y)
+	return Vector2(size.x - sidebar_width, size.y)
 
 
 func screen_to_world_uv(screen_pos: Vector2) -> Vector2:
@@ -631,6 +653,9 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 	# Newly-placed unit is treated as selected so its panel opens.
 	GameEvents.select(unit)
 
+	GameEvents.unit_placed.emit(unit)
+	GameEvents.units_changed.emit()
+
 	# Hitting the per-turn cap greys the entity tray (mirrors the tutorial's
 	# placement gating) until SUBMIT resolves the turn.
 	if _mp_active:
@@ -666,6 +691,12 @@ func _on_selection_changed(unit: Node) -> void:
 	var focused: Unit = unit if unit is Unit else null
 	LinkRenderer.set_focused_unit(focused)
 	SimulationManager.simulate()
+
+	if spectrum_analyzer:
+		if unit and unit.is_in_group("sensors"):
+			spectrum_analyzer.configure(unit)
+		else:
+			spectrum_analyzer.configure(null)
 
 
 func _set_unit_selected_visual(unit: Unit, selected: bool) -> void:
@@ -716,6 +747,13 @@ func toggle_suggestions(enabled: bool) -> void:
 	call_deferred("_refresh_suggestions_ui")
 
 
+func toggle_spectrum(enabled: bool) -> void:
+	spectrum_enabled = enabled
+
+	if spectrum_analyzer:
+		spectrum_analyzer.visible = enabled
+
+
 func _refresh_suggestions_ui() -> void:
 	if suggestions_panel == null:
 		return
@@ -762,9 +800,11 @@ func _on_reset_requested() -> void:
 	UnitNameManager.reset()
 	for group in [&"transceivers", &"jammers", &"sensors"]:
 		for unit in get_tree().get_nodes_in_group(group):
+			# Keep the immutable objective and any unit main flags non-removable.
 			if unit is Unit and bool((unit as Unit).physical_state.get(&"immutable", false)):
 				continue
-			unit.queue_free()
+			if unit.is_removable:
+				unit.queue_free()
 	GameEvents.clear_selection()
 
 
@@ -774,8 +814,12 @@ func _on_delete_requested(unit: Node) -> void:
 		return
 	# LinkRenderer's per-frame purge will drop links involving this unit
 	# once is_instance_valid returns false post-queue_free.
-	if unit:
+	if unit && unit.is_removable:
 		unit.queue_free()
+	if unit && !unit.is_removable:
+		var popup = ERROR_POPUP.instantiate()
+		popup.hint_text = "This unit can not be removed."
+		add_child(popup)
 	GameEvents.clear_selection()
 	if _mp_active:
 		_refresh_placement_lock.call_deferred()
@@ -935,7 +979,7 @@ func _get_or_create_attribute_label(unit: Unit) -> UnitAttributesLabel:
 
 # Terrain-seed persistence hooks for ScenePersister. A level with procedural
 # terrain overrides these so a saved scene reloads onto the SAME terrain its
-# units sat on (ContourDemo does). Levels without procedural terrain leave the
+# units sat on (Sandbox does). Levels without procedural terrain leave the
 # defaults: -1 means "no seed to persist", and applying one is a no-op.
 func get_persist_seed() -> int:
 	return -1
