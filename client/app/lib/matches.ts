@@ -56,23 +56,20 @@ export async function createMatch(opts: CreateMatchOpts): Promise<Match> {
   throw new Error(`Could not create a unique lobby (${lastErr}).`);
 }
 
-// Claim the empty guest seat. The is/neq guards make this a no-op for the host
-// and for an already-full lobby (race-safe: the DB filter, not a read-modify).
+// Claim the empty guest seat via the join_match RPC (SECURITY DEFINER), which
+// can reach a PRIVATE lobby the tightened SELECT policy hides from the client.
+// Accepts a lobby id or an invite code (both are uppercase A-Z2-9). Returns the
+// joined match id so the caller can navigate in. Race-safe: the seat fill is a
+// single conditional UPDATE inside the function, not a read-modify-write.
 export async function joinMatch(
-  matchId: string,
-  userId: string,
-): Promise<{ ok: boolean; error?: string }> {
-  const { data, error } = await supabase
-    .from("matches")
-    .update({ guest_id: userId })
-    .eq("id", matchId)
-    .is("guest_id", null)
-    .neq("host_id", userId)
-    .select()
-    .maybeSingle();
+  idOrCode: string,
+): Promise<{ ok: boolean; matchId?: string; error?: string }> {
+  const { data, error } = await supabase.rpc("join_match", {
+    p_id_or_code: idOrCode.trim().toUpperCase(),
+  });
   if (error) return { ok: false, error: error.message };
   if (!data) return { ok: false, error: "That seat was just taken." };
-  return { ok: true };
+  return { ok: true, matchId: data as string };
 }
 
 export async function findByInvite(code: string): Promise<Match | null> {

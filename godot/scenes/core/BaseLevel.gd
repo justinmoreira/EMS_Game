@@ -76,6 +76,10 @@ var _turn_cb: Variant = null
 # Fog-of-war: keys (by world position) of enemy units a local sensor has fully
 # detected. Reveal is permanent for the match, so this only ever grows.
 var _revealed_enemy_keys: Dictionary = {}
+# Reveal is committed-state only: a sensor reveals enemies on the NEXT resolved
+# round (after submit), never live while you're still positioning it. Set just
+# before the post-turn-advance merge sim; the fog handler reveals only then.
+var _fog_reveal_pending: bool = false
 
 
 func _ready():
@@ -167,6 +171,11 @@ func apply_opponent_board(snapshot: Array, owner_id: String) -> void:
 	# Hide the freshly spawned opponent units up front (any already revealed by a
 	# prior detection stay visible) so they never flash before the sim resolves.
 	_apply_fog()
+
+	# This is a committed/merged board (a turn resolved), so arm the reveal pass:
+	# the sim below will reveal enemies your submitted sensors fully detect. Live
+	# placement sims leave this false, so they never reveal.
+	_fog_reveal_pending = true
 
 	# Opponent geometry changed — rerun the sim so link lines, detection, and
 	# range rings reflect the merged board, then re-check the win condition.
@@ -336,18 +345,24 @@ func _apply_fog() -> void:
 func _on_sim_complete_fog(_link_results: Array, detect_results: Array) -> void:
 	if not _mp_active:
 		return
-	for r in detect_results:
-		if not bool(r.get("fully_detected", false)):
-			continue
-		var sensor: Variant = r.get("sensor")
-		var target: Variant = r.get("target")
-		if not (sensor is Unit and target is Unit):
-			continue
-		if not _belongs_to_local(sensor):
-			continue
-		if not _is_concealable_enemy(target):
-			continue
-		_revealed_enemy_keys[_enemy_key(target)] = true
+	# Only reveal off a committed/merged board (set by apply_opponent_board on a
+	# turn advance) — never off the live sims that fire while you're dragging or
+	# placing a sensor this turn. Otherwise you could scrub for enemies before
+	# committing. Concealment (_apply_fog) still re-applies on every sim.
+	if _fog_reveal_pending:
+		_fog_reveal_pending = false
+		for r in detect_results:
+			if not bool(r.get("fully_detected", false)):
+				continue
+			var sensor: Variant = r.get("sensor")
+			var target: Variant = r.get("target")
+			if not (sensor is Unit and target is Unit):
+				continue
+			if not _belongs_to_local(sensor):
+				continue
+			if not _is_concealable_enemy(target):
+				continue
+			_revealed_enemy_keys[_enemy_key(target)] = true
 	_apply_fog()
 
 

@@ -257,6 +257,7 @@ export type Database = {
         Args: { p_match_id: string; p_winner_id: string }
         Returns: undefined
       }
+      join_match: { Args: { p_id_or_code: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

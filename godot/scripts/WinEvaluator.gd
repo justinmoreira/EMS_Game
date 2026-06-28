@@ -42,8 +42,11 @@ static func chain_connected(sim, source, target, own_txs: Array, jammers: Array)
 		var u = queue.pop_back()
 		if u == null or not is_instance_valid(u):
 			continue
-		# Reached the target if its sensor detects this node.
-		if sim.calculate_detection(target, u):
+		# Reached the target if its sensor detects this node. calculate_detection
+		# takes (receiver_sensor, transmitter, jammers) and returns a Dictionary;
+		# .detected means the signal clears the noise floor — i.e. the line's
+		# target has received the chain's signal, so the connection is complete.
+		if sim.calculate_detection(target, u, jammers).detected:
 			return true
 		for v in own_txs:
 			if v == null or v == u or not is_instance_valid(v):

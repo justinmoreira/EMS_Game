@@ -30,8 +30,12 @@ class StubSim:
 			return SimulationManager.LinkState.SUCCESS
 		return SimulationManager.LinkState.FAILED_OUT_OF_RANGE
 
-	func calculate_detection(_sensor, tx) -> bool:
-		return _detected.get(tx.get_instance_id(), false)
+	# Mirror the real SimulationManager.calculate_detection signature
+	# (receiver, transmitter, jammers) -> Dictionary so these tests exercise the
+	# shape WinEvaluator actually calls, instead of masking an arity mismatch.
+	func calculate_detection(_sensor, tx, _jammers) -> Dictionary:
+		var d: bool = _detected.get(tx.get_instance_id(), false)
+		return {"detected": d, "fully_detected": d}
 
 
 # Units are built with Unit.new() and never added to the tree, so they're

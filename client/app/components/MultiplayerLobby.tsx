@@ -130,13 +130,13 @@ export default function MultiplayerLobby() {
     if (!user) return;
     setBusyId(m.id);
     setError("");
-    const res = await joinMatch(m.id, user.id);
+    const res = await joinMatch(m.id);
     setBusyId(null);
     if (!res.ok) {
       setError(res.error ?? "Could not join.");
       return;
     }
-    open(m.id);
+    open(res.matchId ?? m.id);
   };
 
   const onJoinByCode = async () => {
@@ -144,27 +144,27 @@ export default function MultiplayerLobby() {
     setJoiningCode(true);
     setError("");
     try {
+      // findByInvite only sees lobbies we're allowed to read (public, or ones
+      // we're already in). A private lobby we're not in returns null, so we fall
+      // straight through to the RPC, which CAN reach it.
       const m = await findByInvite(code);
-      if (!m) {
-        setError("No lobby found for that code.");
-        return;
-      }
-      const mine = m.host_id === user.id || m.guest_id === user.id;
-      if (mine || m.guest_id) {
-        // Already a participant, or it's full but maybe we're in it → just open.
+      if (m) {
+        const mine = m.host_id === user.id || m.guest_id === user.id;
         if (mine) {
           open(m.id);
           return;
         }
-        setError("That lobby is already full.");
+        if (m.guest_id) {
+          setError("That lobby is already full.");
+          return;
+        }
+      }
+      const res = await joinMatch(code);
+      if (!res.ok || !res.matchId) {
+        setError(res.error ?? "No open lobby for that code.");
         return;
       }
-      const res = await joinMatch(m.id, user.id);
-      if (!res.ok) {
-        setError(res.error ?? "Could not join.");
-        return;
-      }
-      open(m.id);
+      open(res.matchId);
     } finally {
       setJoiningCode(false);
     }
