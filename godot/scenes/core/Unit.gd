@@ -32,6 +32,7 @@ func set_concealed(value: bool) -> void:
 func is_concealed() -> bool:
 	return _concealed
 
+
 var _selection_area: Area2D
 var _is_being_dragged: bool = false
 var _drag_start_pos: Vector2 = Vector2.ZERO  # mouse position at press

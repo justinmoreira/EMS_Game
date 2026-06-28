@@ -302,7 +302,9 @@ func _is_concealable_enemy(u: Unit) -> bool:
 # Immutable objective units carry a viewer-relative MINE/ENEMY glow hint.
 func _belongs_to_local(u: Unit) -> bool:
 	if bool(u.physical_state.get(&"immutable", false)):
-		return int(u.physical_state.get(&"glow_kind", UnitVisual.Owner.NONE)) == UnitVisual.Owner.MINE
+		return (
+			int(u.physical_state.get(&"glow_kind", UnitVisual.Owner.NONE)) == UnitVisual.Owner.MINE
+		)
 	var o: Variant = u.physical_state.get(&"owner_player_id", null)
 	if not (o is String) or String(o) == "":
 		return true
