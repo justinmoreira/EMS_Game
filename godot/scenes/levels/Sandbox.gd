@@ -75,7 +75,10 @@ func _ready() -> void:
 
 	_label_tactical_points(height_grid, grid_w, grid_h)
 
-	if get_script() == Sandbox:
+	# The multiplayer match reuses this Sandbox scene/script, so guard on the
+	# game mode too — otherwise the "Welcome to Sandbox Mode" intro wrongly
+	# pops up over a live MP match.
+	if get_script() == Sandbox and not _is_multiplayer():
 		open_popup()
 
 
