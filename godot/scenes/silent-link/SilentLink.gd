@@ -526,7 +526,7 @@ func _on_next_level_pressed() -> void:
 		get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")
 		return
 
-	get_tree().change_scene_to_file("res://scenes/silent_link/level-%d.tscn" % _current_level)
+	get_tree().change_scene_to_file("res://scenes/silent-link/level-%d.tscn" % _current_level)
 
 
 func _get_level_intro_content(level: int) -> Dictionary:

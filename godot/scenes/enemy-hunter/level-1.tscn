@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://cytqvcfri4rbe" path="res://scenes/enemy-hunter/enemy-hunter.gd" id="2_6qdr2"]
 [ext_resource type="Shader" uid="uid://ccadptf4j2ywd" path="res://shaders/ContourLine.gdshader" id="3_nlylg"]
 [ext_resource type="PackedScene" path="res://scenes/core/units/TransceiverUnit.tscn" id="4_q1cip"]
+[ext_resource type="Script" uid="uid://cbbov2n7o5kqs" path="res://scripts/LevelPersister.gd" id="5_nlylg"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_l1"]
 shader = ExtResource("3_nlylg")
@@ -50,3 +51,6 @@ visible = false
 position = Vector2(997, 609)
 is_immovable = true
 is_removable = false
+
+[node name="LevelPersister" type="Node" parent="." index="5" unique_id=1988489651]
+script = ExtResource("5_nlylg")
