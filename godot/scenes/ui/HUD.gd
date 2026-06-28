@@ -30,6 +30,11 @@ func _ready():
 	%SuggestionsToggle.toggled.connect(_on_suggestions_toggled)
 	%HeatmapToggle.toggled.connect(_on_heatmap_toggled)
 	%SpectrumToggle.toggled.connect(_on_spectrum_toggled)
+	
+	if get_parent().get_script() == Sandbox:
+		%GenerateTerrain.button_down.connect(_on_regenerate_clicked)
+	else:
+		%GenerateTerrain.disabled = true
 
 	# Load saved settings
 	_load_settings()
@@ -47,6 +52,14 @@ func _input(event: InputEvent):
 			if not popup_rect.has_point(mouse_pos):
 				_close_popup()
 				get_tree().root.set_input_as_handled()
+
+
+func _on_regenerate_clicked():
+	var level = get_tree().current_scene
+	if level.has_method("set_terrain_seed") and level.has_method("_regenerate_terrain"):
+		level.set_terrain_seed(randi())
+		level._regenerate_terrain
+		GameEvents.units_changed.emit()
 
 
 func _on_settings_button_pressed():
