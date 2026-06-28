@@ -270,7 +270,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	super._unhandled_input(event)
 
 
-func _generate_terrain(w: int, h: int) -> Array:
+func _generate_terrain(w: int, h: int, seed: int) -> Array:
 	var noise := FastNoiseLite.new()
 	noise.seed = TUTORIAL_TERRAIN_SEED
 	noise.frequency = 0.025

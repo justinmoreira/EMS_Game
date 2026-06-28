@@ -27,7 +27,7 @@ var unit_ranges_visible: bool = true
 var active_links: Dictionary = {}
 
 
-func _ready() -> void:
+func _ready() -> void:	
 	GameEvents.simulation_requested.connect(simulate)
 	call_deferred("simulate")
 
