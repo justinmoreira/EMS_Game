@@ -49,6 +49,11 @@ func _process(delta: float) -> void:
 func _on_simulation_complete(link_results: Array, _detect_results: Array) -> void:
 	var current_keys: Dictionary = {}
 	for r in link_results:
+		# Multiplayer fog-of-war: never draw a link touching a concealed enemy
+		# unit — the line would betray its hidden position. Such links are left
+		# out of current_keys, so any previously drawn one is freed below.
+		if _link_touches_concealed(r.source, r.target):
+			continue
 		var key := _vis_key(r.source, r.target)
 		current_keys[key] = true
 		_draw_directional_link(r.source, r.target, r.state)
@@ -81,6 +86,14 @@ func _draw_directional_link(source: Unit, target: Unit, final_state: int) -> voi
 	_update_link_geometry(key)
 	_apply_visibility_for_key(key)
 	_resolve_link_visual_after_delay(key, version)
+
+
+func _link_touches_concealed(a, b) -> bool:
+	if a is Unit and (a as Unit).is_concealed():
+		return true
+	if b is Unit and (b as Unit).is_concealed():
+		return true
+	return false
 
 
 func _create_link_nodes(source: Unit, target: Unit, key: String) -> void:

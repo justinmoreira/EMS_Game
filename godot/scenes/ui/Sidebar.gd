@@ -151,15 +151,9 @@ func _populate_header(panel: PanelContainer) -> void:
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_child(hbox)
 
-	var dot := ColorRect.new()
-	dot.color = C_GREEN
-	dot.custom_minimum_size = Vector2(15, 15)
-	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	hbox.add_child(dot)
-	_animate_blink(dot)
-
-	hbox.add_child(_make_label("GEMS", C_GREEN, 25))
-
+	# GEMS branding lives only in the HTML navbar now (NavBar.astro) — the green
+	# pulsing dot + wordmark moved there so the canvas isn't a second branding.
+	# This header keeps just the action buttons.
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(spacer)
@@ -996,10 +990,3 @@ func _set_interactivity(node: Control, enabled: bool) -> void:
 	for child in node.get_children():
 		if child is Control:
 			_set_interactivity(child, enabled)
-
-
-func _animate_blink(node: ColorRect) -> void:
-	var tween := create_tween()
-	tween.set_loops()
-	tween.tween_property(node, "modulate:a", 0.1, 0.8)
-	tween.tween_property(node, "modulate:a", 1.0, 0.4)

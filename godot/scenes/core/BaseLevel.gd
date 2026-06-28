@@ -73,6 +73,10 @@ var _mp_seed: int = 0
 var _mp_current_turn: int = -1
 var _turn_cb: Variant = null
 
+# Fog-of-war: keys (by world position) of enemy units a local sensor has fully
+# detected. Reveal is permanent for the match, so this only ever grows.
+var _revealed_enemy_keys: Dictionary = {}
+
 
 func _ready():
 	get_tree().get_root().size_changed.connect(_on_window_resized)
@@ -160,6 +164,10 @@ func apply_opponent_board(snapshot: Array, owner_id: String) -> void:
 	for entry in snapshot:
 		_spawn_unit_from_entry(entry, owner_id)
 
+	# Hide the freshly spawned opponent units up front (any already revealed by a
+	# prior detection stay visible) so they never flash before the sim resolves.
+	_apply_fog()
+
 	# Opponent geometry changed — rerun the sim so link lines, detection, and
 	# range rings reflect the merged board, then re-check the win condition.
 	GameEvents.simulation_requested.emit()
@@ -229,6 +237,8 @@ func _mp_setup() -> void:
 	_mp_active = true
 	_mp_seed = _read_match_number("seed")
 	_register_turn_hook()
+	# Fog-of-war: reveal enemy units your sensors detect each time the sim runs.
+	GameEvents.simulation_complete.connect(_on_sim_complete_fog)
 	_spawn_immutable_objective()
 	# Sync to the turn we joined on, then watch for advances via the JS hook.
 	_mp_on_turn_advance(_read_match_number("current_turn"))
@@ -264,6 +274,79 @@ func _opponent_id() -> String:
 	if me == guest:
 		return host
 	return ""
+
+
+# ── Multiplayer fog-of-war ───────────────────────────────────────────
+# Opponent relays/jammers arrive hidden; one of your sensors FULLY detecting a
+# unit reveals it for the rest of the match. Passive enemy sensors emit nothing,
+# so they're never revealed — you infer them. The enemy's immutable SOURCE and
+# TARGET stay visible so denial play is still possible. This is purely visual:
+# the win check and the simulation always operate on the real, full board.
+
+
+# Concealable = an opponent-owned, non-immutable unit (their placed relays,
+# jammers, sensors). Immutable objective endpoints are never concealed.
+func _is_concealable_enemy(u: Unit) -> bool:
+	if bool(u.physical_state.get(&"immutable", false)):
+		return false
+	var me := _local_mp_player_id()
+	if me == "":
+		return false
+	var o: Variant = u.physical_state.get(&"owner_player_id", null)
+	return o is String and String(o) != me
+
+
+# True for the local player's own units. Opponent units always arrive stamped
+# with an owner_player_id (forced in apply_opponent_board), so a non-immutable
+# unit with no owner is one the local player just placed (not yet submitted).
+# Immutable objective units carry a viewer-relative MINE/ENEMY glow hint.
+func _belongs_to_local(u: Unit) -> bool:
+	if bool(u.physical_state.get(&"immutable", false)):
+		return int(u.physical_state.get(&"glow_kind", UnitVisual.Owner.NONE)) == UnitVisual.Owner.MINE
+	var o: Variant = u.physical_state.get(&"owner_player_id", null)
+	if not (o is String) or String(o) == "":
+		return true
+	return String(o) == _local_mp_player_id()
+
+
+# Stable identity across opponent resubmits (which wipe + respawn their units).
+# Submitted units are locked/immovable, so world position is a reliable key.
+func _enemy_key(u: Unit) -> String:
+	var uv: Vector2 = u.physical_state.get(&"world_uv", Vector2.ZERO)
+	return "%d_%d" % [roundi(uv.x * 10000.0), roundi(uv.y * 10000.0)]
+
+
+# Hide every concealable enemy unit that hasn't been revealed yet.
+func _apply_fog() -> void:
+	if not _mp_active:
+		return
+	for child in get_children():
+		if not (child is Unit):
+			continue
+		var u := child as Unit
+		if not _is_concealable_enemy(u):
+			continue
+		u.set_concealed(not _revealed_enemy_keys.has(_enemy_key(u)))
+
+
+# After each sim resolves, reveal enemy units your sensors fully detected this
+# turn (permanently), then re-apply the veil so undetected ones stay hidden.
+func _on_sim_complete_fog(_link_results: Array, detect_results: Array) -> void:
+	if not _mp_active:
+		return
+	for r in detect_results:
+		if not bool(r.get("fully_detected", false)):
+			continue
+		var sensor: Variant = r.get("sensor")
+		var target: Variant = r.get("target")
+		if not (sensor is Unit and target is Unit):
+			continue
+		if not _belongs_to_local(sensor):
+			continue
+		if not _is_concealable_enemy(target):
+			continue
+		_revealed_enemy_keys[_enemy_key(target)] = true
+	_apply_fog()
 
 
 # Registers window.godotOnTurnAdvance(turn) so MultiplayerMatch.tsx can notify

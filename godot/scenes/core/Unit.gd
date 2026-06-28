@@ -17,6 +17,21 @@ var unit_visual: UnitVisual:
 	get:
 		return _unit_visual
 
+# Multiplayer fog-of-war: a concealed unit hides its visual (body, ownership
+# glow, range rings, label) but stays in the scene and the simulation, so the
+# win check and detection still operate on it. BaseLevel toggles this.
+var _concealed: bool = false
+
+
+func set_concealed(value: bool) -> void:
+	_concealed = value
+	if _unit_visual:
+		_unit_visual.visible = not value
+
+
+func is_concealed() -> bool:
+	return _concealed
+
 var _selection_area: Area2D
 var _is_being_dragged: bool = false
 var _drag_start_pos: Vector2 = Vector2.ZERO  # mouse position at press
