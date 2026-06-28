@@ -22,9 +22,11 @@ func _ready():
 		"sandbox":
 			call_deferred("_change_scene", SANDBOX_SCENE_PATH)
 		"silent-link":
-			call_deferred("_change_scene", SILENT_LINK_SCENE_PATH)
+			var path := LevelPersister.peek("silent-link-level")
+			call_deferred("_change_scene", path if path != "" else SILENT_LINK_SCENE_PATH)
 		"enemy-hunter":
-			call_deferred("_change_scene", ENEMY_HUNTER_SCENE_PATH)
+			var path := LevelPersister.peek("enemy-hunter-level")
+			call_deferred("_change_scene", path if path != "" else ENEMY_HUNTER_SCENE_PATH)
 		_:
 			call_deferred("_change_scene", SANDBOX_SCENE_PATH)
 
