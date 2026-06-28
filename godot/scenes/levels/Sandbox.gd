@@ -46,7 +46,7 @@ func _ready() -> void:
 	add_to_group("terrain")
 
 	super._ready()
-	
+
 	_init_terrain()
 
 	# Terrain colors
@@ -87,10 +87,11 @@ func _regenerate_terrain() -> void:
 func get_terrain_seed() -> int:
 	return _terrain_seed
 
+
 func set_terrain_seed(value: int) -> void:
 	_terrain_seed = value
 	_regenerate_terrain()
-	
+
 
 func open_popup() -> void:
 	if _sandbox_popup_open:
@@ -151,7 +152,7 @@ func _generate_terrain(w: int, h: int, seed: int) -> Array:
 
 func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 	_clear_labels()
-	
+
 	# Step 1 – collect raw candidates
 	var peak_candidates: Array[Dictionary] = []
 	var valley_candidates: Array[Dictionary] = []
@@ -240,8 +241,8 @@ func _clear_labels() -> void:
 	for child in get_children():
 		if child is Label:
 			child.queue_free()
-			
-			
+
+
 # ── Non-maximum suppression ───────────────────────────────────────────────────
 ## Sorts candidates by value (strongest first for peaks, lowest for valleys),
 ## then greedily accepts each candidate only if no already-accepted candidate
