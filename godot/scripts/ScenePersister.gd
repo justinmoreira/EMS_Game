@@ -28,8 +28,23 @@ func _ready() -> void:
 	if _level == null:
 		push_error("ScenePersister expects a BaseLevel parent; got %s" % get_parent())
 		return
+	# Multiplayer matches sync their board through match_actions and must never
+	# touch the local sandbox save slots — otherwise a live match would clobber
+	# (or be seeded by) the player's sandbox autosave. Skip persistence entirely
+	# in MP; this is inherited by every persister subclass.
+	if _is_multiplayer():
+		return
 	GameEvents.units_changed.connect(_queue_save)
 	_restore()
+
+
+# True only inside a multiplayer match (window.GAME_MODE == "multiplayer").
+# Web-only: desktop/sandbox/tutorial builds have no JS bridge, so it's false.
+func _is_multiplayer() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	var v: Variant = JavaScriptBridge.eval("window.GAME_MODE")
+	return v is String and (v as String) == "multiplayer"
 
 
 func _queue_save() -> void:
