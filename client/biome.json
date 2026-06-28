@@ -1,7 +1,7 @@
 {
   "$schema": "https://biomejs.dev/schemas/latest/schema.json",
   "files": {
-    "includes": ["**/*.ts", "**/*.tsx", "**/*.astro", "!**/database.types.ts"]
+    "includes": ["**/*.ts", "**/*.tsx", "**/*.astro", "!**/database.types.ts", "!godot/scenes/levels/TutorialLevel.gd"]
   },
   "linter": {
     "enabled": true,
