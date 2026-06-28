@@ -977,18 +977,6 @@ func _get_or_create_attribute_label(unit: Unit) -> UnitAttributesLabel:
 # (currently just world_uv) split into {"x", "y"} for JSON friendliness.
 
 
-# Terrain-seed persistence hooks for ScenePersister. A level with procedural
-# terrain overrides these so a saved scene reloads onto the SAME terrain its
-# units sat on (Sandbox does). Levels without procedural terrain leave the
-# defaults: -1 means "no seed to persist", and applying one is a no-op.
-func get_persist_seed() -> int:
-	return -1
-
-
-func apply_persist_seed(_seed: int) -> void:
-	pass
-
-
 func serialize_units(own_only: bool = false) -> Array:
 	var out: Array = []
 	var local_id := _local_mp_player_id()

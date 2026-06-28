@@ -22,11 +22,15 @@ window.initTutorialListener = function () {
 // out clears the localStorage snapshot so the next anon visitor on the
 // same browser doesn't see the previous user's scene.
 (function () {
-  var KEY = 'sandbox_current';
+  var KEY_PREFIX = 'sandbox_current';
 
-  window.getSandbox = function () {
+  function keyFor(mode) {
+    return KEY_PREFIX + ':' + (mode || 'sandbox');
+  }
+
+  window.getSandbox = function (mode) {
     try {
-      return localStorage.getItem(KEY) || '';
+      return localStorage.getItem(keyFor(mode)) || '';
     } catch (_e) {
       return '';
     }
@@ -37,7 +41,7 @@ window.initTutorialListener = function () {
     // Default keeps single-mode callers (and old code) working.
     mode = mode || 'sandbox';
     try {
-      localStorage.setItem(KEY, json);
+      localStorage.setItem(keyFor(mode), json);
     } catch (_e) {
       // Quota / private mode — best-effort, snapshot still lives in memory.
     }
@@ -51,7 +55,16 @@ window.initTutorialListener = function () {
 
   window.addEventListener('auth-signed-out', function () {
     try {
-      localStorage.removeItem(KEY);
+      // Mode-agnostic: clear every sandbox_current:* key so no mode is left
+      // showing the previous user's scene to the next anon visitor.
+      var toRemove = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(KEY_PREFIX + ':') === 0) toRemove.push(k);
+      }
+      for (var j = 0; j < toRemove.length; j++) {
+        localStorage.removeItem(toRemove[j]);
+      }
     } catch (_e) {}
   });
 })();

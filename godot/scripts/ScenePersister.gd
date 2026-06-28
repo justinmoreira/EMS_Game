@@ -28,16 +28,18 @@ func _ready() -> void:
 	if _level == null:
 		push_error("ScenePersister expects a BaseLevel parent; got %s" % get_parent())
 		return
-	# Multiplayer shares the same level scene but persists its state in the
-	# matches/match_actions tables — never to the sandbox localStorage slot.
-	# Skip both the autosave hookup and the restore so an MP session can't
-	# clobber (or be seeded by) the player's sandbox snapshot.
+	# Multiplayer matches sync their board through match_actions and must never
+	# touch the local sandbox save slots — otherwise a live match would clobber
+	# (or be seeded by) the player's sandbox autosave. Skip persistence entirely
+	# in MP; this is inherited by every persister subclass.
 	if _is_multiplayer():
 		return
 	GameEvents.units_changed.connect(_queue_save)
 	_restore()
 
 
+# True only inside a multiplayer match (window.GAME_MODE == "multiplayer").
+# Web-only: desktop/sandbox/tutorial builds have no JS bridge, so it's false.
 func _is_multiplayer() -> bool:
 	if not OS.has_feature("web"):
 		return false
@@ -57,17 +59,13 @@ func _queue_save() -> void:
 func _save_now() -> void:
 	if not OS.has_feature("web") or _level == null:
 		return
-	# Envelope (v2): carries the terrain seed alongside the units so a reloaded
-	# scene regenerates the SAME terrain its units were placed on. Older saves
-	# are a bare units array; _restore reads both (see below).
-	var envelope := {
-		"v": 2,
-		"seed": _level.get_persist_seed(),
+	var snapshot := {
 		"units": _level.serialize_units(),
+		"extra": _extra_save_data(),
 	}
 	# Double-stringify: inner produces the snapshot JSON; outer wraps it as a
 	# JS string literal so quotes/backslashes survive into the eval'd source.
-	var snapshot_json := JSON.stringify(envelope)
+	var snapshot_json := JSON.stringify(snapshot)
 	var js_literal := JSON.stringify(snapshot_json)
 	var mode_literal := JSON.stringify(gamemode)
 	JavaScriptBridge.eval(
@@ -78,28 +76,56 @@ func _save_now() -> void:
 func _restore() -> void:
 	if not OS.has_feature("web") or _level == null:
 		return
-	var raw = JavaScriptBridge.eval('window.getSandbox ? window.getSandbox() : ""')
+	var mode_literal := JSON.stringify(gamemode)
+	var raw = JavaScriptBridge.eval(
+		"window.getSandbox ? window.getSandbox(" + mode_literal + ') : ""'
+	)
 	if not (raw is String) or raw == "":
+		_on_restore_complete(false)
 		return
+
 	var parsed = JSON.parse_string(raw)
 
-	var units: Array = []
+	# Legacy shape: a bare units array, from saves made before "extra" existed.
 	if parsed is Array:
-		# Legacy format: a bare units array, no terrain seed.
-		units = parsed
-	elif parsed is Dictionary:
-		# v2 envelope: apply the seed BEFORE the level generates terrain (this
-		# runs in ScenePersister._ready, which fires before the parent level's
-		# _ready), then restore the units.
-		var seed_v = (parsed as Dictionary).get("seed", -1)
-		if typeof(seed_v) == TYPE_FLOAT or typeof(seed_v) == TYPE_INT:
-			var s := int(seed_v)
-			if s >= 0:
-				_level.apply_persist_seed(s)
-		var u = (parsed as Dictionary).get("units", [])
-		if u is Array:
-			units = u
-
-	if units.is_empty():
+		if parsed.is_empty():
+			_on_restore_complete(false)
+			return
+		await _level.deserialize_units(parsed)
+		_on_restore_complete(true)
 		return
-	_level.deserialize_units(units)
+
+	if not (parsed is Dictionary):
+		_on_restore_complete(false)
+		return
+
+	var units_snapshot: Array = parsed.get("units", [])
+	var had_units := not units_snapshot.is_empty()
+	if had_units:
+		await _level.deserialize_units(units_snapshot)
+
+	_apply_extra_data(parsed.get("extra", {}))
+	_on_restore_complete(had_units)
+
+
+func clear_save() -> void:
+	if not OS.has_feature("web"):
+		return
+	var empty_json := JSON.stringify({"units": [], "extra": {}})
+	var js_literal := JSON.stringify(empty_json)
+	var mode_literal := JSON.stringify(gamemode)
+	JavaScriptBridge.eval(
+		"window.saveSandbox && window.saveSandbox(" + js_literal + ", " + mode_literal + ")"
+	)
+
+
+func _extra_save_data() -> Dictionary:
+	return {}
+
+
+func _apply_extra_data(_extra: Dictionary) -> void:
+	pass
+
+
+func _on_restore_complete(_restored_units: bool) -> void:
+	pass

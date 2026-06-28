@@ -26,13 +26,7 @@ var grid_w: int = 150
 var grid_h: int = 150
 var cell_size: int = 8
 var height_grid: Array = []
-
-# Terrain seed bookkeeping for sandbox persistence. `_active_seed` is whatever
-# seed the current terrain was built from (saved with the scene); `_pending_seed`
-# is a seed restored from a saved scene, applied by ScenePersister before terrain
-# generation. -1 means "none restored — pick a fresh random one".
-var _active_seed: int = 0
-var _pending_seed: int = -1
+var _terrain_seed: int = 0
 
 var _sandbox_popup_open := false
 
@@ -53,12 +47,7 @@ func _ready() -> void:
 
 	super._ready()
 
-	height_grid = _generate_terrain(grid_w, grid_h)
-	set_terrain_data(height_grid)
-	_update_terrain_transform()
-
-	var tex := _create_height_texture(height_grid, grid_w, grid_h)
-	contour_rect.material.set_shader_parameter("height_map", tex)
+	_init_terrain()
 
 	# Terrain colors
 	contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))  # green
@@ -73,13 +62,68 @@ func _ready() -> void:
 	contour_rect.material.set_shader_parameter("max_height", 500.0)
 	contour_rect.material.set_shader_parameter("mid_point", 0.6)
 
-	_label_tactical_points(height_grid, grid_w, grid_h)
-
 	# The multiplayer match reuses this Sandbox scene/script, so guard on the
 	# game mode too — otherwise the "Welcome to Sandbox Mode" intro wrongly
-	# pops up over a live MP match.
+	# pops up over a live MP match. (Tactical labels are drawn by
+	# _regenerate_terrain's deferred call, so no direct labelling needed here.)
 	if get_script() == Sandbox and not _is_multiplayer():
 		open_popup()
+
+
+func _init_terrain() -> void:
+	# Multiplayer: both clients must render identical terrain, so the seed comes
+	# from the shared match record (window.MULTIPLAYER_MATCH.seed) and overrides
+	# any restored/random seed. Sandbox/tutorial keep a restored seed (set by the
+	# persister before this runs) or fall back to a fresh random one.
+	var mp_seed := _multiplayer_terrain_seed()
+	if mp_seed >= 0:
+		_terrain_seed = mp_seed
+	elif _terrain_seed == 0:
+		_terrain_seed = randi()
+	_regenerate_terrain()
+
+
+# Shared terrain seed from the match record in a multiplayer match, or -1 when
+# not multiplayer (sandbox/tutorial/desktop). The Astro bootstrap on
+# /multiplayer/play sets window.MULTIPLAYER_MATCH before startGame(), so the
+# value is in place by the time _ready() runs here.
+func _multiplayer_terrain_seed() -> int:
+	if not OS.has_feature("web"):
+		return -1
+	var mode: Variant = JavaScriptBridge.eval("window.GAME_MODE")
+	if not (mode is String) or (mode as String) != "multiplayer":
+		return -1
+	# JS numbers arrive as a Variant float/int; a typeof() check is more robust
+	# than `is float` against the null returned before MULTIPLAYER_MATCH is set.
+	var v: Variant = JavaScriptBridge.eval(
+		"window.MULTIPLAYER_MATCH ? window.MULTIPLAYER_MATCH.seed : null"
+	)
+	var t := typeof(v)
+	if t == TYPE_FLOAT or t == TYPE_INT:
+		return int(v)
+	push_warning("[Sandbox] MP mode but no seed on window.MULTIPLAYER_MATCH")
+	return -1
+
+
+func _regenerate_terrain() -> void:
+	height_grid = _generate_terrain(grid_w, grid_h, _terrain_seed)
+	set_terrain_data(height_grid)
+
+	_update_terrain_transform()
+
+	var tex := _create_height_texture(height_grid, grid_w, grid_h)
+	contour_rect.material.set_shader_parameter("height_map", tex)
+
+	call_deferred("_label_tactical_points", height_grid, grid_w, grid_h)
+
+
+func get_terrain_seed() -> int:
+	return _terrain_seed
+
+
+func set_terrain_seed(value: int) -> void:
+	_terrain_seed = value
+	_regenerate_terrain()
 
 
 func open_popup() -> void:
@@ -120,52 +164,9 @@ func _on_sandbox_popup_closed() -> void:
 # ── Terrain generation ────────────────────────────────────────────────────────
 
 
-# Pulls the noise seed from JS in multiplayer mode so both clients render
-# the same terrain. The Astro bootstrap on /multiplayer/play waits for
-# window.MULTIPLAYER_MATCH to be set before calling engine.startGame()
-# (see multiplayer/play.astro), so by the time we reach _ready() the value
-# is in place. Falls back to randi() for sandbox or any non-web build.
-func _terrain_seed() -> int:
-	if not OS.has_feature("web"):
-		_active_seed = randi()
-		return _active_seed
-	var mode: Variant = JavaScriptBridge.eval("window.GAME_MODE")
-	if not (mode is String) or (mode as String) != "multiplayer":
-		# Sandbox: reuse a seed restored from the saved scene so units reload
-		# onto the same terrain; otherwise pick a fresh one and remember it so
-		# the next autosave persists it.
-		_active_seed = _pending_seed if _pending_seed >= 0 else randi()
-		return _active_seed
-	# JS numbers come through as Variant float (sometimes int for integer
-	# values); typeof() check is more robust than `is float` against the
-	# Variant null returned when MULTIPLAYER_MATCH isn't published yet.
-	var v: Variant = JavaScriptBridge.eval(
-		"window.MULTIPLAYER_MATCH ? window.MULTIPLAYER_MATCH.seed : null"
-	)
-	var t := typeof(v)
-	if t == TYPE_FLOAT or t == TYPE_INT:
-		_active_seed = int(v)
-		return _active_seed
-	push_warning(
-		"[Sandbox] MP mode but no seed on window.MULTIPLAYER_MATCH — fell through to randi()"
-	)
-	_active_seed = randi()
-	return _active_seed
-
-
-# ScenePersister persistence hooks (sandbox): report the seed the current
-# terrain was built from, and accept a restored seed to rebuild it identically.
-func get_persist_seed() -> int:
-	return _active_seed
-
-
-func apply_persist_seed(new_seed: int) -> void:
-	_pending_seed = new_seed
-
-
-func _generate_terrain(w: int, h: int) -> Array:
+func _generate_terrain(w: int, h: int, seed: int) -> Array:
 	var noise := FastNoiseLite.new()
-	noise.seed = _terrain_seed()
+	noise.seed = seed
 	noise.frequency = 0.025
 	noise.fractal_octaves = 3
 
@@ -183,6 +184,8 @@ func _generate_terrain(w: int, h: int) -> Array:
 
 
 func _label_tactical_points(grid: Array, w: int, h: int) -> void:
+	_clear_labels()
+
 	# Step 1 – collect raw candidates
 	var peak_candidates: Array[Dictionary] = []
 	var valley_candidates: Array[Dictionary] = []
@@ -263,9 +266,14 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 	var kept := _deconflict(label_descs)
 
 	# Step 5 – spawn
-	await get_tree().process_frame
 	for desc in kept:
 		_spawn_label(desc)
+
+
+func _clear_labels() -> void:
+	for child in get_children():
+		if child is Label:
+			child.queue_free()
 
 
 # ── Non-maximum suppression ───────────────────────────────────────────────────

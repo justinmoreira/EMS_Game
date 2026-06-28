@@ -804,6 +804,7 @@ func _on_confirm_pressed() -> void:
 	pending_attributes.clear()
 
 	GameEvents.confirm_pressed.emit(selected_node)
+	GameEvents.units_changed.emit()
 	GameEvents.simulation_requested.emit()
 
 

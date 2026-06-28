@@ -602,7 +602,7 @@ func _get_level_intro_content(level: int) -> Dictionary:
 			return {"title": "Silent Link Mode", "body": "Unknown level"}
 
 
-func _generate_terrain(w: int, h: int) -> Array:
+func _generate_terrain(w: int, h: int, seed: int) -> Array:
 	var noise := FastNoiseLite.new()
 	noise.seed = 1
 	noise.frequency = 0.025
