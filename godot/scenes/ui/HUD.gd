@@ -58,7 +58,6 @@ func _on_regenerate_clicked():
 	var level = get_tree().current_scene
 	if level.has_method("set_terrain_seed") and level.has_method("_regenerate_terrain"):
 		level.set_terrain_seed(randi())
-		level._regenerate_terrain
 		GameEvents.units_changed.emit()
 
 
