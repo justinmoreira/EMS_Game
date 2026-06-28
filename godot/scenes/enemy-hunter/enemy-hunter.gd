@@ -358,7 +358,7 @@ func _clear_link_visuals() -> void:
 		LinkRenderer.clear_all()
 
 
-func _generate_terrain(w: int, h: int) -> Array:
+func _generate_terrain(w: int, h: int, seed: int) -> Array:
 	var noise := FastNoiseLite.new()
 	noise.seed = 1
 	noise.frequency = 0.025

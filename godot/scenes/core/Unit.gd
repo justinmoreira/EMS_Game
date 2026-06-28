@@ -250,6 +250,7 @@ func _input(event: InputEvent) -> void:
 		# just clicked / placed / moved.
 		if _drag_links_cleared:
 			GameEvents.simulation_requested.emit()
+			GameEvents.units_changed.emit()
 		GameEvents.select(self)
 		_is_being_dragged = false
 		get_tree().root.set_input_as_handled()
