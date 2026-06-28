@@ -5,13 +5,17 @@ const TUTORIAL_TEXT := preload("res://scenes/levels/TutorialText.gd")
 const TUTORIAL_TERRAIN_SEED := 12345
 const TUTORIAL_FREQUENCY := 1000.0
 const FREQUENCY_TOLERANCE := 5.0
+# Placement tolerances stay in screen pixels: a unit is "near" a target when its
+# on-screen distance to the target is within tolerance, regardless of zoom.
 const PLACEMENT_TOLERANCE := 75.0
 const MOVE_TARGET_TOLERANCE := 50.0
-const FIRST_TRANSCEIVER_POS := Vector2(580, 780)
-const FIRST_TRANSCEIVER_GREEN_POS := Vector2(650, 780)
-const SECOND_TRANSCEIVER_POS := Vector2(850, 780)
-const SENSOR_POS := Vector2(680, 910)
-const JAMMER_POS := Vector2(690, 700)
+# Target positions are world_uv (single source of truth lives in TutorialText, so
+# the placement markers and the acceptance targets can never drift apart).
+const FIRST_TRANSCEIVER_POS := TUTORIAL_TEXT.FIRST_TRANSCEIVER_POS
+const FIRST_TRANSCEIVER_GREEN_POS := TUTORIAL_TEXT.FIRST_TRANSCEIVER_GREEN_POS
+const SECOND_TRANSCEIVER_POS := TUTORIAL_TEXT.SECOND_TRANSCEIVER_POS
+const SENSOR_POS := TUTORIAL_TEXT.SENSOR_POS
+const JAMMER_POS := TUTORIAL_TEXT.JAMMER_POS
 const UNIT_ID_TRANSCEIVER := &"transceiver"
 const UNIT_ID_SENSOR := &"sensor"
 const UNIT_ID_JAMMER := &"jammer"
@@ -34,6 +38,7 @@ var _original_height := 10.0
 var _original_sensor_sensitivity := 10.0
 var _original_sensor_tuning := TUTORIAL_FREQUENCY
 var _placement_marker: Control = null
+var _placement_marker_world_uv := Vector2.ZERO
 var _completion_popup: Control = null
 var _repeat_instruction_button: Button = null
 var _current_instruction_text := ""
@@ -81,6 +86,7 @@ func _start_tutorial() -> void:
 func _process(_delta: float) -> void:
 	_remove_sandbox_intro_popups()
 	_lock_placed_units()
+	_position_placement_marker()
 	_check_pending_placement()
 	_check_transceiver_move_target()
 	_check_display_setting_change()
@@ -265,7 +271,7 @@ func _placement_target_for_current_step(unit: Node) -> Variant:
 func _handle_placement(unit: Node, target_position: Vector2) -> void:
 	if _is_near_target(unit, target_position):
 		_wrong_placement_popup_open = false
-		_snap_unit_to_local_pos(unit, target_position)
+		_snap_unit_to_world_uv(unit, target_position)
 		_accept_placement(unit)
 		return
 	_pending_placement_unit = unit
@@ -286,7 +292,7 @@ func _check_pending_placement() -> void:
 		return
 	if _is_near_target(_pending_placement_unit, target):
 		_wrong_placement_popup_open = false
-		_snap_unit_to_local_pos(_pending_placement_unit, target)
+		_snap_unit_to_world_uv(_pending_placement_unit, target)
 		_accept_placement(_pending_placement_unit)
 
 
@@ -298,7 +304,7 @@ func _check_transceiver_move_target() -> void:
 	if _first_transceiver == null or not is_instance_valid(_first_transceiver):
 		return
 	if _is_near_target(_first_transceiver, FIRST_TRANSCEIVER_GREEN_POS, MOVE_TARGET_TOLERANCE):
-		_snap_unit_to_local_pos(_first_transceiver, FIRST_TRANSCEIVER_GREEN_POS)
+		_snap_unit_to_world_uv(_first_transceiver, FIRST_TRANSCEIVER_GREEN_POS)
 		_lock_unit_to(_first_transceiver, FIRST_TRANSCEIVER_GREEN_POS)
 		_run_simulation_if_possible()
 		_enter_step(TUTORIAL_STEP.EXPLAIN_SUCCESSFUL_LINK)
@@ -481,27 +487,6 @@ func _setup(
 		_show_placement_marker(marker_pos, marker_label)
 	else:
 		_clear_placement_marker()
-
-
-func _select_unit_for_edit(unit: Node, attributes: Array) -> void:
-	if unit == null or not is_instance_valid(unit):
-		return
-	if attributes.is_empty():
-		return
-
-	_selected_tutorial_unit = unit
-	call_deferred("_restore_current_edit_state")
-
-
-func _reapply_current_step_attribute_filter() -> void:
-	var expected_unit := _expected_edit_unit_for_current_step()
-	if expected_unit == null or not is_instance_valid(expected_unit):
-		return
-
-	if _selected_tutorial_unit != expected_unit:
-		return
-
-	_apply_attribute_filter(_attributes_for_current_step())
 
 
 func _apply_attribute_filter(attributes: Array) -> void:
@@ -707,7 +692,7 @@ func _show_completion_popup() -> void:
 	)
 
 
-func _show_placement_marker(local_pos: Vector2, label_text: String) -> void:
+func _show_placement_marker(world_uv: Vector2, label_text: String) -> void:
 	_clear_placement_marker()
 	var marker := PanelContainer.new()
 	marker.name = "TutorialPlacementMarker"
@@ -728,8 +713,20 @@ func _show_placement_marker(local_pos: Vector2, label_text: String) -> void:
 	label.add_theme_constant_override("outline_size", 3)
 	marker.add_child(label)
 	map_container.add_child(marker)
-	marker.position = local_pos - marker.custom_minimum_size * 0.5
 	_placement_marker = marker
+	_placement_marker_world_uv = world_uv
+	_position_placement_marker()
+
+
+# Markers live under map_container, so position them relative to it. Re-derive
+# from world_uv each frame so the highlight stays over the same map spot as the
+# player zooms or pans.
+func _position_placement_marker() -> void:
+	if _placement_marker == null or not is_instance_valid(_placement_marker):
+		return
+	var global_pos: Vector2 = global_position + world_uv_to_screen(_placement_marker_world_uv)
+	var container_local: Vector2 = global_pos - map_container.global_position
+	_placement_marker.position = container_local - _placement_marker.custom_minimum_size * 0.5
 
 
 func _clear_placement_marker() -> void:
@@ -738,12 +735,12 @@ func _clear_placement_marker() -> void:
 	_placement_marker = null
 
 
-func _is_near_target(
-	unit: Node, local_pos: Vector2, tolerance: float = PLACEMENT_TOLERANCE
-) -> bool:
+func _is_near_target(unit: Node, world_uv: Vector2, tolerance: float = PLACEMENT_TOLERANCE) -> bool:
 	if unit == null or not is_instance_valid(unit):
 		return false
-	var target = map_container.global_position + local_pos
+	# Derive the target's current on-screen position from world_uv so the check
+	# tracks the live map transform (zoom / pan / resolution).
+	var target := global_position + world_uv_to_screen(world_uv)
 	var unit_pos := _get_unit_position(unit)
 	return unit_pos.distance_to(target) <= tolerance
 
@@ -757,23 +754,28 @@ func _get_unit_position(unit: Node) -> Vector2:
 	return Vector2(-999999.0, -999999.0)
 
 
-func _snap_unit_to_local_pos(unit: Node, local_pos: Vector2) -> void:
+func _snap_unit_to_world_uv(unit: Node, world_uv: Vector2) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
-	var global_pos: Vector2 = map_container.global_position + local_pos
-	var base_local_pos: Vector2 = global_pos - global_position
+	var base_local_pos: Vector2 = world_uv_to_screen(world_uv)
+	var global_pos: Vector2 = global_position + base_local_pos
 	if unit is Node2D or unit is Control:
 		unit.global_position = global_pos
 	else:
 		unit.set("position", base_local_pos)
-	unit.set_meta("world_uv", screen_to_world_uv(base_local_pos))
+	# world_uv is the source of truth. Mirror it into both the node meta (used by
+	# terrain-sampling visuals) and the Unit's stored value (used by BaseLevel's
+	# _reposition_units) so every system agrees and nothing fights the lock.
+	unit.set_meta("world_uv", world_uv)
+	if unit is Unit:
+		unit.set_value(&"world_uv", world_uv)
 
 
-func _lock_unit_to(unit: Node, local_pos: Vector2) -> void:
+func _lock_unit_to(unit: Node, world_uv: Vector2) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
-	_locked_unit_targets[unit] = local_pos
-	_snap_unit_to_local_pos(unit, local_pos)
+	_locked_unit_targets[unit] = world_uv
+	_snap_unit_to_world_uv(unit, world_uv)
 
 
 func _unlock_unit(unit: Node) -> void:
@@ -786,7 +788,7 @@ func _lock_placed_units() -> void:
 		if unit == null or not is_instance_valid(unit):
 			_locked_unit_targets.erase(unit)
 			continue
-		_snap_unit_to_local_pos(unit, _locked_unit_targets[unit])
+		_snap_unit_to_world_uv(unit, _locked_unit_targets[unit])
 
 
 func _outside_match_range(value: float) -> bool:
