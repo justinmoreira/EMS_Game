@@ -880,23 +880,19 @@ func toggle_suggestions(enabled: bool) -> void:
 		if suggestions_panel:
 			suggestions_panel.queue_free()
 			suggestions_panel = null
-
 	call_deferred("_refresh_suggestions_ui")
 
 
 func toggle_spectrum(enabled: bool) -> void:
 	spectrum_enabled = enabled
-
 	if spectrum_analyzer:
 		spectrum_analyzer.visible = enabled
 
 
 func toggle_detection_hints(enabled: bool) -> void:
 	detection_hints_enabled = enabled
-
 	if GameEvents.has_signal("detection_hints_toggled"):
 		GameEvents.detection_hints_toggled.emit(enabled)
-
 	GameEvents.simulation_requested.emit()
 
 
