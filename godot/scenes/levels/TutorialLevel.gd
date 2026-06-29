@@ -63,8 +63,8 @@ func _ready() -> void:
 
 func get_game_mode_name() -> String:
 	return "tutorial"
-	
-	
+
+
 func _has_tutorial_persister() -> bool:
 	for child in get_children():
 		if child is TutorialPersister:

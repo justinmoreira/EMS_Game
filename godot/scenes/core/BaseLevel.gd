@@ -116,8 +116,8 @@ func _ready():
 
 func get_game_mode_name() -> String:
 	return "base"
-	
-	
+
+
 # Exposes window.godotApplyOpponentBoard so MultiplayerMatch.tsx (which
 # subscribes to match_actions INSERTs) can push the opponent's snapshot
 # straight into the scene. Stored on `self` to keep the Callable alive —

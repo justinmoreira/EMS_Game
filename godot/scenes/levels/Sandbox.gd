@@ -72,8 +72,8 @@ func _ready() -> void:
 
 func get_game_mode_name() -> String:
 	return "sandbox"
-	
-	
+
+
 func _init_terrain() -> void:
 	# Multiplayer: both clients must render identical terrain, so the seed comes
 	# from the shared match record (window.MULTIPLAYER_MATCH.seed) and overrides
