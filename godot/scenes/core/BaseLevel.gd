@@ -83,6 +83,10 @@ var _fog_reveal_pending: bool = false
 
 
 func _ready():
+	# SimulationManager is an autoload, so its MP freeze flag would persist into
+	# the next scene. Clear it on every level load; _mp_setup re-enables it for
+	# multiplayer only.
+	SimulationManager.mp_frozen = false
 	get_tree().get_root().size_changed.connect(_on_window_resized)
 	GameEvents.selection_changed.connect(_on_selection_changed)
 	GameEvents.reset_requested.connect(_on_reset_requested)
@@ -172,14 +176,12 @@ func apply_opponent_board(snapshot: Array, owner_id: String) -> void:
 	# prior detection stay visible) so they never flash before the sim resolves.
 	_apply_fog()
 
-	# This is a committed/merged board (a turn resolved), so arm the reveal pass:
-	# the sim below will reveal enemies your submitted sensors fully detect. Live
-	# placement sims leave this false, so they never reveal.
+	# This is a committed/merged board (a turn resolved), so arm the reveal pass
+	# and run the sim DIRECTLY. In MP the sim is detached from the live signal, so
+	# only these committed calls refresh visuals — links, rings, badges, reveal —
+	# which is what keeps a planned sensor/jammer from leaking enemy info.
 	_fog_reveal_pending = true
-
-	# Opponent geometry changed — rerun the sim so link lines, detection, and
-	# range rings reflect the merged board, then re-check the win condition.
-	GameEvents.simulation_requested.emit()
+	SimulationManager.simulate(true)
 	_evaluate_win_condition()
 
 
@@ -248,9 +250,20 @@ func _mp_setup() -> void:
 	_register_turn_hook()
 	# Fog-of-war: reveal enemy units your sensors detect each time the sim runs.
 	GameEvents.simulation_complete.connect(_on_sim_complete_fog)
+	# Multiplayer freezes ALL sim-driven visuals (links, range/detection rings,
+	# status badges, enemy reveal) during your turn, so a planned-but-unsubmitted
+	# sensor/jammer can't leak enemy info or even refresh its own rings. The sim
+	# becomes a no-op except on a committed board (turn resolution / initial load,
+	# run explicitly via simulate(true)). The flag gates BOTH the
+	# simulation_requested signal AND the direct simulate() calls (selection, HUD).
+	SimulationManager.mp_frozen = true
 	_spawn_immutable_objective()
 	# Sync to the turn we joined on, then watch for advances via the JS hook.
 	_mp_on_turn_advance(_read_match_number("current_turn"))
+	# Render the initial committed board once (objectives + anything already
+	# submitted on a rejoin); treat as committed so prior detections reveal.
+	_fog_reveal_pending = true
+	SimulationManager.simulate(true)
 
 
 func _read_match_number(field: String) -> int:
