@@ -67,6 +67,7 @@ func _exit_tree() -> void:
 
 # ── Domain (definition / physical_state) ─────────────────────────────
 
+
 # Returns the value for an attribute id, or fallback if unset.
 func get_value(id: StringName, fallback = null):
 	return physical_state.get(id, fallback)
