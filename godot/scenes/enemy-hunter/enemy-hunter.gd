@@ -34,15 +34,15 @@ func _ready() -> void:
 	GameEvents.simulation_complete.connect(_on_simulation_complete)
 
 	_hud = find_child("HUD", true, false)
-		
+
 	if is_instance_valid(_hud):
 		if _hud.has_method("set_spectrum_enabled"):
 			_hud.set_spectrum_enabled(true)
-		
+
 		var hints_toggle = _hud.find_child("DetectionHintsToggle", true, false)
 		if hints_toggle and "button_pressed" in hints_toggle:
 			hints_toggle.button_pressed = true
-	
+
 	_count_units()
 	_start()
 

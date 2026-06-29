@@ -893,10 +893,10 @@ func toggle_spectrum(enabled: bool) -> void:
 
 func toggle_detection_hints(enabled: bool) -> void:
 	detection_hints_enabled = enabled
-	
+
 	if GameEvents.has_signal("detection_hints_toggled"):
 		GameEvents.detection_hints_toggled.emit(enabled)
-	
+
 	GameEvents.simulation_requested.emit()
 
 

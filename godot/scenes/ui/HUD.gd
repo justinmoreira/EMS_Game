@@ -154,12 +154,12 @@ func _on_suggestions_toggled(is_pressed: bool):
 	var level = get_tree().current_scene
 	if level.has_method("toggle_suggestions"):
 		level.toggle_suggestions(is_pressed)
-		
+
 
 func _on_detection_hints_toggled(is_pressed: bool):
 	settings["detection_hints"] = is_pressed
 	_save_settings()
-	
+
 	var level = get_tree().current_scene
 	if level.has_method("toggle_detection_hints"):
 		level.toggle_detection_hints(is_pressed)
