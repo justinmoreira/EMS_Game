@@ -44,9 +44,10 @@ var _waiting_display_setting_key := ""
 var _waiting_display_setting_original: Variant = null
 var _edit_refresh_generation := 0
 
+func _enter_tree() -> void:
+	_ui = TutorialUI.new(self)
 
 func _ready() -> void:
-	_ui = TutorialUI.new(self)
 	TutorialUtils.remove_sandbox_intro_popups(get_tree())
 	intro_popup_open = false
 	super._ready()

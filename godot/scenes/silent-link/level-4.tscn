@@ -50,6 +50,9 @@ script = ExtResource("2")
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
+attribute_overrides = {
+&"tuning_frequency": 800.0
+}
 
 [node name="EnemySensor2" type="Node2D" parent="." index="4" unique_id=2024476142]
 position = Vector2(1480, 260)
@@ -57,6 +60,9 @@ script = ExtResource("2")
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
+attribute_overrides = {
+&"tuning_frequency": 800.0
+}
 
 [node name="EnemySensor3" type="Node2D" parent="." index="5" unique_id=2104001001]
 position = Vector2(1120, 860)
@@ -64,6 +70,9 @@ script = ExtResource("2")
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
+attribute_overrides = {
+&"tuning_frequency": 950.0
+}
 
 [node name="EnemySensor4" type="Node2D" parent="." index="6" unique_id=2104001002]
 position = Vector2(1320, 540)
@@ -71,6 +80,9 @@ script = ExtResource("2")
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
+attribute_overrides = {
+&"tuning_frequency": 500.0
+}
 
 [node name="EnemyJammer" type="Node2D" parent="." index="7" unique_id=234907007]
 visible = false
@@ -79,6 +91,9 @@ script = ExtResource("2")
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
+attribute_overrides = {
+&"frequency": 1200.0
+}
 
 [node name="EnemyJammer2" type="Node2D" parent="." index="8" unique_id=2104001003]
 visible = false
@@ -87,6 +102,9 @@ script = ExtResource("2")
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
+attribute_overrides = {
+&"frequency": 1400.0
+}
 
 [node name="EnemyJammer3" type="Node2D" parent="." index="9" unique_id=2104001004]
 visible = false
@@ -95,6 +113,9 @@ script = ExtResource("2")
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
+attribute_overrides = {
+&"frequency": 1700.0
+}
 
 [node name="EnemyJammer4" type="Node2D" parent="." index="10" unique_id=2104001005]
 visible = false
@@ -103,6 +124,9 @@ script = ExtResource("2")
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
+attribute_overrides = {
+&"frequency": 2200.0
+}
 
 [node name="LevelPersister" type="Node" parent="." index="11" unique_id=165652]
 script = ExtResource("7_pd7bj")

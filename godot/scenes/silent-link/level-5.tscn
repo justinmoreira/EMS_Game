@@ -47,6 +47,9 @@ size_flags_vertical = 1
 [node name="EnemySensor" type="Node2D" parent="." index="3" unique_id=839980744]
 position = Vector2(750, 650)
 script = ExtResource("2")
+attribute_overrides = {
+&"tuning_frequency": 650.0
+}
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
@@ -54,6 +57,9 @@ is_removable = false
 [node name="EnemySensor2" type="Node2D" parent="." index="4" unique_id=2024476142]
 position = Vector2(1400, 800)
 script = ExtResource("2")
+attribute_overrides = {
+&"tuning_frequency": 650.0
+}
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
@@ -61,6 +67,9 @@ is_removable = false
 [node name="EnemySensor3" type="Node2D" parent="." index="5" unique_id=2105001001]
 position = Vector2(980, 680)
 script = ExtResource("2")
+attribute_overrides = {
+&"tuning_frequency": 900.0
+}
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
@@ -68,6 +77,9 @@ is_removable = false
 [node name="EnemySensor4" type="Node2D" parent="." index="6" unique_id=2105001002]
 position = Vector2(1240, 340)
 script = ExtResource("2")
+attribute_overrides = {
+&"tuning_frequency": 900.0
+}
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
@@ -76,6 +88,9 @@ is_removable = false
 visible = false
 position = Vector2(1200, 500)
 script = ExtResource("2")
+attribute_overrides = {
+&"frequency": 300.0
+}
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
@@ -84,6 +99,9 @@ is_removable = false
 visible = false
 position = Vector2(850, 300)
 script = ExtResource("2")
+attribute_overrides = {
+&"frequency": 1400.0
+}
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
@@ -92,6 +110,9 @@ is_removable = false
 visible = false
 position = Vector2(1080, 560)
 script = ExtResource("2")
+attribute_overrides = {
+&"frequency": 1800.0
+}
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
@@ -100,6 +121,9 @@ is_removable = false
 visible = false
 position = Vector2(940, 470)
 script = ExtResource("2")
+attribute_overrides = {
+&"frequency": 100.0
+}
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
@@ -108,6 +132,9 @@ is_removable = false
 visible = false
 position = Vector2(1320, 620)
 script = ExtResource("2")
+attribute_overrides = {
+&"frequency": 2000.0
+}
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
@@ -116,6 +143,9 @@ is_removable = false
 visible = false
 position = Vector2(760, 540)
 script = ExtResource("2")
+attribute_overrides = {
+&"frequency": 2400.0
+}
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
