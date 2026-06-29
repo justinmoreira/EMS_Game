@@ -3,11 +3,11 @@ class_name ConnectionLegend
 
 enum LinePattern { SOLID, DASHED, MOVING_DASHED, ZIGZAG }
 
-const LEGEND_WIDTH := 230.0
-const BUTTON_HEIGHT := 34.0
+const LEGEND_WIDTH := 200.0
+const BUTTON_HEIGHT := 40.0
 const DROPDOWN_GAP := 4.0
 
-const ROW_COUNT := 4
+const ROW_COUNT := 6
 const ROW_HEIGHT := 24.0
 const ROW_SEPARATION := 8.0
 const PANEL_MARGIN_TOP_BOTTOM := 10.0
@@ -19,9 +19,11 @@ const PANEL_HEIGHT := (
 )
 
 const C_SUCCESS := Color.GREEN
-const C_CONNECTING := Color.YELLOW
 const C_OUT_OF_RANGE := Color.DARK_ORANGE
 const C_JAMMED := Color.RED
+const C_FREQUENCY_DIFF := Color.CYAN
+const C_BANDWIDTH_PENALTY := Color.MAGENTA
+const C_TERRAIN_BLOCKED := Color.BLACK
 
 var is_open := false
 
@@ -38,13 +40,26 @@ func _ready() -> void:
 	_build_dropdown_legend()
 
 
+func _input(event: InputEvent) -> void:
+	if not is_open:
+		return
+		
+	if event is InputEventMouseButton and event.is_pressed() and event.button_index == MOUSE_BUTTON_LEFT:
+		var clicked_button := toggle_button.get_global_rect().has_point(event.global_position)
+		var clicked_panel := dropdown_panel.get_global_rect().has_point(event.global_position)
+		
+		if not clicked_button and not clicked_panel:
+			toggle_button.button_pressed = false
+			_on_toggle_pressed()
+			
+			
 func get_collapsed_width() -> float:
 	return LEGEND_WIDTH
 
 
 func _build_dropdown_legend() -> void:
 	toggle_button = Button.new()
-	toggle_button.text = "  Connection Legend ▼"
+	toggle_button.text = "  Connection Legend"
 	toggle_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	toggle_button.add_theme_font_size_override("font_size", 18)
 	toggle_button.toggle_mode = true
@@ -66,7 +81,7 @@ func _build_dropdown_legend() -> void:
 	add_child(dropdown_panel)
 
 	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.05, 0.07, 0.09, 0.94)
+	panel_style.bg_color = Color(0.18, 0.225, 0.27, 0.94)
 	panel_style.border_color = Color(0.75, 0.85, 1.0, 0.45)
 	panel_style.border_width_left = 1
 	panel_style.border_width_top = 1
@@ -103,9 +118,15 @@ func _build_dropdown_legend() -> void:
 	)
 	_add_legend_row(
 		vbox,
-		"Sending / Connecting",
-		LinkVisuals.C_CONNECTING,
-		LinkVisuals.LINE_PATTERN_MOVING_DASHED
+		"Frequency Difference",
+		LinkVisuals.C_FREQUENCY_DIFF,
+		LinkVisuals.LINE_PATTERN_DASHED
+	)
+	_add_legend_row(
+		vbox, "Bandwidth Penalty", LinkVisuals.C_BANDWIDTH_PENALTY, LinkVisuals.LINE_PATTERN_DASHED
+	)
+	_add_legend_row(
+		vbox, "Terrain Blocked", LinkVisuals.C_TERRAIN_BLOCKED, LinkVisuals.LINE_PATTERN_DASHED
 	)
 	_add_legend_row(
 		vbox, "Jammed / Interfered", LinkVisuals.C_JAMMED, LinkVisuals.LINE_PATTERN_ZIGZAG
@@ -134,8 +155,3 @@ func _add_legend_row(parent: VBoxContainer, label_text: String, color: Color, pa
 func _on_toggle_pressed() -> void:
 	is_open = toggle_button.button_pressed
 	dropdown_panel.visible = is_open
-
-	if is_open:
-		toggle_button.text = "  Connection Legend ▲"
-	else:
-		toggle_button.text = "  Connection Legend ▼"
