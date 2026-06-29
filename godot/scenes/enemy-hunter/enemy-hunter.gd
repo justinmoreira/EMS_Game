@@ -54,6 +54,10 @@ func _process(_delta: float) -> void:
 		_timer_label.text = "Time: %.1fs" % elapsed
 
 
+func get_game_mode_name() -> String:
+	return "enemy-hunter"
+	
+	
 func _count_units() -> void:
 	_total_transceivers = get_tree().get_nodes_in_group("transceivers").size()
 	_total_jammers = get_tree().get_nodes_in_group("jammers").size()
