@@ -182,11 +182,12 @@ func _on_focus_link_lines_toggled(is_pressed: bool):
 func _on_successful_link_lines_toggled(is_pressed: bool):
 	settings["successful_link_lines"] = is_pressed
 	_save_settings()
-	
+
 	if LinkRenderer:
 		LinkRenderer.success_only_mode = is_pressed
 		LinkRenderer._refresh_all_visibility()
 	SimulationManager.simulate()
+
 
 func _save_settings() -> void:
 	var config = ConfigFile.new()

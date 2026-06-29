@@ -43,16 +43,20 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if not is_open:
 		return
-		
-	if event is InputEventMouseButton and event.is_pressed() and event.button_index == MOUSE_BUTTON_LEFT:
+
+	if (
+		event is InputEventMouseButton
+		and event.is_pressed()
+		and event.button_index == MOUSE_BUTTON_LEFT
+	):
 		var clicked_button := toggle_button.get_global_rect().has_point(event.global_position)
 		var clicked_panel := dropdown_panel.get_global_rect().has_point(event.global_position)
-		
+
 		if not clicked_button and not clicked_panel:
 			toggle_button.button_pressed = false
 			_on_toggle_pressed()
-			
-			
+
+
 func get_collapsed_width() -> float:
 	return LEGEND_WIDTH
 
@@ -117,10 +121,7 @@ func _build_dropdown_legend() -> void:
 		vbox, "Fail / Out of Range", LinkVisuals.C_OUT_OF_RANGE, LinkVisuals.LINE_PATTERN_DASHED
 	)
 	_add_legend_row(
-		vbox,
-		"Frequency Difference",
-		LinkVisuals.C_FREQUENCY_DIFF,
-		LinkVisuals.LINE_PATTERN_DASHED
+		vbox, "Frequency Difference", LinkVisuals.C_FREQUENCY_DIFF, LinkVisuals.LINE_PATTERN_DASHED
 	)
 	_add_legend_row(
 		vbox, "Bandwidth Penalty", LinkVisuals.C_BANDWIDTH_PENALTY, LinkVisuals.LINE_PATTERN_DASHED

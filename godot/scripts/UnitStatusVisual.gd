@@ -28,7 +28,7 @@ func _ready() -> void:
 
 	# Use Godot's fallback font so text can draw without needing a custom font file.
 	status_font = ThemeDB.fallback_font
-	
+
 	if GameEvents.has_signal("simulation_complete"):
 		GameEvents.simulation_complete.connect(_on_simulation_complete)
 
@@ -36,8 +36,8 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if GameEvents.simulation_complete.is_connected(_on_simulation_complete):
 		GameEvents.simulation_complete.disconnect(_on_simulation_complete)
-		
-		
+
+
 func set_status(new_status: int) -> void:
 	if status == new_status:
 		return
@@ -115,30 +115,32 @@ func _on_simulation_complete(_link_results: Array, detect_results: Array) -> voi
 	for result in detect_results:
 		if not result is Dictionary:
 			continue
-			
+
 		var sensor := result.get("sensor") as Node2D
 		var target := result.get("target") as Node2D
-		
+
 		if sensor == parent_unit and is_instance_valid(target):
 			var detected: bool = result.get("detected", false)
 			var fully_detected: bool = result.get("fully_detected", false)
-			
+
 			if detected and not fully_detected:
 				var tx_id := target.get_instance_id()
 				hinted_this_sim.append(tx_id)
-				
+
 				if not is_instance_valid(_detection_visual):
 					_detection_visual = DetectionVisual.new()
 					add_child(_detection_visual)
-					
+
 					_detection_visual.top_level = true
 					_detection_visual.global_position = Vector2.ZERO
-				
-				_detection_visual.set_hint(parent_unit.global_position, target.global_position, tx_id)
+
+				_detection_visual.set_hint(
+					parent_unit.global_position, target.global_position, tx_id
+				)
 
 	if is_instance_valid(_detection_visual):
 		_detection_visual.retain_only(hinted_this_sim)
-		
+
 		if hinted_this_sim.is_empty():
 			_detection_visual.queue_free()
 			_detection_visual = null

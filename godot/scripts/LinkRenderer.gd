@@ -263,10 +263,10 @@ func _apply_visibility_for_key(key: String) -> void:
 		is_hover_preview = hovered and not selected
 	else:
 		should_show = true
-	
+
 	if success_only_mode and data.final_state != SimulationManager.LinkState.SUCCESS:
 		should_show = false
-	
+
 	var alpha := 0.35 if is_hover_preview else 1.0
 
 	if is_instance_valid(data.line):
