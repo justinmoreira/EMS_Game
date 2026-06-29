@@ -55,6 +55,7 @@ const DESIGN_MAP_SIZE = Vector2(1620.0, 1080.0)
 # --- Initialization ---
 
 var _opponent_board_cb: Variant = null
+var _reveal_all_cb: Variant = null
 
 # ── Multiplayer match state ──────────────────────────────────────────
 # Only meaningful when window.GAME_MODE == "multiplayer". The immutable
@@ -129,6 +130,24 @@ func _register_mp_receive_hook() -> void:
 		return
 	_opponent_board_cb = JavaScriptBridge.create_callback(_on_js_apply_opponent_board)
 	window.godotApplyOpponentBoard = _opponent_board_cb
+	# The match UI calls this when the game ends (or the player dismisses the
+	# result modal) so the finished board can be inspected with everything shown.
+	_reveal_all_cb = JavaScriptBridge.create_callback(_on_js_reveal_all)
+	window.godotRevealAll = _reveal_all_cb
+
+
+# Reveal every unit (fog off) and render the full final board. Called on game
+# end so the player can study who connected what; cross-team link lines stay
+# suppressed by LinkRenderer, but all units, rings and same-team links show.
+func _reveal_all_units() -> void:
+	for child in get_children():
+		if child is Unit:
+			(child as Unit).set_concealed(false)
+	GameEvents.simulation_requested.emit()
+
+
+func _on_js_reveal_all(_args: Array) -> void:
+	_reveal_all_units()
 
 
 # JS bridge entry: receives (board_json_string, owner_player_id_string).
@@ -176,12 +195,11 @@ func apply_opponent_board(snapshot: Array, owner_id: String) -> void:
 	# prior detection stay visible) so they never flash before the sim resolves.
 	_apply_fog()
 
-	# This is a committed/merged board (a turn resolved), so arm the reveal pass
-	# and run the sim DIRECTLY. In MP the sim is detached from the live signal, so
-	# only these committed calls refresh visuals — links, rings, badges, reveal —
-	# which is what keeps a planned sensor/jammer from leaking enemy info.
+	# Committed/merged board (a turn resolved): arm the reveal pass so your
+	# submitted sensors reveal what they detect, then re-sim. Live placement sims
+	# leave _fog_reveal_pending false, so a planned sensor never reveals an enemy.
 	_fog_reveal_pending = true
-	SimulationManager.simulate(true)
+	GameEvents.simulation_requested.emit()
 	_evaluate_win_condition()
 
 
@@ -250,20 +268,14 @@ func _mp_setup() -> void:
 	_register_turn_hook()
 	# Fog-of-war: reveal enemy units your sensors detect each time the sim runs.
 	GameEvents.simulation_complete.connect(_on_sim_complete_fog)
-	# Multiplayer freezes ALL sim-driven visuals (links, range/detection rings,
-	# status badges, enemy reveal) during your turn, so a planned-but-unsubmitted
-	# sensor/jammer can't leak enemy info or even refresh its own rings. The sim
-	# becomes a no-op except on a committed board (turn resolution / initial load,
-	# run explicitly via simulate(true)). The flag gates BOTH the
-	# simulation_requested signal AND the direct simulate() calls (selection, HUD).
-	SimulationManager.mp_frozen = true
 	_spawn_immutable_objective()
 	# Sync to the turn we joined on, then watch for advances via the JS hook.
 	_mp_on_turn_advance(_read_match_number("current_turn"))
-	# Render the initial committed board once (objectives + anything already
-	# submitted on a rejoin); treat as committed so prior detections reveal.
+	# Initial render — your own units' links/rings show live; enemy units stay
+	# concealed (only revealed on a committed detection). Treat the initial board
+	# as committed so a rejoin reveals anything your submitted sensors detect.
 	_fog_reveal_pending = true
-	SimulationManager.simulate(true)
+	GameEvents.simulation_requested.emit()
 
 
 func _read_match_number(field: String) -> int:
@@ -350,7 +362,10 @@ func _apply_fog() -> void:
 		var u := child as Unit
 		if not _is_concealable_enemy(u):
 			continue
-		u.set_concealed(not _revealed_enemy_keys.has(_enemy_key(u)))
+		# Once the match is over the whole board is revealed; otherwise an enemy
+		# unit is shown only if a committed detection has revealed it.
+		var revealed := _mp_finished or _revealed_enemy_keys.has(_enemy_key(u))
+		u.set_concealed(not revealed)
 
 
 # After each sim resolves, reveal enemy units your sensors fully detected this
@@ -415,6 +430,12 @@ func _mp_pending_count() -> int:
 	var n := 0
 	for child in get_children():
 		if not (child is Unit):
+			continue
+		# Undo queue_free()s the unit then refreshes the lock via call_deferred,
+		# but deferred calls run BEFORE the node is actually freed — so without
+		# this guard the just-undone unit is still counted and the sidebar stays
+		# locked until a second undo. Skip nodes already slated for deletion.
+		if child.is_queued_for_deletion():
 			continue
 		var ps: Dictionary = (child as Unit).physical_state
 		if bool(ps.get(&"immutable", false)):
@@ -587,6 +608,8 @@ func _evaluate_win_condition() -> void:
 		return
 	var winner_id := me if outcome == WinEvaluator.OUTCOME_MINE else opp
 	_mp_finished = true
+	# Game over → drop the fog so the final board shows both sides in full.
+	_reveal_all_units()
 	_refresh_placement_lock()
 	_report_winner(winner_id)
 

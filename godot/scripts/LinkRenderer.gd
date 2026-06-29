@@ -54,6 +54,11 @@ func _on_simulation_complete(link_results: Array, _detect_results: Array) -> voi
 		# out of current_keys, so any previously drawn one is freed below.
 		if _link_touches_concealed(r.source, r.target):
 			continue
+		# Don't draw cross-team links (yours ↔ enemy's source/relays). Your line
+		# never carries signal through an enemy transceiver — the win check only
+		# walks your own relays — so such a line is misleading visual bloat.
+		if _link_cross_team(r.source, r.target):
+			continue
 		var key := _vis_key(r.source, r.target)
 		current_keys[key] = true
 		_draw_directional_link(r.source, r.target, r.state)
@@ -94,6 +99,14 @@ func _link_touches_concealed(a, b) -> bool:
 	if b is Unit and (b as Unit).is_concealed():
 		return true
 	return false
+
+
+# Endpoints on opposing teams (one MINE, one ENEMY). NONE==NONE outside MP, so
+# single-player link rendering is unchanged.
+func _link_cross_team(a, b) -> bool:
+	if not (a is Unit and b is Unit):
+		return false
+	return (a as Unit).owner_kind() != (b as Unit).owner_kind()
 
 
 func _create_link_nodes(source: Unit, target: Unit, key: String) -> void:
