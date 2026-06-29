@@ -8,6 +8,7 @@ var settings = {
 	"unit_ranges": false,
 	"unit_details": false,
 	"suggestions": false,
+	"detection_hints": false,
 	"heatmap": false,
 	"spectrum": false,
 	"heightmap_shader": true,
@@ -30,6 +31,7 @@ func _ready():
 	%UnitRangesToggle.toggled.connect(_on_unit_ranges_toggled)
 	%UnitDetailsToggle.toggled.connect(_on_unit_details_toggled)
 	%SuggestionsToggle.toggled.connect(_on_suggestions_toggled)
+	%DetectionHintsToggle.toggled.connect(_on_detection_hints_toggled)
 	%HeatmapToggle.toggled.connect(_on_heatmap_toggled)
 	%SpectrumToggle.toggled.connect(_on_spectrum_toggled)
 
@@ -152,6 +154,15 @@ func _on_suggestions_toggled(is_pressed: bool):
 	var level = get_tree().current_scene
 	if level.has_method("toggle_suggestions"):
 		level.toggle_suggestions(is_pressed)
+		
+
+func _on_detection_hints_toggled(is_pressed: bool):
+	settings["detection_hints"] = is_pressed
+	_save_settings()
+	
+	var level = get_tree().current_scene
+	if level.has_method("toggle_detection_hints"):
+		level.toggle_detection_hints(is_pressed)
 
 
 func _on_spectrum_toggled(is_pressed: bool):
@@ -212,6 +223,7 @@ func _load_settings() -> void:
 	%UnitRangesToggle.button_pressed = settings["unit_ranges"]
 	%UnitDetailsToggle.button_pressed = settings["unit_details"]
 	%SuggestionsToggle.button_pressed = settings["suggestions"]
+	%DetectionHintsToggle.button_pressed = settings["detection_hints"]
 	%HeatmapToggle.button_pressed = settings["heatmap"]
 	%Toggle.button_pressed = settings["heightmap_shader"]
 	%GridToggle.button_pressed = settings["grid"]
