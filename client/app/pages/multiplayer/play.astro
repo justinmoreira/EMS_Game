@@ -28,24 +28,74 @@ import { BASE_URL } from "@/utils";
     id="canvas"
     class="block w-screen h-[calc(100vh-3rem)] touch-none outline-none"
   ></canvas>
+  <style>
+    #custom-loader {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      gap: 40px;
+    }
+
+    .spinner {
+      width: 180px;
+      height: 180px;
+      animation: spin 3s linear infinite;
+    }
+
+    /* Different speeds/directions */
+    .spinner1 {
+      animation-duration: 2.5s;
+    }
+
+    .spinner2 {
+      animation-duration: 4s;
+      animation-direction: reverse;
+    }
+
+    .spinner3 {
+      animation-duration: 3s;
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    #status-progress {
+      display: none !important;
+    }
+  </style>
 
   <!-- Godot loading overlay -->
   <div
     id="status"
     class="fixed inset-0 top-12 bg-neutral-900 flex flex-col items-center justify-center"
   >
-    <img
-      id="status-splash"
-      src={`${BASE_URL}/godot/index.png`}
-      alt=""
-      class="max-h-full max-w-full m-auto"
-    />
-    <progress id="status-progress" class="w-1/2 hidden"></progress>
-    <div
-      id="status-notice"
-      class="hidden bg-red-900/80 border border-red-700 rounded-lg text-neutral-200 mx-8 p-4 text-center"
-    >
+    <div id="custom-loader">
+      <img
+        class="spinner spinner1"
+        src={`${BASE_URL}/unit-images/transceiver.png`}
+        alt=""
+      />
+      <img
+        class="spinner spinner2"
+        src={`${BASE_URL}/unit-images/jammer.png`}
+        alt=""
+      />
+      <img
+        class="spinner spinner3"
+        src={`${BASE_URL}/unit-images/sensor.png`}
+        alt=""
+      />
     </div>
+
+    <progress id="status-progress" class="w-1/2 hidden"></progress>
+    <div id="status-notice"></div>
   </div>
 
   <script is:inline src={`${BASE_URL}/godot/index.js`}></script>
@@ -120,7 +170,9 @@ import { BASE_URL } from "@/utils";
         // estimated when sizing this at 5s — Preact bundle + supabase
         // round-trip on a cache miss can push past that). Logs the
         // outcome so we can see whether the seed actually made it across.
-        console.log("[mp/play] bootstrap waiting for window.MULTIPLAYER_MATCH...");
+        console.log(
+          "[mp/play] bootstrap waiting for window.MULTIPLAYER_MATCH...",
+        );
         function waitForMatch() {
           return new Promise(function (resolve) {
             var attempts = 0;
