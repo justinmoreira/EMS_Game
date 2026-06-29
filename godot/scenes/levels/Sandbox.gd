@@ -62,14 +62,47 @@ func _ready() -> void:
 	contour_rect.material.set_shader_parameter("max_height", 500.0)
 	contour_rect.material.set_shader_parameter("mid_point", 0.6)
 
-	if get_script() == Sandbox:
+	# The multiplayer match reuses this Sandbox scene/script, so guard on the
+	# game mode too — otherwise the "Welcome to Sandbox Mode" intro wrongly
+	# pops up over a live MP match. (Tactical labels are drawn by
+	# _regenerate_terrain's deferred call, so no direct labelling needed here.)
+	if get_script() == Sandbox and not _is_multiplayer():
 		open_popup()
 
 
 func _init_terrain() -> void:
-	if _terrain_seed == 0:
+	# Multiplayer: both clients must render identical terrain, so the seed comes
+	# from the shared match record (window.MULTIPLAYER_MATCH.seed) and overrides
+	# any restored/random seed. Sandbox/tutorial keep a restored seed (set by the
+	# persister before this runs) or fall back to a fresh random one.
+	var mp_seed := _multiplayer_terrain_seed()
+	if mp_seed >= 0:
+		_terrain_seed = mp_seed
+	elif _terrain_seed == 0:
 		_terrain_seed = randi()
 	_regenerate_terrain()
+
+
+# Shared terrain seed from the match record in a multiplayer match, or -1 when
+# not multiplayer (sandbox/tutorial/desktop). The Astro bootstrap on
+# /multiplayer/play sets window.MULTIPLAYER_MATCH before startGame(), so the
+# value is in place by the time _ready() runs here.
+func _multiplayer_terrain_seed() -> int:
+	if not OS.has_feature("web"):
+		return -1
+	var mode: Variant = JavaScriptBridge.eval("window.GAME_MODE")
+	if not (mode is String) or (mode as String) != "multiplayer":
+		return -1
+	# JS numbers arrive as a Variant float/int; a typeof() check is more robust
+	# than `is float` against the null returned before MULTIPLAYER_MATCH is set.
+	var v: Variant = JavaScriptBridge.eval(
+		"window.MULTIPLAYER_MATCH ? window.MULTIPLAYER_MATCH.seed : null"
+	)
+	var t := typeof(v)
+	if t == TYPE_FLOAT or t == TYPE_INT:
+		return int(v)
+	push_warning("[Sandbox] MP mode but no seed on window.MULTIPLAYER_MATCH")
+	return -1
 
 
 func _regenerate_terrain() -> void:

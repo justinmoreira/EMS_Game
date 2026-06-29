@@ -58,6 +58,7 @@ var _attr_placeholder: Label
 var _entity_cards: Dictionary = {}  # EntityType -> Control
 var _attr_content: VBoxContainer
 var _tutorial_active: bool = false
+var _placement_locked: bool = false
 var _tutorial_allowed_ids: Array = []
 var _tutorial_allowed_attributes: Array = []
 
@@ -65,6 +66,7 @@ var _tutorial_allowed_attributes: Array = []
 func _ready() -> void:
 	GameEvents.units_changed.connect(_update_reset_button)
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
+	GameEvents.mp_placement_locked.connect(_on_mp_placement_locked)
 	GameEvents.tutorial_filter_attributes.connect(_on_tutorial_filter_attributes)
 	GameEvents.selection_changed.connect(_on_selection_changed)
 	resized.connect(func(): GameEvents.sidebar_resized.emit(SIDEBAR_WIDTH))
@@ -149,23 +151,23 @@ func _populate_header(panel: PanelContainer) -> void:
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_child(hbox)
 
-	var dot := ColorRect.new()
-	dot.color = C_GREEN
-	dot.custom_minimum_size = Vector2(15, 15)
-	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	hbox.add_child(dot)
-	_animate_blink(dot)
-
-	hbox.add_child(_make_label("GEMS", C_GREEN, 25))
-
+	# GEMS branding lives only in the HTML navbar now (NavBar.astro) — the green
+	# pulsing dot + wordmark moved there so the canvas isn't a second branding.
+	# This header keeps just the action buttons.
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(spacer)
 
-	# SAVES — only meaningful on web export (where JS bridge exists).
+	# Multiplayer pages set `window.GAME_MODE = "multiplayer"` before the
+	# engine boots, which we read here to relabel the header buttons:
+	# SAVES → SUBMIT and RESET → UNDO. The click handlers stay the same
+	# for now; only the labels swap.
+	var is_mp := _get_game_mode() == "multiplayer"
+
+	# SAVES / SUBMIT — only meaningful on web export (where JS bridge exists).
 	if OS.has_feature("web"):
 		var saves_btn := Button.new()
-		saves_btn.text = "SAVES"
+		saves_btn.text = "SUBMIT" if is_mp else "SAVES"
 		saves_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		saves_btn.add_theme_font_size_override("font_size", 13)
 		saves_btn.add_theme_color_override("font_color", C_BG_DARK)
@@ -182,7 +184,7 @@ func _populate_header(panel: PanelContainer) -> void:
 		hbox.add_child(saves_btn)
 
 	var reset_btn := Button.new()
-	reset_btn.text = "RESET"
+	reset_btn.text = "UNDO" if is_mp else "RESET"
 	reset_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	reset_btn.add_theme_font_size_override("font_size", 13)
 	reset_btn.add_theme_color_override("font_color", C_BG_DARK)
@@ -205,10 +207,31 @@ func _populate_header(panel: PanelContainer) -> void:
 
 
 func _on_saves_pressed() -> void:
-	# Hands off to the SavesPicker Preact island mounted on /play, which
-	# subscribes to window.openSavesPicker (see SavesPicker.tsx).
-	if OS.has_feature("web"):
+	# Same button, two behaviors based on the page that booted us:
+	#   • Sandbox → opens the SavesPicker Preact island (window.openSavesPicker)
+	#   • Multiplayer → emit mp_submit_requested; BaseLevel handles the
+	#     serialize-and-bridge (it owns the unit list, Sidebar doesn't).
+	if not OS.has_feature("web"):
+		return
+	var mode := _get_game_mode()
+	print("[Sidebar] header button pressed (mode=", mode, ")")
+	if mode == "multiplayer":
+		GameEvents.mp_submit_requested.emit()
+	else:
 		JavaScriptBridge.eval("window.openSavesPicker && window.openSavesPicker()")
+
+
+# Mirrors the JS-side `window.GAME_MODE` set by each game page (sandbox.astro,
+# multiplayer/play.astro) before the engine boots. Defaults to "sandbox" so
+# non-web builds and any page that forgets to set the flag behave like the
+# single-player path.
+func _get_game_mode() -> String:
+	if not OS.has_feature("web"):
+		return "sandbox"
+	var v: Variant = JavaScriptBridge.eval("window.GAME_MODE")
+	if v is String and (v as String).length() > 0:
+		return v as String
+	return "sandbox"
 
 
 func _populate_tray(panel: PanelContainer) -> void:
@@ -421,6 +444,18 @@ func _refresh_attribute_panel() -> void:
 	_attr_placeholder.visible = false
 	_attr_header.visible = true
 
+	# Locked pieces (the objective, already-submitted pieces, the opponent's)
+	# are inspectable but not editable: hide the action buttons, disable inputs.
+	var is_locked := (
+		selected_node is Unit
+		and (selected_node as Unit).has_method("is_locked")
+		and (selected_node as Unit).is_locked()
+	)
+	if _delete_btn:
+		_delete_btn.visible = _delete_btn.visible and not is_locked
+	if _confirm_btn:
+		_confirm_btn.visible = _confirm_btn.visible and not is_locked
+
 	var def := _definition_for(selected_entity)
 	if def == null:
 		return
@@ -433,15 +468,18 @@ func _refresh_attribute_panel() -> void:
 		_add_attribute_input(spec, def)
 
 	# Transceivers get a "Send Message" button that visualizes frequency-
-	# dependent transmission delay. Only meaningful for placed units.
-	if selected_node is Unit and def.id == &"transceiver":
+	# dependent transmission delay. Only meaningful for placed, editable units.
+	if selected_node is Unit and def.id == &"transceiver" and not is_locked:
 		_add_send_message_button(def.color)
 
-	if selected_node and "is_removable" in selected_node:
-		var is_locked = not selected_node.is_removable
-		_lock_all_attributes(is_locked)
-	else:
-		_lock_all_attributes(false)
+	# Lock the attribute inputs when the piece can't be edited: my is_locked
+	# (objective / submitted / opponent's / immovable) OR main's non-removable
+	# flag.
+	var lock_inputs := is_locked
+	if selected_node and "is_removable" in selected_node and not selected_node.is_removable:
+		lock_inputs = true
+	_attr_body.modulate.a = 0.7 if lock_inputs else 1.0
+	_lock_all_attributes(lock_inputs)
 
 	# Reapply the stored tutorial filter after every row rebuild.
 	# queue_free() is deferred, so we defer this too to run after the
@@ -697,6 +735,12 @@ func _make_row_container(attribute_key: String = "") -> VBoxContainer:
 
 
 func _on_reset_pressed() -> void:
+	# In multiplayer this button is "UNDO": pull back the current turn's
+	# unsubmitted placement immediately — no confirmation dialog.
+	if _get_game_mode() == "multiplayer":
+		GameEvents.reset_requested.emit()
+		return
+
 	var dialog := ConfirmationDialog.new()
 	dialog.title = "Reset Scene"
 	dialog.dialog_text = "Remove all units from the scene?"
@@ -855,19 +899,30 @@ func _on_tutorial_filter(allowed_ids: Array) -> void:
 
 	for type in _entity_cards:
 		var card = _entity_cards[type]
-		var enabled := not _tutorial_active or _is_entity_type_allowed(type)
+		_set_card_enabled(card, not _tutorial_active or _is_entity_type_allowed(type))
 
-		card.modulate.a = 1.0 if enabled else 0.3
-		card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
-		card.set_process_input(enabled)
-		card.set_process_unhandled_input(enabled)
-		card.set_process_unhandled_key_input(enabled)
 
-		for child in card.get_children():
-			if child is Control:
-				child.mouse_filter = (
-					Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
-				)
+# Multiplayer one-per-turn cap: grey the whole entity tray while the player
+# has already placed their unit for this turn (re-enabled on turn advance).
+func _on_mp_placement_locked(locked: bool) -> void:
+	_placement_locked = locked
+	for type in _entity_cards:
+		_set_card_enabled(_entity_cards[type], not locked)
+
+
+# Shared card enable/disable — used by both the tutorial filter and the MP
+# placement cap, with the full input gating main applied inline.
+func _set_card_enabled(card, enabled: bool) -> void:
+	card.modulate.a = 1.0 if enabled else 0.3
+	card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+	card.set_process_input(enabled)
+	card.set_process_unhandled_input(enabled)
+	card.set_process_unhandled_key_input(enabled)
+	for child in card.get_children():
+		if child is Control:
+			child.mouse_filter = (
+				Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
+			)
 
 
 func _is_entity_type_allowed(type: EntityType) -> bool:
@@ -935,10 +990,3 @@ func _set_interactivity(node: Control, enabled: bool) -> void:
 	for child in node.get_children():
 		if child is Control:
 			_set_interactivity(child, enabled)
-
-
-func _animate_blink(node: ColorRect) -> void:
-	var tween := create_tween()
-	tween.set_loops()
-	tween.tween_property(node, "modulate:a", 0.1, 0.8)
-	tween.tween_property(node, "modulate:a", 1.0, 0.4)

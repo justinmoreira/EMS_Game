@@ -1,0 +1,20 @@
+---
+import Leaderboard from "@/components/Leaderboard";
+import Base from "@/layouts/Base.astro";
+---
+
+<Base title="Leaderboards | EMS Sim">
+  <div class="fixed inset-0 -z-10 bg-[#0a0a0a]"></div>
+
+  <main class="mx-auto max-w-4xl px-6 pt-20 pb-12 text-white">
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold">Leaderboards</h1>
+      <p class="mt-2 text-sm text-neutral-400">
+        Every player, ranked by multiplayer wins. Win a match by being the
+        first — and only — side to bridge the source to the target.
+      </p>
+    </header>
+
+    <Leaderboard client:only="preact" />
+  </main>
+</Base>

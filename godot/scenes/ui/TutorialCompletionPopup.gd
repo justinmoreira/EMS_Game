@@ -1,6 +1,6 @@
 extends Control
 
-const SANDBOX_SCENE_PATH := "res://scenes/levels/ContourDemo.tscn"
+const SANDBOX_SCENE_PATH := "res://scenes/levels/Sandbox.tscn"
 const HOME_URL := "/"
 
 @onready var return_home_button: Button = %ReturnHomeButton

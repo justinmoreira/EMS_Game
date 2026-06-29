@@ -17,6 +17,32 @@ var unit_visual: UnitVisual:
 	get:
 		return _unit_visual
 
+# Multiplayer fog-of-war: a concealed unit hides its visual (body, ownership
+# glow, range rings, label) but stays in the scene and the simulation, so the
+# win check and detection still operate on it. BaseLevel toggles this.
+var _concealed: bool = false
+
+
+func set_concealed(value: bool) -> void:
+	_concealed = value
+	if _unit_visual:
+		_unit_visual.visible = not value
+
+
+func is_concealed() -> bool:
+	return _concealed
+
+
+# Viewer-relative team (UnitVisual.Owner.MINE / ENEMY / NONE), used to suppress
+# link lines between opposing units — your relays never carry signal through an
+# enemy transceiver, so a cross-team line is just visual noise. NONE outside a
+# multiplayer match, so this never changes single-player link rendering.
+func owner_kind() -> int:
+	if _unit_visual:
+		return _unit_visual.owner_kind
+	return _owner_kind()
+
+
 var _selection_area: Area2D
 var _is_being_dragged: bool = false
 var _drag_start_pos: Vector2 = Vector2.ZERO  # mouse position at press
@@ -100,7 +126,41 @@ func _spawn_visual() -> void:
 	_unit_visual.circle_color = definition.color
 	_unit_visual.sprite_sheet_path = definition.animated_sprite_path
 	_unit_visual.unit_name = get_value(&"unit_name", "")
+	_unit_visual.owner_kind = _owner_kind()
 	add_child(_unit_visual)
+
+
+# Ownership for the multiplayer glow: your units glow blue, the opponent's
+# glow red. The body keeps its TYPE color either way — the glow is the only
+# thing that encodes WHO owns the unit. Outside a multiplayer match (no
+# MULTIPLAYER_PLAYER_ID) there's no owner, so no glow.
+func _owner_kind() -> int:
+	# Immutable objective units carry an explicit, viewer-relative glow hint
+	# (glow_kind) set by the level. They have no owner_player_id on purpose —
+	# that would make apply_opponent_board treat them as a player's units and
+	# wipe them — so honor the hint directly.
+	var forced: Variant = physical_state.get(&"glow_kind", null)
+	if forced != null:
+		return int(forced)
+	var local_id := _local_mp_player_id()
+	if local_id == "":
+		return UnitVisual.Owner.NONE
+	var owner_v: Variant = physical_state.get(&"owner_player_id", null)
+	if owner_v is String and (owner_v as String) != local_id:
+		return UnitVisual.Owner.ENEMY
+	return UnitVisual.Owner.MINE
+
+
+# MultiplayerMatch.tsx publishes window.MULTIPLAYER_PLAYER_ID = auth.uid()
+# as soon as the session resolves. Returns "" on desktop, in sandbox, or
+# before the global is set — all cases where there's no ownership glow.
+func _local_mp_player_id() -> String:
+	if not OS.has_feature("web"):
+		return ""
+	var v: Variant = JavaScriptBridge.eval("window.MULTIPLAYER_PLAYER_ID || ''")
+	if v is String:
+		return v as String
+	return ""
 
 
 func update_ranges() -> void:
@@ -199,15 +259,39 @@ func _setup_selection_area() -> void:
 	_selection_area.input_event.connect(_on_selection_input)
 
 
+func is_immutable() -> bool:
+	return bool(physical_state.get(&"immutable", false))
+
+
+# Cannot be moved / edited / deleted by the local player. True for the immutable
+# objective, for pieces this player has already submitted (the `locked` flag),
+# and — in a match — for the opponent's pieces. Nothing is locked in
+# sandbox / singleplayer (no local player id).
+func is_locked() -> bool:
+	if is_immutable():
+		return true
+	# main's design-time "can't be moved" flag (e.g. enemy-hunter targets).
+	if is_immovable:
+		return true
+	if bool(physical_state.get(&"locked", false)):
+		return true
+	var local := _local_mp_player_id()
+	if local == "":
+		return false
+	var owner_v: Variant = physical_state.get(&"owner_player_id", null)
+	return not (owner_v is String and String(owner_v) == local)
+
+
 func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
 	# Only the initial press starts a drag here. Release and motion live in
 	# _input so they keep working when the cursor leaves the shape mid-drag.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		if is_immovable:
-			# Still allow selection, but not dragging
-			if event.is_pressed():
-				GameEvents.select(self)
-				get_tree().root.set_input_as_handled()
+		# Locked pieces (objective, already-submitted, opponent's, or a unit
+		# main flags immovable) can be inspected but never moved — select for
+		# the read-only panel and stop.
+		if is_locked():
+			GameEvents.select(self)
+			get_tree().root.set_input_as_handled()
 			return
 
 		# Preserve main #61's UX: clear stale link visuals on drag-press.

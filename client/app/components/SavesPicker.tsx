@@ -103,7 +103,7 @@ export default function SavesPicker() {
     setBusy(true);
     try {
       await loadSlot(selectedId);
-      window.location.href = `${BASE_URL}/play`;
+      window.location.href = `${BASE_URL}/play?mode=sandbox`;
     } finally {
       setBusy(false);
     }
