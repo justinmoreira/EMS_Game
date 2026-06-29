@@ -17,6 +17,7 @@ declare global {
     godotApplyOpponentBoard?: (boardJson: string, ownerId: string) => void;
     godotOnTurnAdvance?: (turn: number) => void;
     mpReportWinner?: (winnerId: string) => void;
+    godotRevealAll?: () => void;
   }
 }
 
@@ -49,6 +50,9 @@ export default function MultiplayerMatch() {
   // "waiting for opponent". Cleared when the turn advances.
   const [submittedTurn, setSubmittedTurn] = useState<number | null>(null);
   const [profiles, setProfiles] = useState<Map<string, Profile>>(new Map());
+  // "Peeking" hides the result modal so the player can inspect the finished,
+  // fully-revealed board behind it.
+  const [peekingBoard, setPeekingBoard] = useState(false);
   const reportedWinner = useRef(false);
   // Mirror of `match` for closures (the poll) that must read the latest row
   // without re-subscribing on every change.
@@ -256,6 +260,39 @@ export default function MultiplayerMatch() {
     return () => clearInterval(id);
   }, [matchId, verifying, user?.id, match?.status, applyMatchRow]);
 
+  // Auto-join: opening a waiting lobby you don't host (e.g. via the invite link)
+  // that still has an open guest seat claims it. Without this, a logged-in opener
+  // just sees the host's "waiting for a second player" card and never joins — so
+  // BOTH players sit on the waiting screen. join_match is race-safe and a no-op
+  // if you're already in or the seat is gone.
+  useEffect(() => {
+    if (!match || !user) return;
+    if (match.status !== "waiting") return;
+    if (match.host_id === user.id || match.guest_id) return;
+    let cancelled = false;
+    (async () => {
+      const { error } = await supabase.rpc("join_match", {
+        p_id_or_code: match.id,
+      });
+      if (cancelled || error) return;
+      const { data: row } = await supabase
+        .from("matches")
+        .select("*")
+        .eq("id", match.id)
+        .maybeSingle();
+      if (row && !cancelled) applyMatchRow(row);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [match?.id, match?.status, match?.guest_id, user?.id, applyMatchRow]);
+
+  // Game over → tell Godot to drop the fog so the finished board (visible once
+  // the result modal is dismissed) shows every unit on both sides.
+  useEffect(() => {
+    if (match?.status === "finished") window.godotRevealAll?.();
+  }, [match?.status]);
+
   // Clear the local "submitted" flag once the turn actually advances.
   useEffect(() => {
     if (match && submittedTurn !== null && match.current_turn > submittedTurn) {
@@ -399,10 +436,22 @@ export default function MultiplayerMatch() {
     ? (profiles.get(oppId)?.display_name ?? "Opponent")
     : null;
 
-  // Finished → result modal.
+  // Finished → result modal. Dismissible: "View final board" hides it so the
+  // fully-revealed finished board can be inspected; "Show result" brings it back.
   if (match.status === "finished") {
     const draw = !match.winner_id;
     const won = match.winner_id === user.id;
+    if (peekingBoard) {
+      return (
+        <button
+          type="button"
+          onClick={() => setPeekingBoard(false)}
+          class="fixed left-1/2 top-16 z-30 -translate-x-1/2 rounded-lg border border-neutral-700 bg-neutral-900/90 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm hover:bg-neutral-800"
+        >
+          Show result
+        </button>
+      );
+    }
     return (
       <Overlay>
         <Card title={draw ? "Draw" : won ? "Victory" : "Defeat"}>
@@ -424,6 +473,13 @@ export default function MultiplayerMatch() {
                 ? "You held the only source → target connection."
                 : `${oppName ?? "Your opponent"} held the only connection.`}
           </p>
+          <button
+            type="button"
+            onClick={() => setPeekingBoard(true)}
+            class="text-sm text-neutral-400 underline hover:text-white"
+          >
+            View final board →
+          </button>
           <RematchButtons hostId={user.id} name={match.name} />
         </Card>
       </Overlay>

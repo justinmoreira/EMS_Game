@@ -33,6 +33,16 @@ func is_concealed() -> bool:
 	return _concealed
 
 
+# Viewer-relative team (UnitVisual.Owner.MINE / ENEMY / NONE), used to suppress
+# link lines between opposing units — your relays never carry signal through an
+# enemy transceiver, so a cross-team line is just visual noise. NONE outside a
+# multiplayer match, so this never changes single-player link rendering.
+func owner_kind() -> int:
+	if _unit_visual:
+		return _unit_visual.owner_kind
+	return _owner_kind()
+
+
 var _selection_area: Area2D
 var _is_being_dragged: bool = false
 var _drag_start_pos: Vector2 = Vector2.ZERO  # mouse position at press
