@@ -84,10 +84,6 @@ var _fog_reveal_pending: bool = false
 
 
 func _ready():
-	# SimulationManager is an autoload, so its MP freeze flag would persist into
-	# the next scene. Clear it on every level load; _mp_setup re-enables it for
-	# multiplayer only.
-	SimulationManager.mp_frozen = false
 	get_tree().get_root().size_changed.connect(_on_window_resized)
 	GameEvents.selection_changed.connect(_on_selection_changed)
 	GameEvents.reset_requested.connect(_on_reset_requested)

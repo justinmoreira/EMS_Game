@@ -26,15 +26,6 @@ var unit_ranges_visible: bool = true
 # Keeping this here makes the tutorial branch compatible with HUD.gd.
 var active_links: Dictionary = {}
 
-# Multiplayer: when true, only COMMITTED runs (simulate(true)) actually simulate;
-# every other trigger — the simulation_requested signal, plus the direct
-# simulate() calls on selection/HUD/input — is a no-op. That keeps a planned,
-# unsubmitted sensor/jammer from refreshing any visual (range/detection rings,
-# status badges, link lines, enemy reveal) before its move resolves. Reset to
-# false by BaseLevel._ready each level load so non-MP modes simulate normally
-# (this is an autoload, so the flag would otherwise persist across scenes).
-var mp_frozen: bool = false
-
 
 func _ready() -> void:
 	GameEvents.simulation_requested.connect(simulate)
@@ -47,11 +38,7 @@ func _live_group(group_name: String) -> Array:
 	)
 
 
-func simulate(committed: bool = false) -> void:
-	# In multiplayer, only committed runs (turn resolution / initial load) update
-	# anything; live triggers are frozen so planning a unit can't leak info.
-	if mp_frozen and not committed:
-		return
+func simulate() -> void:
 	link_results.clear()
 	detect_results.clear()
 
