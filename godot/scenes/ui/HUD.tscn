@@ -2,6 +2,7 @@
 
 [ext_resource type="Texture2D" uid="uid://c7d0o05hl4s8p" path="res://assets/gear_icon.png" id="2_atyv1"]
 [ext_resource type="Script" uid="uid://crq4tqakx02qk" path="res://scenes/ui/HUD.gd" id="2_settings_icon"]
+[ext_resource type="Script" path="res://scenes/ui/ScaleBar.gd" id="3_scalebar"]
 
 [node name="HUD" type="CanvasLayer" unique_id=437482512]
 layer = 10
@@ -108,3 +109,6 @@ text = "RANGE"
 [node name="Panel_Margin_VBox#HeatmapToggle" type="CheckButton" parent="." unique_id=1141549058]
 unique_name_in_owner = true
 text = "TERRAIN HEATMAP"
+
+[node name="ScaleBar" type="Control" parent="."]
+script = ExtResource("3_scalebar")

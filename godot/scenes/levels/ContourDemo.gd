@@ -18,12 +18,14 @@ const VALLEY_MINOR_THRESH := 160.0  # m  →  small aqua label
 ## Pixel distance below which two labels are considered overlapping.
 const OVERLAP_MARGIN := 40.0  # px
 
+const CELL_SIZE := 8
+
 var map_scale: Vector2
 var map_origin: Vector2
 var grid_w: int = 150
 var grid_h: int = 150
-var cell_size: int = 8
 var height_grid: Array = []
+var map_size_km: float
 
 @onready var contour_rect: TextureRect = $BackgroundTexture
 @onready var map_container = $BackgroundTexture
@@ -364,6 +366,7 @@ func set_terrain_data(grid: Array, origin: Vector2, map_size: Vector2) -> void:
 	height_grid = grid
 	grid_w = grid.size()
 	grid_h = grid.size() if grid.size() > 0 else 0
+	map_size_km = float(grid_w * CELL_SIZE) / 100.0
 
 	#TODO: Fix later
 	map_size = Vector2(1080, 1080)
