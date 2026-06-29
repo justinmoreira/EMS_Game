@@ -5,6 +5,7 @@ class_name Unit extends Node2D
 const CLICK_DRAG_THRESHOLD_PX := 5.0
 const SELECTION_RADIUS := 32.0
 
+@export var attribute_overrides: Dictionary = {}
 @export var definition: UnitDefinition
 @export var is_immovable: bool = false  # If true, this unit cannot be dragged
 @export var is_removable: bool = true  # If false, this unit cannot be removed
@@ -117,7 +118,10 @@ func _has_attribute(id: StringName) -> bool:
 func _init_default_values() -> void:
 	for spec in definition.attributes:
 		if not physical_state.has(spec.id):
-			physical_state[spec.id] = spec.default_value
+			if attribute_overrides.has(spec.id):
+				physical_state[spec.id] = attribute_overrides[spec.id]
+			else:
+				physical_state[spec.id] = spec.default_value
 
 
 func _spawn_visual() -> void:

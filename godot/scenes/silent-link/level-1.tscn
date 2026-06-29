@@ -31,7 +31,7 @@ shader_parameter/line_color = Color(0, 0, 0, 0.6)
 
 [sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_pb6d8"]
 
-[node name="Level2" unique_id=1691616856 instance=ExtResource("1")]
+[node name="Level1" unique_id=1691616856 instance=ExtResource("1")]
 script = ExtResource("2")
 
 [node name="BackgroundTexture" parent="." index="0" unique_id=2008967764]
@@ -48,6 +48,9 @@ size_flags_vertical = 1
 [node name="FriendlyTransceiver" type="Node2D" parent="." index="3" unique_id=155165395]
 position = Vector2(1200, 640)
 script = ExtResource("4_1ghud")
+attribute_overrides = {
+&"frequency": 600.0
+}
 definition = ExtResource("5_sbe1m")
 is_immovable = true
 is_removable = false
@@ -55,6 +58,9 @@ is_removable = false
 [node name="EnemyJammer" type="Node2D" parent="." index="4" unique_id=897180373]
 position = Vector2(750, 870)
 script = ExtResource("4_1ghud")
+attribute_overrides = {
+&"frequency": 500.0
+}
 definition = ExtResource("6_sbe1m")
 is_immovable = true
 is_removable = false
@@ -62,6 +68,9 @@ is_removable = false
 [node name="EnemySensor" type="Node2D" parent="." index="5" unique_id=1803114092]
 position = Vector2(900, 350)
 script = ExtResource("4_1ghud")
+attribute_overrides = {
+&"tuning_frequency": 500.0
+}
 definition = ExtResource("7_14gxw")
 is_immovable = true
 is_removable = false

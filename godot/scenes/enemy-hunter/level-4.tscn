@@ -43,43 +43,64 @@ size_flags_vertical = 1
 
 [node name="TransceiverUnit" parent="." index="3" unique_id=2117697803 instance=ExtResource("4_ftiey")]
 visible = false
-position = Vector2(609, 931)
+position = Vector2(536, 840)
+attribute_overrides = {
+&"frequency": 1500.0
+}
 is_immovable = true
 is_removable = false
 
 [node name="TransceiverUnit2" parent="." index="4" unique_id=1393893384 instance=ExtResource("4_ftiey")]
 visible = false
 position = Vector2(636, 803)
+attribute_overrides = {
+&"frequency": 1500.0
+}
 is_immovable = true
 is_removable = false
 
 [node name="JammerUnit" parent="." index="5" unique_id=1423769516 instance=ExtResource("5_8xqte")]
 visible = false
 position = Vector2(1484, 860)
+attribute_overrides = {
+&"frequency": 2500.0
+}
 is_immovable = true
 is_removable = false
 
 [node name="JammerUnit2" parent="." index="6" unique_id=2132957322 instance=ExtResource("5_8xqte")]
 visible = false
 position = Vector2(941, 280)
+attribute_overrides = {
+&"frequency": 1500.0
+}
 is_immovable = true
 is_removable = false
 
 [node name="JammerUnit3" parent="." index="7" unique_id=131779025 instance=ExtResource("5_8xqte")]
 visible = false
 position = Vector2(1163, 357)
+attribute_overrides = {
+&"frequency": 1200.0
+}
 is_immovable = true
 is_removable = false
 
 [node name="JammerUnit4" parent="." index="8" unique_id=466519655 instance=ExtResource("5_8xqte")]
 visible = false
 position = Vector2(981, 883)
+attribute_overrides = {
+&"frequency": 200.0
+}
 is_immovable = true
 is_removable = false
 
 [node name="JammerUnit5" parent="." index="9" unique_id=1908285332 instance=ExtResource("5_8xqte")]
 visible = false
 position = Vector2(766, 566)
+attribute_overrides = {
+&"frequency": 800.0
+}
 is_immovable = true
 is_removable = false
 

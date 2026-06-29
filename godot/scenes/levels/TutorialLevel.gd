@@ -45,8 +45,11 @@ var _waiting_display_setting_original: Variant = null
 var _edit_refresh_generation := 0
 
 
-func _ready() -> void:
+func _enter_tree() -> void:
 	_ui = TutorialUI.new(self)
+
+
+func _ready() -> void:
 	TutorialUtils.remove_sandbox_intro_popups(get_tree())
 	intro_popup_open = false
 	super._ready()
@@ -56,6 +59,10 @@ func _ready() -> void:
 	_ui.call_deferred("create_repeat_instruction_button")
 	if not _has_tutorial_persister():
 		call_deferred("start_fresh")
+
+
+func get_game_mode_name() -> String:
+	return "tutorial"
 
 
 func _has_tutorial_persister() -> bool:

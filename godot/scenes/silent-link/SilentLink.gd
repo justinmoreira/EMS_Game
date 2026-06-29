@@ -76,6 +76,10 @@ func _ready() -> void:
 	_start()
 
 
+func get_game_mode_name() -> String:
+	return "silent-link"
+
+
 func _exit_tree() -> void:
 	if GameEvents.simulation_requested.is_connected(_on_simulation_requested):
 		GameEvents.simulation_requested.disconnect(_on_simulation_requested)

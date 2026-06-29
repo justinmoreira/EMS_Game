@@ -164,8 +164,11 @@ func _populate_header(panel: PanelContainer) -> void:
 	# for now; only the labels swap.
 	var is_mp := _get_game_mode() == "multiplayer"
 
+	var level := get_tree().current_scene
+	var is_sb: bool = level.get_game_mode_name() == "sandbox"
+
 	# SAVES / SUBMIT — only meaningful on web export (where JS bridge exists).
-	if OS.has_feature("web"):
+	if OS.has_feature("web") and (is_mp or is_sb):
 		var saves_btn := Button.new()
 		saves_btn.text = "SUBMIT" if is_mp else "SAVES"
 		saves_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
