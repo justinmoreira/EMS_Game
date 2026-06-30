@@ -135,7 +135,7 @@ func _advance() -> void:
 			_show_timer()
 			_apply_card_restrictions()
 			_show_hint(
-				"Transceivers are fixed. Tune attributes (frequency/power) to avoid detection and jamming, then simulate."
+				"Transceivers are fixed. Tune attributes to avoid detection and jamming."
 			)
 
 		Step.PLANNING:
