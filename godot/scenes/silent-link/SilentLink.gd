@@ -134,9 +134,7 @@ func _advance() -> void:
 			_start_time = Time.get_ticks_msec() / 1000.0
 			_show_timer()
 			_apply_card_restrictions()
-			_show_hint(
-				"Transceivers are fixed. Tune attributes to avoid detection and jamming."
-			)
+			_show_hint("Transceivers are fixed. Tune attributes to avoid detection and jamming.")
 
 		Step.PLANNING:
 			pass
