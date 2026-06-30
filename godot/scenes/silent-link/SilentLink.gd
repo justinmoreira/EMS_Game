@@ -134,7 +134,9 @@ func _advance() -> void:
 			_start_time = Time.get_ticks_msec() / 1000.0
 			_show_timer()
 			_apply_card_restrictions()
-			_show_hint("Transceivers are fixed. Tune attributes (frequency/power) to avoid detection and jamming, then simulate.")
+			_show_hint(
+				"Transceivers are fixed. Tune attributes (frequency/power) to avoid detection and jamming, then simulate."
+			)
 
 		Step.PLANNING:
 			pass
@@ -247,7 +249,9 @@ func _on_simulation_requested() -> void:
 
 	if not _has_minimum_setup():
 		_step = Step.PLANNING
-		_show_hint_debounced("Level setup incomplete: need at least 2 fixed slots and 2 player transceivers.")
+		_show_hint_debounced(
+			"Level setup incomplete: need at least 2 fixed slots and 2 player transceivers."
+		)
 		return
 
 	_assign_transceivers_to_slots()
