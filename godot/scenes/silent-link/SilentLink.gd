@@ -31,6 +31,10 @@ var _enemy_units: Array = []
 var _transceivers: Array = []
 var _allowed_units: Array[StringName] = []
 
+# Fixed-slot transceiver workflow
+var _placement_slots: Array[Node2D] = []
+var _player_transceivers: Array = []
+
 
 func add_to_groups_recursive(node: Node) -> void:
 	for c in node.get_children():
@@ -69,6 +73,13 @@ func _ready() -> void:
 	_enemy_units = get_tree().get_nodes_in_group("enemy_units")
 
 	_setup_level_restrictions()
+
+	# Collect fixed slot markers + snap player transceivers to slots + lock movement
+	_collect_slots()
+	_collect_player_transceivers()
+	_assign_transceivers_to_slots()
+	_lock_transceiver_movement()
+
 	set_process(true)
 	_start()
 
@@ -123,7 +134,7 @@ func _advance() -> void:
 			_start_time = Time.get_ticks_msec() / 1000.0
 			_show_timer()
 			_apply_card_restrictions()
-			_show_hint("Plan a silent link, then run simulation. Avoid detection and jamming.")
+			_show_hint("Transceivers are fixed. Tune attributes (frequency/power) to avoid detection and jamming, then simulate.")
 
 		Step.PLANNING:
 			pass
@@ -138,11 +149,11 @@ func _advance() -> void:
 func _setup_level_restrictions() -> void:
 	match _current_level:
 		1, 2, 3:
-			_allowed_units = [&"transceiver"]
+			_allowed_units = []
 		4, 5:
-			_allowed_units = [&"transceiver", &"sensor"]
+			_allowed_units = [&"sensor"]
 		_:
-			_allowed_units = [&"transceiver", &"jammer", &"sensor"]
+			_allowed_units = [&"sensor"]
 
 
 func _apply_card_restrictions() -> void:
@@ -176,10 +187,50 @@ func _apply_card_restrictions() -> void:
 			)
 
 
+# Slot discovery (create Marker2D/Node2D points in scene in group "silent_link_slots")
+func _collect_slots() -> void:
+	_placement_slots.clear()
+	var nodes := get_tree().get_nodes_in_group("silent_link_slots")
+	for n in nodes:
+		if n is Node2D:
+			_placement_slots.append(n)
+	_placement_slots.sort_custom(func(a: Node2D, b: Node2D) -> bool: return a.name < b.name)
+
+
+# Player transceivers = transceivers not starting with Friendly
+func _collect_player_transceivers() -> void:
+	_player_transceivers.clear()
+	for t in get_tree().get_nodes_in_group("transceivers"):
+		if not t.name.begins_with("Friendly"):
+			_player_transceivers.append(t)
+
+	_player_transceivers.sort_custom(func(a: Node, b: Node) -> bool: return a.name < b.name)
+
+
+# Enforce predetermined positions
+func _assign_transceivers_to_slots() -> void:
+	var count: int = mini(_placement_slots.size(), _player_transceivers.size())
+	for i in range(count):
+		var slot: Node2D = _placement_slots[i] as Node2D
+		var tx: Node2D = _player_transceivers[i] as Node2D
+		if slot == null or tx == null:
+			continue
+		tx.global_position = slot.global_position
+
+
+# Prevent moving fixed transceivers while still allowing attribute edits
+func _lock_transceiver_movement() -> void:
+	for tx in _player_transceivers:
+		if tx.has_method("set_movable"):
+			tx.set_movable(false)
+		if tx.has_method("set_draggable"):
+			tx.set_draggable(false)
+		if tx.has_meta("movable"):
+			tx.set_meta("movable", false)
+
+
 func _has_minimum_setup() -> bool:
-	# Require at least 2 transceivers total on map (preplaced + player placed)
-	var total_transceivers := get_tree().get_nodes_in_group("transceivers").size()
-	return total_transceivers >= 2
+	return _placement_slots.size() >= 2 and _player_transceivers.size() >= 2
 
 
 func _show_hint_debounced(text: String, cooldown: float = 1.0) -> void:
@@ -196,7 +247,10 @@ func _on_simulation_requested() -> void:
 
 	if not _has_minimum_setup():
 		_step = Step.PLANNING
+		_show_hint_debounced("Level setup incomplete: need at least 2 fixed slots and 2 player transceivers.")
 		return
+
+	_assign_transceivers_to_slots()
 
 	_player_units.clear()
 	for u in get_tree().get_nodes_in_group("transceivers"):
@@ -244,22 +298,22 @@ func _on_simulation_complete(link_results: Array, _detect_results: Array) -> voi
 
 	if _terrain_blocked:
 		_step = Step.PLANNING
-		_show_hint_debounced("Link blocked by terrain! Reposition transceivers and try again.")
+		_show_hint_debounced("Link blocked by terrain! Tune frequency/power and try again.")
 		return
 
 	if not _link_success_from_sim:
 		_step = Step.PLANNING
-		_show_hint_debounced("Link not established - adjust transceiver placement/frequency.")
+		_show_hint_debounced("Link not established - tune transceiver attributes.")
 		return
 
 	if _jammed:
 		_step = Step.PLANNING
-		_show_hint_debounced("Signal jammed! Reposition and try again.")
+		_show_hint_debounced("Signal jammed! Tune attributes to reduce jammer vulnerability.")
 		return
 
 	if _player_detected:
 		_step = Step.PLANNING
-		_show_hint_debounced("Detected by enemy! Try a stealthier route.")
+		_show_hint_debounced("Detected by enemy! Tune for stealth and retry.")
 		return
 
 	_link_established = true
@@ -472,13 +526,12 @@ func _get_level_intro_content(level: int) -> Dictionary:
 				"title": "Silent Link Mode - Level 1",
 				"body":
 				(
-					"Establish a connection between the two friendly transceivers\n"
-					+ "without being detected or jammed by the enemy!\n\n"
-					+ "[i]• Place your units and link carefully\n"
-					+ "• Avoid detection zones & jammers\n"
-					+ "• Adjust frequency: high for fast, low for stealth\n\n"
-					+ "Start with this basic challenge\n"
-					+ "One transceiver has been placed for you![/i]"
+					"Transceiver positions are fixed in this mode.\n\n"
+					+ "[i]Tune your transceiver attributes to establish a link\n"
+					+ "while avoiding detection and jamming.\n\n"
+					+ "• Adjust frequency carefully\n"
+					+ "• Balance speed vs stealth\n"
+					+ "• Simulate and iterate[/i]"
 				)
 			}
 		2:
@@ -486,13 +539,10 @@ func _get_level_intro_content(level: int) -> Dictionary:
 				"title": "Silent Link Mode - Level 2",
 				"body":
 				(
-					"Things are getting trickier!\n\n"
-					+ "[i]More enemy units are now on the field.\n"
-					+ "You'll need to plan your link route more carefully\n"
-					+ "to avoid their detection zones.\n\n"
-					+ "• Study the terrain\n"
-					+ "• Use natural barriers to your advantage\n"
-					+ "• Timing and frequency adjustment are key![/i]"
+					"More enemy pressure, same fixed transceiver slots.\n\n"
+					+ "[i]You must optimize attributes to stay hidden.\n"
+					+ "• Tune frequency against detection risk\n"
+					+ "• Avoid jammer influence zones[/i]"
 				)
 			}
 		3:
@@ -500,12 +550,10 @@ func _get_level_intro_content(level: int) -> Dictionary:
 				"title": "Silent Link Mode - Level 3",
 				"body":
 				(
-					"The enemy has added more units!\n\n"
-					+ "[i]Advanced jammers and detection equipment\n"
-					+ "make this level significantly more challenging.\n\n"
-					+ "• Multiple overlapping detection zones\n"
-					+ "• Powerful jamming capabilities\n"
-					+ "• Be careful with your units![/i]"
+					"Advanced enemy coverage detected.\n\n"
+					+ "[i]With fixed placement, attribute tuning is everything.\n"
+					+ "• Fine-tune frequency\n"
+					+ "• Minimize exposure windows[/i]"
 				)
 			}
 		4:
@@ -513,12 +561,10 @@ func _get_level_intro_content(level: int) -> Dictionary:
 				"title": "Silent Link Mode - Level 4",
 				"body":
 				(
-					"Hidden units are on the map!\n\n"
-					+ "[i]The enemy now has invisible\n"
-					+ "jamming equipment.\n\n"
-					+ "• Sensors pulse red, orange, yellow, or blue\n"
-					+ "  depending on jammer distance\n"
-					+ "• Red is closest, blue means nothing found![/i]"
+					"Hidden jammers are active.\n\n"
+					+ "[i]Use sensors and tune attributes precisely.\n"
+					+ "• Sensor colors indicate jammer proximity\n"
+					+ "• Red = close threat, blue = clear[/i]"
 				)
 			}
 		5:
@@ -526,12 +572,8 @@ func _get_level_intro_content(level: int) -> Dictionary:
 				"title": "Silent Link Mode - Level 5",
 				"body":
 				(
-					"The final challenge awaits!\n\n"
-					+ "[i]This is the ultimate test of your skills.\n"
-					+ "Multiple hidden jammers have been placed.\n\n"
-					+ "• All your skills will be tested\n"
-					+ "• Make good use of your sensors\n"
-					+ "• Success here means you've mastered Silent Link![/i]"
+					"Final challenge: fixed slots, maximum enemy pressure.\n\n"
+					+ "[i]Master stealth tuning to complete the mission.[/i]"
 				)
 			}
 		_:
