@@ -5,8 +5,6 @@ extends Sandbox
 const SILENT_LINK_INTRO_POPUP := preload("res://scenes/ui/IntroPopup.tscn")
 const SILENT_LINK_HINT := preload("res://scenes/ui/HintPopup.tscn")
 
-const SENSOR_DETECTION_RANGE := 300.0
-const SENSOR_PULSE_SPEED := 1.0
 const MAX_LEVEL := 5
 
 enum Step { WELCOME, PLANNING, SIMULATING, COMPLETE }
@@ -19,7 +17,6 @@ var _timer_label: Label = null
 var _hud: Node = null
 var _current_level: int = 1
 var _last_hint_time: float = -10.0
-var _hint_overlay: DetectionVisual = null
 
 var _link_established := false
 var _player_detected := false
@@ -33,7 +30,6 @@ var _player_units: Array = []
 var _enemy_units: Array = []
 var _transceivers: Array = []
 var _allowed_units: Array[StringName] = []
-var _sensor_visualizations: Dictionary = {}
 
 
 func add_to_groups_recursive(node: Node) -> void:
@@ -59,14 +55,15 @@ func _ready() -> void:
 	GameEvents.simulation_requested.connect(_on_simulation_requested)
 	GameEvents.simulation_complete.connect(_on_simulation_complete)
 
-	var hud_nodes = get_tree().get_nodes_in_group("hud")
-	if hud_nodes.size() > 0:
-		_hud = hud_nodes[0]
+	_hud = find_child("HUD", true, false)
 
-	_hint_overlay = DetectionVisual.new()
-	_hint_overlay.z_index = 999
-	_hint_overlay.z_as_relative = false
-	add_child(_hint_overlay)
+	if is_instance_valid(_hud):
+		if _hud.has_method("set_spectrum_enabled"):
+			_hud.set_spectrum_enabled(true)
+
+		var hints_toggle = _hud.find_child("DetectionHintsToggle", true, false)
+		if hints_toggle and "button_pressed" in hints_toggle:
+			hints_toggle.button_pressed = true
 
 	_transceivers = get_tree().get_nodes_in_group("transceivers")
 	_enemy_units = get_tree().get_nodes_in_group("enemy_units")
@@ -86,16 +83,11 @@ func _exit_tree() -> void:
 	if GameEvents.simulation_complete.is_connected(_on_simulation_complete):
 		GameEvents.simulation_complete.disconnect(_on_simulation_complete)
 
-	_cleanup_sensor_visualizations()
-
 
 func _process(_delta: float) -> void:
 	if _step == Step.PLANNING and _timer_label:
 		var elapsed := Time.get_ticks_msec() / 1000.0 - _start_time
 		_timer_label.text = "Time: %.1fs" % elapsed
-
-	if _current_level >= 4 and (_step == Step.PLANNING or _step == Step.SIMULATING):
-		_update_sensor_hints()
 
 
 func _start() -> void:
@@ -247,7 +239,6 @@ func _on_simulation_complete(link_results: Array, _detect_results: Array) -> voi
 		elif state == SimulationManager.LinkState.FAILED_JAMMED:
 			_jammed = true
 
-	_update_sensor_hints()
 	_check_jamming()
 	_check_detection()
 
@@ -406,68 +397,10 @@ func register_player_unit(unit: Node) -> void:
 	if not _player_units.has(unit):
 		_player_units.append(unit)
 
-	if unit.is_in_group("sensors") and _current_level >= 4:
-		_sensor_visualizations[unit] = {
-			"rings": [], "pulse_time": 0.0, "closest_jammer_distance": INF
-		}
-
 
 func unregister_player_unit(unit: Node) -> void:
 	if _player_units.has(unit):
 		_player_units.erase(unit)
-
-	if _sensor_visualizations.has(unit):
-		for ring in _sensor_visualizations[unit]["rings"]:
-			ring.queue_free()
-		_sensor_visualizations.erase(unit)
-
-
-func _update_sensor_hints() -> void:
-	if _hint_overlay == null:
-		return
-
-	var active_hint_ids: Array[int] = []
-	var sensors = get_tree().get_nodes_in_group("sensors")
-	var jammers = get_tree().get_nodes_in_group("jammers")
-
-	for sensor in sensors:
-		if sensor.name.begins_with("Enemy"):
-			continue
-
-		var closest_jammer: Node = null
-		var closest_dist := INF
-
-		for jammer in jammers:
-			var dist: float = sensor.global_position.distance_to(jammer.global_position)
-			if dist < closest_dist:
-				closest_dist = dist
-				closest_jammer = jammer
-
-		if closest_jammer == null:
-			continue
-
-		if closest_dist > SENSOR_DETECTION_RANGE:
-			continue
-
-		var sensor_id: int = sensor.get_instance_id()
-		var jammer_id: int = closest_jammer.get_instance_id()
-		var hint_id: int = int(str(sensor_id) + str(jammer_id))
-
-		_hint_overlay.set_hint(sensor.global_position, closest_jammer.global_position, hint_id)
-		active_hint_ids.append(hint_id)
-
-	_hint_overlay.retain_only(active_hint_ids)
-
-
-func _cleanup_sensor_visualizations() -> void:
-	for sensor in _sensor_visualizations.keys():
-		for ring in _sensor_visualizations[sensor]["rings"]:
-			if is_instance_valid(ring):
-				ring.queue_free()
-	_sensor_visualizations.clear()
-
-	if _hint_overlay:
-		_hint_overlay.retain_only([])
 
 
 func _show_scoreboard() -> void:
@@ -518,7 +451,6 @@ func _on_next_level_pressed() -> void:
 
 	set_process(false)
 	set_physics_process(false)
-	_cleanup_sensor_visualizations()
 
 	# Disconnect signals before scene change to prevent stale callbacks
 	if GameEvents.simulation_requested.is_connected(_on_simulation_requested):

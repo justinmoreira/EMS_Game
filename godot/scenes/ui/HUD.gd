@@ -4,9 +4,11 @@ extends CanvasLayer
 var settings = {
 	"link_lines": true,
 	"focus_link_lines": true,
+	"successful_link_lines": false,
 	"unit_ranges": false,
 	"unit_details": false,
 	"suggestions": false,
+	"detection_hints": false,
 	"heatmap": false,
 	"spectrum": false,
 	"heightmap_shader": true,
@@ -25,9 +27,11 @@ func _ready():
 	# Connect new UI toggles
 	%LinkLinesToggle.toggled.connect(_on_link_lines_toggled)
 	%FocusLinkLinesToggle.toggled.connect(_on_focus_link_lines_toggled)
+	%SuccessfulLinesToggle.toggled.connect(_on_successful_link_lines_toggled)
 	%UnitRangesToggle.toggled.connect(_on_unit_ranges_toggled)
 	%UnitDetailsToggle.toggled.connect(_on_unit_details_toggled)
 	%SuggestionsToggle.toggled.connect(_on_suggestions_toggled)
+	%DetectionHintsToggle.toggled.connect(_on_detection_hints_toggled)
 	%HeatmapToggle.toggled.connect(_on_heatmap_toggled)
 	%SpectrumToggle.toggled.connect(_on_spectrum_toggled)
 
@@ -111,7 +115,9 @@ func _on_link_lines_toggled(is_pressed: bool):
 	# Gray out focus toggle when link lines are off entirely
 	if not is_pressed and settings["focus_link_lines"]:
 		%FocusLinkLinesToggle.button_pressed = false
+		%SuccessfulLinesToggle.button_pressed = false
 	%FocusLinkLinesToggle.disabled = not is_pressed
+	%SuccessfulLinesToggle.disabled = not is_pressed
 
 
 func _on_unit_ranges_toggled(is_pressed: bool):
@@ -150,6 +156,15 @@ func _on_suggestions_toggled(is_pressed: bool):
 		level.toggle_suggestions(is_pressed)
 
 
+func _on_detection_hints_toggled(is_pressed: bool):
+	settings["detection_hints"] = is_pressed
+	_save_settings()
+
+	var level = get_tree().current_scene
+	if level.has_method("toggle_detection_hints"):
+		level.toggle_detection_hints(is_pressed)
+
+
 func _on_spectrum_toggled(is_pressed: bool):
 	settings["spectrum"] = is_pressed
 	_save_settings()
@@ -175,6 +190,16 @@ func _on_focus_link_lines_toggled(is_pressed: bool):
 	SimulationManager.simulate()
 
 
+func _on_successful_link_lines_toggled(is_pressed: bool):
+	settings["successful_link_lines"] = is_pressed
+	_save_settings()
+
+	if LinkRenderer:
+		LinkRenderer.success_only_mode = is_pressed
+		LinkRenderer._refresh_all_visibility()
+	SimulationManager.simulate()
+
+
 func _save_settings() -> void:
 	var config = ConfigFile.new()
 	for key in settings:
@@ -194,9 +219,11 @@ func _load_settings() -> void:
 	# Update UI to match loaded settings
 	%LinkLinesToggle.button_pressed = settings["link_lines"]
 	%FocusLinkLinesToggle.button_pressed = settings["focus_link_lines"]
+	%SuccessfulLinesToggle.button_pressed = settings["successful_link_lines"]
 	%UnitRangesToggle.button_pressed = settings["unit_ranges"]
 	%UnitDetailsToggle.button_pressed = settings["unit_details"]
 	%SuggestionsToggle.button_pressed = settings["suggestions"]
+	%DetectionHintsToggle.button_pressed = settings["detection_hints"]
 	%HeatmapToggle.button_pressed = settings["heatmap"]
 	%Toggle.button_pressed = settings["heightmap_shader"]
 	%GridToggle.button_pressed = settings["grid"]
@@ -204,6 +231,7 @@ func _load_settings() -> void:
 	if LinkRenderer:
 		LinkRenderer.links_visible = settings["link_lines"]
 		LinkRenderer.focus_mode = settings["focus_link_lines"]
+		LinkRenderer.success_only_mode = settings["successful_link_lines"]
 	%FocusLinkLinesToggle.disabled = not settings["link_lines"]
 
 	var level = get_tree().current_scene

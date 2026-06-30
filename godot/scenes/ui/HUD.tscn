@@ -3,6 +3,7 @@
 [ext_resource type="Texture2D" uid="uid://bmseim85i45ar" path="res://assets/gear_icon.png" id="2_atyv1"]
 [ext_resource type="Script" uid="uid://crq4tqakx02qk" path="res://scenes/ui/HUD.gd" id="2_settings_icon"]
 [ext_resource type="Script" uid="uid://d2hf4t1142y50" path="res://scenes/ui/SpectrumAnalyzer.gd" id="3_6ll6g"]
+[ext_resource type="Script" uid="uid://brfh7fxjtomko" path="res://scenes/ui/ConnectionLegend.gd" id="4_ig75s"]
 
 [node name="HUD" type="CanvasLayer" unique_id=437482512]
 layer = 10
@@ -32,8 +33,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 4.0
 offset_top = 4.0
-offset_right = 276.0
-offset_bottom = 346.0
+offset_right = 284.0
+offset_bottom = 467.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -57,6 +58,12 @@ layout_mode = 2
 button_pressed = true
 text = "Focused Link Lines"
 
+[node name="SuccessfulLinesToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1629979070]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Successful Link Lines"
+
 [node name="UnitRangesToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1245678902]
 unique_name_in_owner = true
 layout_mode = 2
@@ -72,6 +79,11 @@ text = "Unit Details"
 unique_name_in_owner = true
 layout_mode = 2
 text = "Suggestions"
+
+[node name="DetectionHintsToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=1392922291]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Sensor Detection Visual"
 
 [node name="HeatmapToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer" unique_id=593618751]
 unique_name_in_owner = true
@@ -136,3 +148,15 @@ offset_bottom = 300.0
 grow_horizontal = 0
 grow_vertical = 2
 script = ExtResource("3_6ll6g")
+
+[node name="Control" type="Control" parent="." unique_id=868366993]
+layout_mode = 3
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -274.0
+offset_top = 10.0
+offset_right = -74.0
+offset_bottom = 50.0
+grow_horizontal = 0
+script = ExtResource("4_ig75s")

@@ -22,6 +22,7 @@ var active_links: Dictionary = {}
 var links_visible: bool = true
 
 var focus_mode: bool = false
+var success_only_mode: bool = false
 var bidirectional_mode: bool = false
 var _focused_unit: Unit = null
 var _hovered_unit: Unit = null
@@ -262,6 +263,9 @@ func _apply_visibility_for_key(key: String) -> void:
 		is_hover_preview = hovered and not selected
 	else:
 		should_show = true
+
+	if success_only_mode and data.final_state != SimulationManager.LinkState.SUCCESS:
+		should_show = false
 
 	var alpha := 0.35 if is_hover_preview else 1.0
 
