@@ -36,7 +36,7 @@ var _allowed_units: Array[StringName] = []
 # Fixed-slot transceiver workflow
 var _placement_slots: Array[Node2D] = []
 var _player_transceivers: Array = []
-var _slot_to_tx: Dictionary = {} # Node2D -> Node2D
+var _slot_to_tx: Dictionary = {}  # Node2D -> Node2D
 var _pending_place_index: int = 0
 
 
@@ -225,7 +225,7 @@ func _ensure_player_transceivers_for_slots() -> void:
 		tx.name = "PlayerTransceiver%d" % (idx + 1)
 		tx.set_script(UNIT_SCRIPT)
 		tx.set("definition", TRANSCEIVER_DEF)
-		tx.set("is_immovable", true)   # fixed placement
+		tx.set("is_immovable", true)  # fixed placement
 		tx.set("is_removable", false)
 		tx.set("attribute_overrides", {&"frequency": 600.0})
 		add_child(tx)
