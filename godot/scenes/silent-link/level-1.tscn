@@ -4,7 +4,6 @@
 [ext_resource type="Script" uid="uid://ddqox1i38acoc" path="res://scenes/silent-link/SilentLink.gd" id="2"]
 [ext_resource type="Shader" uid="uid://ccadptf4j2ywd" path="res://shaders/ContourLine.gdshader" id="3"]
 [ext_resource type="Script" uid="uid://be2d1wayxpq4p" path="res://scenes/core/Unit.gd" id="4_1ghud"]
-[ext_resource type="Resource" uid="uid://bg3s0poj4rx7p" path="res://data/units/transceiver.tres" id="5_sbe1m"]
 [ext_resource type="Resource" uid="uid://1480ftm8p2yd" path="res://data/units/jammer.tres" id="6_sbe1m"]
 [ext_resource type="Resource" uid="uid://dwr12u2th8xdx" path="res://data/units/sensor.tres" id="7_14gxw"]
 [ext_resource type="Script" uid="uid://cbbov2n7o5kqs" path="res://scripts/LevelPersister.gd" id="8_flsvr"]
@@ -45,15 +44,11 @@ offset_right = 300.0
 size_flags_horizontal = 1
 size_flags_vertical = 1
 
-[node name="FriendlyTransceiver" type="Node2D" parent="." index="3" unique_id=155165395]
-position = Vector2(1200, 640)
-script = ExtResource("4_1ghud")
-attribute_overrides = {
-&"frequency": 600.0
-}
-definition = ExtResource("5_sbe1m")
-is_immovable = true
-is_removable = false
+[node name="SilentLinkSlot1" type="Node2D" parent="." index="3" unique_id=99876987]
+position = Vector2(520, 620)
+
+[node name="Visual" type="Sprite2D" parent="SilentLinkSlot1" index="0" unique_id=1900737718]
+modulate = Color(0.2, 0.8, 1, 0.65)
 
 [node name="EnemyJammer" type="Node2D" parent="." index="4" unique_id=897180373]
 position = Vector2(750, 870)
@@ -77,3 +72,9 @@ is_removable = false
 
 [node name="LevelPersister" type="Node" parent="." index="6" unique_id=656022155]
 script = ExtResource("8_flsvr")
+
+[node name="SilentLinkSlot2" type="Node2D" parent="." index="7" unique_id=1291187295]
+position = Vector2(1200, 640)
+
+[node name="Visual" type="Sprite2D" parent="SilentLinkSlot2" index="0" unique_id=1699364189]
+modulate = Color(0.2, 0.8, 1, 0.65)

@@ -4,6 +4,8 @@ extends Sandbox
 
 const SILENT_LINK_INTRO_POPUP := preload("res://scenes/ui/IntroPopup.tscn")
 const SILENT_LINK_HINT := preload("res://scenes/ui/HintPopup.tscn")
+const TRANSCEIVER_DEF := preload("res://data/units/transceiver.tres")
+const UNIT_SCRIPT := preload("res://scenes/core/Unit.gd")
 
 const MAX_LEVEL := 5
 
@@ -34,6 +36,8 @@ var _allowed_units: Array[StringName] = []
 # Fixed-slot transceiver workflow
 var _placement_slots: Array[Node2D] = []
 var _player_transceivers: Array = []
+var _slot_to_tx: Dictionary = {} # Node2D -> Node2D
+var _pending_place_index: int = 0
 
 
 func add_to_groups_recursive(node: Node) -> void:
@@ -77,6 +81,7 @@ func _ready() -> void:
 	# Collect fixed slot markers + snap player transceivers to slots + lock movement
 	_collect_slots()
 	_collect_player_transceivers()
+	_ensure_player_transceivers_for_slots()
 	_assign_transceivers_to_slots()
 	_lock_transceiver_movement()
 
@@ -149,11 +154,11 @@ func _advance() -> void:
 func _setup_level_restrictions() -> void:
 	match _current_level:
 		1, 2, 3:
-			_allowed_units = []
+			_allowed_units = [&"transceiver"]
 		4, 5:
-			_allowed_units = [&"sensor"]
+			_allowed_units = [&"transceiver", &"sensor"]
 		_:
-			_allowed_units = [&"sensor"]
+			_allowed_units = [&"transceiver", &"sensor"]
 
 
 func _apply_card_restrictions() -> void:
@@ -190,11 +195,15 @@ func _apply_card_restrictions() -> void:
 # Slot discovery (create Marker2D/Node2D points in scene in group "silent_link_slots")
 func _collect_slots() -> void:
 	_placement_slots.clear()
+	_slot_to_tx.clear()
 	var nodes := get_tree().get_nodes_in_group("silent_link_slots")
 	for n in nodes:
 		if n is Node2D:
 			_placement_slots.append(n)
 	_placement_slots.sort_custom(func(a: Node2D, b: Node2D) -> bool: return a.name < b.name)
+
+	for s in _placement_slots:
+		_update_slot_visual(s, false)
 
 
 # Player transceivers = transceivers not starting with Friendly
@@ -202,9 +211,26 @@ func _collect_player_transceivers() -> void:
 	_player_transceivers.clear()
 	for t in get_tree().get_nodes_in_group("transceivers"):
 		if not t.name.begins_with("Friendly"):
-			_player_transceivers.append(t)
+			_player_transceivers.append(t as Node2D)
 
 	_player_transceivers.sort_custom(func(a: Node, b: Node) -> bool: return a.name < b.name)
+
+
+func _ensure_player_transceivers_for_slots() -> void:
+	# Spawn until we have one transceiver per slot (up to 2 for current design)
+	var needed: int = mini(2, _placement_slots.size())
+	while _player_transceivers.size() < needed:
+		var idx := _player_transceivers.size()
+		var tx := Node2D.new()
+		tx.name = "PlayerTransceiver%d" % (idx + 1)
+		tx.set_script(UNIT_SCRIPT)
+		tx.set("definition", TRANSCEIVER_DEF)
+		tx.set("is_immovable", true)   # fixed placement
+		tx.set("is_removable", false)
+		tx.set("attribute_overrides", {&"frequency": 600.0})
+		add_child(tx)
+		tx.add_to_group("transceivers")
+		_player_transceivers.append(tx)
 
 
 # Enforce predetermined positions
@@ -230,7 +256,7 @@ func _lock_transceiver_movement() -> void:
 
 
 func _has_minimum_setup() -> bool:
-	return _placement_slots.size() >= 2 and _player_transceivers.size() >= 2
+	return _placement_slots.size() >= 2 and _slot_to_tx.size() >= 2
 
 
 func _show_hint_debounced(text: String, cooldown: float = 1.0) -> void:
@@ -596,3 +622,55 @@ func _generate_terrain(w: int, h: int, seed: int) -> Array:
 			var h_m := (n + 1.0) * 0.5 * 500.0
 			g[x].append(h_m)
 	return g
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _step != Step.PLANNING:
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var clicked_slot := _get_clicked_slot(event.position)
+		if clicked_slot != null:
+			_place_or_select_slot(clicked_slot)
+			get_viewport().set_input_as_handled()
+
+
+func _get_clicked_slot(mouse_pos: Vector2) -> Node2D:
+	for slot in _placement_slots:
+		var radius := 36.0
+		if slot.global_position.distance_to(mouse_pos) <= radius:
+			return slot
+	return null
+
+
+func _place_or_select_slot(slot: Node2D) -> void:
+	if _slot_to_tx.has(slot):
+		_show_hint_debounced("Slot already occupied. Tune that transceiver's attributes.", 0.4)
+		return
+
+	var tx := _spawn_player_transceiver()
+	tx.global_position = slot.global_position
+	_slot_to_tx[slot] = tx
+	if not _player_transceivers.has(tx):
+		_player_transceivers.append(tx)
+
+	_update_slot_visual(slot, true)
+	_show_hint_debounced("Transceiver placed. Adjust frequency/power, then simulate.", 0.4)
+
+
+func _spawn_player_transceiver() -> Node2D:
+	var tx := Node2D.new()
+	tx.name = "PlayerTransceiver%d" % (_player_transceivers.size() + 1)
+	tx.set_script(UNIT_SCRIPT)
+	tx.set("definition", TRANSCEIVER_DEF)
+	tx.set("is_immovable", true)
+	tx.set("is_removable", false)
+	tx.set("attribute_overrides", {&"frequency": 600.0})
+	add_child(tx)
+	tx.add_to_group("transceivers")
+	return tx
+
+
+func _update_slot_visual(slot: Node2D, occupied: bool) -> void:
+	var visual := slot.find_child("Visual", false, false) as CanvasItem
+	if visual:
+		visual.modulate = Color(1.0, 0.45, 0.2, 0.85) if occupied else Color(0.2, 0.8, 1.0, 0.65)

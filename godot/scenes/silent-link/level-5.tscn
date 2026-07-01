@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://be2d1wayxpq4p" path="res://scenes/core/Unit.gd" id="2"]
 [ext_resource type="Script" uid="uid://ddqox1i38acoc" path="res://scenes/silent-link/SilentLink.gd" id="2_2d5dm"]
 [ext_resource type="Shader" uid="uid://ccadptf4j2ywd" path="res://shaders/ContourLine.gdshader" id="3"]
+[ext_resource type="Resource" uid="uid://bg3s0poj4rx7p" path="res://data/units/transceiver.tres" id="5_sbe1m"]
 [ext_resource type="Resource" uid="uid://dwr12u2th8xdx" path="res://data/units/sensor.tres" id="6_mnoak"]
 [ext_resource type="Resource" uid="uid://1480ftm8p2yd" path="res://data/units/jammer.tres" id="6_t67gm"]
 [ext_resource type="Script" uid="uid://cbbov2n7o5kqs" path="res://scripts/LevelPersister.gd" id="7_6ge3b"]
@@ -43,6 +44,14 @@ custom_minimum_size = Vector2(0, 0)
 offset_right = 300.0
 size_flags_horizontal = 1
 size_flags_vertical = 1
+
+[node name="SilentLinkSlot1" type="Node2D" parent="." index="14"]
+position = Vector2(580, 620)
+groups = ["silent_link_slots"]
+
+[node name="SilentLinkSlot2" type="Node2D" parent="." index="15"]
+position = Vector2(1380, 620)
+groups = ["silent_link_slots"]
 
 [node name="EnemySensor" type="Node2D" parent="." index="3" unique_id=839980744]
 position = Vector2(750, 650)
@@ -152,3 +161,9 @@ is_removable = false
 
 [node name="LevelPersister" type="Node" parent="." index="13" unique_id=1532070100]
 script = ExtResource("7_6ge3b")
+
+[node name="Visual" type="Sprite2D" parent="SilentLinkSlot1"]
+modulate = Color(0.2, 0.8, 1, 0.65)
+
+[node name="Visual" type="Sprite2D" parent="SilentLinkSlot2"]
+modulate = Color(0.2, 0.8, 1, 0.65)
