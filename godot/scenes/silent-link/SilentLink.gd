@@ -6,6 +6,7 @@ const SILENT_LINK_INTRO_POPUP := preload("res://scenes/ui/IntroPopup.tscn")
 const SILENT_LINK_HINT := preload("res://scenes/ui/HintPopup.tscn")
 const TRANSCEIVER_DEF := preload("res://data/units/transceiver.tres")
 const UNIT_SCRIPT := preload("res://scenes/core/Unit.gd")
+const SLOT_VISUAL_SCENE := preload("res://scenes/silent-link/SilentLinkSlotVisual.tscn")
 
 const MAX_LEVEL := 5
 
@@ -38,6 +39,7 @@ var _placement_slots: Array[Node2D] = []
 var _player_transceivers: Array = []
 var _slot_to_tx: Dictionary = {}  # Node2D -> Node2D
 var _pending_place_index: int = 0
+var _slot_visuals: Dictionary = {} # marker -> visual
 
 
 func add_to_groups_recursive(node: Node) -> void:
@@ -81,9 +83,6 @@ func _ready() -> void:
 	# Collect fixed slot markers + snap player transceivers to slots + lock movement
 	_collect_slots()
 	_collect_player_transceivers()
-	_ensure_player_transceivers_for_slots()
-	_assign_transceivers_to_slots()
-	_lock_transceiver_movement()
 
 	set_process(true)
 	_start()
@@ -204,6 +203,8 @@ func _collect_slots() -> void:
 
 	for s in _placement_slots:
 		_update_slot_visual(s, false)
+
+	_spawn_slot_visuals()
 
 
 # Player transceivers = transceivers not starting with Friendly
@@ -636,7 +637,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _get_clicked_slot(mouse_pos: Vector2) -> Node2D:
 	for slot in _placement_slots:
-		var radius := 36.0
+		var radius := 80.0
 		if slot.global_position.distance_to(mouse_pos) <= radius:
 			return slot
 	return null
@@ -671,6 +672,23 @@ func _spawn_player_transceiver() -> Node2D:
 
 
 func _update_slot_visual(slot: Node2D, occupied: bool) -> void:
-	var visual := slot.find_child("Visual", false, false) as CanvasItem
-	if visual:
-		visual.modulate = Color(1.0, 0.45, 0.2, 0.85) if occupied else Color(0.2, 0.8, 1.0, 0.65)
+	var visual = _slot_visuals.get(slot, null)
+	if visual and visual.has_method("set_occupied"):
+		visual.set_occupied(occupied)
+
+
+func _spawn_slot_visuals() -> void:
+	for v in _slot_visuals.values():
+		if is_instance_valid(v):
+			v.queue_free()
+	_slot_visuals.clear()
+
+	for slot in _placement_slots:
+		var visual := SLOT_VISUAL_SCENE.instantiate()
+		add_child(visual)
+		visual.top_level = true
+		visual.global_position = slot.global_position
+		visual.z_index = 200
+		if visual.has_method("set_occupied"):
+			visual.set_occupied(false)
+		_slot_visuals[slot] = visual
