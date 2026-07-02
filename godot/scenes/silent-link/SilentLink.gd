@@ -655,7 +655,7 @@ func _place_or_select_slot(slot: Node2D) -> void:
 	_player_transceivers.append(tx)
 
 	_update_slot_visual(slot, true)
-	
+
 	if _slot_to_tx.size() < 2:
 		_show_hint_debounced("Place one more transceiver in a slot.", 0.4)
 	else:
