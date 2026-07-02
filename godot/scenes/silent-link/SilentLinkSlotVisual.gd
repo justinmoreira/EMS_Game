@@ -6,6 +6,7 @@ extends Node2D
 var _style_available := StyleBoxFlat.new()
 var _style_occupied := StyleBoxFlat.new()
 
+
 func _ready() -> void:
 	# Pull styles from scene if already assigned
 	if panel.has_theme_stylebox_override("panel"):
@@ -17,6 +18,7 @@ func _ready() -> void:
 	_style_occupied.border_width_right = 3
 	_style_occupied.border_width_bottom = 3
 	_style_occupied.border_color = Color(1, 0.55, 0.25, 0.95)
+
 
 func set_occupied(occupied: bool) -> void:
 	if occupied:

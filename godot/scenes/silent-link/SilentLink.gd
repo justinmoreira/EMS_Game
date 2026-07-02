@@ -39,7 +39,7 @@ var _placement_slots: Array[Node2D] = []
 var _player_transceivers: Array = []
 var _slot_to_tx: Dictionary = {}  # Node2D -> Node2D
 var _pending_place_index: int = 0
-var _slot_visuals: Dictionary = {} # marker -> visual
+var _slot_visuals: Dictionary = {}  # marker -> visual
 
 
 func add_to_groups_recursive(node: Node) -> void:
