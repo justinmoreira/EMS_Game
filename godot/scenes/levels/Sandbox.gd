@@ -69,15 +69,15 @@ func _ready() -> void:
 	if get_script() == Sandbox and not _is_multiplayer():
 		open_popup()
 
-	var _hud = find_child("HUD", true, false)
+	var hud = find_child("HUD", true, false)
 	if _is_multiplayer():
-		if is_instance_valid(_hud):
-			var successful_links_only = _hud.find_child("SuccessfulLinesToggle", true, false)
+		if is_instance_valid(hud):
+			var successful_links_only = hud.find_child("SuccessfulLinesToggle", true, false)
 			if successful_links_only and "button_pressed" in successful_links_only:
 				successful_links_only.button_pressed = true
 	else:
-		if is_instance_valid(_hud):
-			var successful_links_only = _hud.find_child("SuccessfulLinesToggle", true, false)
+		if is_instance_valid(hud):
+			var successful_links_only = hud.find_child("SuccessfulLinesToggle", true, false)
 			if successful_links_only and "button_pressed" in successful_links_only:
 				successful_links_only.button_pressed = false
 
