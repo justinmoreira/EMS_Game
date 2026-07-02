@@ -46,6 +46,7 @@ size_flags_vertical = 1
 
 [node name="SilentLinkSlot1" type="Node2D" parent="." index="3" unique_id=99876987]
 position = Vector2(520, 620)
+groups = ["silent_link_slots"]
 
 [node name="Visual" type="Sprite2D" parent="SilentLinkSlot1" index="0" unique_id=1900737718]
 modulate = Color(0.2, 0.8, 1, 0.65)
@@ -75,6 +76,7 @@ script = ExtResource("8_flsvr")
 
 [node name="SilentLinkSlot2" type="Node2D" parent="." index="7" unique_id=1291187295]
 position = Vector2(1200, 640)
+groups = ["silent_link_slots"]
 
 [node name="Visual" type="Sprite2D" parent="SilentLinkSlot2" index="0" unique_id=1699364189]
 modulate = Color(0.2, 0.8, 1, 0.65)

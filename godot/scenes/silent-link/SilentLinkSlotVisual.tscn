@@ -1,5 +1,7 @@
 [gd_scene format=3 uid="uid://pa7c5dsle35u"]
 
+[ext_resource type="Script" uid="uid://csns0lqnwilmf" path="res://scenes/silent-link/SilentLinkSlotVisual.gd" id="1_m4one"]
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_available"]
 bg_color = Color(0.08, 0.18, 0.25, 0.35)
 border_width_left = 3
@@ -13,6 +15,7 @@ corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
 [node name="SilentLinkSlotVisual" type="Node2D" unique_id=1433227060]
+script = ExtResource("1_m4one")
 
 [node name="Panel" type="Panel" parent="." unique_id=168420660]
 offset_left = -70.0

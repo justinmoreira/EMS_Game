@@ -40,6 +40,7 @@ var _player_transceivers: Array = []
 var _slot_to_tx: Dictionary = {}  # Node2D -> Node2D
 var _pending_place_index: int = 0
 var _slot_visuals: Dictionary = {}  # marker -> visual
+var visual := SLOT_VISUAL_SCENE.instantiate() as Node2D
 
 
 func add_to_groups_recursive(node: Node) -> void:
@@ -82,7 +83,6 @@ func _ready() -> void:
 
 	# Collect fixed slot markers + snap player transceivers to slots + lock movement
 	_collect_slots()
-	_collect_player_transceivers()
 
 	set_process(true)
 	_start()
@@ -153,11 +153,11 @@ func _advance() -> void:
 func _setup_level_restrictions() -> void:
 	match _current_level:
 		1, 2, 3:
-			_allowed_units = [&"transceiver"]
+			_allowed_units = []
 		4, 5:
-			_allowed_units = [&"transceiver", &"sensor"]
+			_allowed_units = [&"sensor"]
 		_:
-			_allowed_units = [&"transceiver", &"sensor"]
+			_allowed_units = [&"sensor"]
 
 
 func _apply_card_restrictions() -> void:
@@ -257,7 +257,9 @@ func _lock_transceiver_movement() -> void:
 
 
 func _has_minimum_setup() -> bool:
-	return _placement_slots.size() >= 2 and _slot_to_tx.size() >= 2
+	if _placement_slots.size() < 2:
+		return false
+	return _slot_to_tx.size() == 2
 
 
 func _show_hint_debounced(text: String, cooldown: float = 1.0) -> void:
@@ -274,17 +276,12 @@ func _on_simulation_requested() -> void:
 
 	if not _has_minimum_setup():
 		_step = Step.PLANNING
-		_show_hint_debounced(
-			"Level setup incomplete: need at least 2 fixed slots and 2 player transceivers."
-		)
+		_show_hint_debounced("Place transceivers in both marked slots first.")
 		return
 
-	_assign_transceivers_to_slots()
-
 	_player_units.clear()
-	for u in get_tree().get_nodes_in_group("transceivers"):
-		if not u.name.begins_with("Friendly"):
-			_player_units.append(u)
+	for tx in _slot_to_tx.values():
+		_player_units.append(tx)
 
 	_player_detected = false
 	_jammed = false
@@ -648,14 +645,21 @@ func _place_or_select_slot(slot: Node2D) -> void:
 		_show_hint_debounced("Slot already occupied. Tune that transceiver's attributes.", 0.4)
 		return
 
+	if _slot_to_tx.size() >= 2:
+		_show_hint_debounced("Both required transceivers are already placed.", 0.4)
+		return
+
 	var tx := _spawn_player_transceiver()
 	tx.global_position = slot.global_position
 	_slot_to_tx[slot] = tx
-	if not _player_transceivers.has(tx):
-		_player_transceivers.append(tx)
+	_player_transceivers.append(tx)
 
 	_update_slot_visual(slot, true)
-	_show_hint_debounced("Transceiver placed. Adjust frequency/power, then simulate.", 0.4)
+	
+	if _slot_to_tx.size() < 2:
+		_show_hint_debounced("Place one more transceiver in a slot.", 0.4)
+	else:
+		_show_hint_debounced("Now tune attributes to avoid detection/jamming, then simulate.", 0.4)
 
 
 func _spawn_player_transceiver() -> Node2D:
@@ -673,8 +677,14 @@ func _spawn_player_transceiver() -> Node2D:
 
 func _update_slot_visual(slot: Node2D, occupied: bool) -> void:
 	var visual = _slot_visuals.get(slot, null)
-	if visual and visual.has_method("set_occupied"):
-		visual.set_occupied(occupied)
+	if visual == null:
+		return
+	var panel := visual.get_node_or_null("Panel") as Panel
+	var label := visual.get_node_or_null("Panel/Prompt") as Label
+	if label:
+		label.text = "Transceiver\nPlaced" if occupied else "Place\nTransceiver"
+	if panel:
+		panel.modulate = Color(1.0, 0.6, 0.35, 1.0) if occupied else Color(1, 1, 1, 1)
 
 
 func _spawn_slot_visuals() -> void:
@@ -684,11 +694,14 @@ func _spawn_slot_visuals() -> void:
 	_slot_visuals.clear()
 
 	for slot in _placement_slots:
-		var visual := SLOT_VISUAL_SCENE.instantiate()
+		var visual := SLOT_VISUAL_SCENE.instantiate() as Node2D
 		add_child(visual)
 		visual.top_level = true
 		visual.global_position = slot.global_position
-		visual.z_index = 200
+		visual.z_as_relative = false
+		visual.z_index = 9999
+		visual.visible = true
 		if visual.has_method("set_occupied"):
 			visual.set_occupied(false)
 		_slot_visuals[slot] = visual
+		print("Spawned slot visual at ", slot.global_position)
