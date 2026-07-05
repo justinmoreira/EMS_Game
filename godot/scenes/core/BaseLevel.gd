@@ -758,6 +758,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 
 	# Mark this unit as not saved to the scene file (instantiated at runtime).
 	unit.owner = null
+	unit.add_to_group("player_placed")
 
 	# Apply pending attributes BEFORE add_child so the unit's _ready sees the
 	# user-typed unit_name and skips its UnitNameManager.get_next_name call.

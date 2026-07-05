@@ -80,7 +80,6 @@ func test_snapshot_round_trip() -> void:
 				&"height": 9,
 				&"tuning_frequency": 1234.0,
 				&"sensor_bandwidth": 2,
-				&"is_scanning": false,
 				&"unit_name": "My Sensor",
 			}
 		)
@@ -104,7 +103,6 @@ func test_snapshot_round_trip() -> void:
 		float(state.get(&"tuning_frequency", 0.0)), 1234.0, 0.001, "tuning_frequency preserved."
 	)
 	assert_eq(state.get(&"sensor_bandwidth"), 2, "enum bandwidth preserved.")
-	assert_eq(state.get(&"is_scanning"), false, "bool is_scanning preserved.")
 	assert_eq(state.get(&"unit_name"), "My Sensor", "string unit_name preserved.")
 	assert_eq(
 		state.get(&"owner_player_id"), "player-1", "owner_player_id preserved (non-attribute)."

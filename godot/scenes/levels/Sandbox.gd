@@ -70,16 +70,22 @@ func _ready() -> void:
 		open_popup()
 
 	var hud = find_child("HUD", true, false)
-	if _is_multiplayer():
+	if _is_multiplayer() or get_game_mode_name() == "silent-link":
 		if is_instance_valid(hud):
 			var successful_links_only = hud.find_child("SuccessfulLinesToggle", true, false)
 			if successful_links_only and "button_pressed" in successful_links_only:
 				successful_links_only.button_pressed = true
+			var focused_lines_off = hud.find_child("FocusedLinkLinesToggle", true, false)
+			if focused_lines_off and "button_pressed" in focused_lines_off:
+				focused_lines_off.button_pressed = false
 	else:
 		if is_instance_valid(hud):
 			var successful_links_only = hud.find_child("SuccessfulLinesToggle", true, false)
 			if successful_links_only and "button_pressed" in successful_links_only:
 				successful_links_only.button_pressed = false
+			var focused_lines_off = hud.find_child("FocusedLinkLinesToggle", true, false)
+			if focused_lines_off and "button_pressed" in focused_lines_off:
+				focused_lines_off.button_pressed = true
 
 
 func get_game_mode_name() -> String:

@@ -7,6 +7,7 @@
 [ext_resource type="Resource" uid="uid://dwr12u2th8xdx" path="res://data/units/sensor.tres" id="6_mnoak"]
 [ext_resource type="Resource" uid="uid://1480ftm8p2yd" path="res://data/units/jammer.tres" id="6_t67gm"]
 [ext_resource type="Script" uid="uid://cbbov2n7o5kqs" path="res://scripts/LevelPersister.gd" id="7_6ge3b"]
+[ext_resource type="Resource" uid="uid://bg3s0poj4rx7p" path="res://data/units/transceiver.tres" id="8_q5rei"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_l1"]
 shader = ExtResource("3")
@@ -48,7 +49,7 @@ size_flags_vertical = 1
 position = Vector2(750, 650)
 script = ExtResource("2")
 attribute_overrides = {
-&"tuning_frequency": 650.0
+&"tuning_frequency": 100.0
 }
 definition = ExtResource("6_mnoak")
 is_immovable = true
@@ -58,7 +59,7 @@ is_removable = false
 position = Vector2(1400, 800)
 script = ExtResource("2")
 attribute_overrides = {
-&"tuning_frequency": 650.0
+&"tuning_frequency": 1200.0
 }
 definition = ExtResource("6_mnoak")
 is_immovable = true
@@ -68,7 +69,7 @@ is_removable = false
 position = Vector2(980, 680)
 script = ExtResource("2")
 attribute_overrides = {
-&"tuning_frequency": 900.0
+&"tuning_frequency": 1100.0
 }
 definition = ExtResource("6_mnoak")
 is_immovable = true
@@ -78,7 +79,7 @@ is_removable = false
 position = Vector2(1240, 340)
 script = ExtResource("2")
 attribute_overrides = {
-&"tuning_frequency": 900.0
+&"tuning_frequency": 1000.0
 }
 definition = ExtResource("6_mnoak")
 is_immovable = true
@@ -89,7 +90,7 @@ visible = false
 position = Vector2(1200, 500)
 script = ExtResource("2")
 attribute_overrides = {
-&"frequency": 300.0
+&"frequency": 2000.0
 }
 definition = ExtResource("6_t67gm")
 is_immovable = true
@@ -111,7 +112,7 @@ visible = false
 position = Vector2(1080, 560)
 script = ExtResource("2")
 attribute_overrides = {
-&"frequency": 1800.0
+&"frequency": 200.0
 }
 definition = ExtResource("6_t67gm")
 is_immovable = true
@@ -122,7 +123,7 @@ visible = false
 position = Vector2(940, 470)
 script = ExtResource("2")
 attribute_overrides = {
-&"frequency": 100.0
+&"frequency": 600.0
 }
 definition = ExtResource("6_t67gm")
 is_immovable = true
@@ -133,7 +134,7 @@ visible = false
 position = Vector2(1320, 620)
 script = ExtResource("2")
 attribute_overrides = {
-&"frequency": 2000.0
+&"frequency": 800.0
 }
 definition = ExtResource("6_t67gm")
 is_immovable = true
@@ -144,7 +145,7 @@ visible = false
 position = Vector2(760, 540)
 script = ExtResource("2")
 attribute_overrides = {
-&"frequency": 2400.0
+&"frequency": 1000.0
 }
 definition = ExtResource("6_t67gm")
 is_immovable = true
@@ -152,3 +153,23 @@ is_removable = false
 
 [node name="LevelPersister" type="Node" parent="." index="13" unique_id=1532070100]
 script = ExtResource("7_6ge3b")
+
+[node name="FriendlyTransceiver" type="Node2D" parent="." index="14" unique_id=1880851784]
+position = Vector2(1805, 980)
+script = ExtResource("2")
+attribute_overrides = {
+&"frequency": 1000.0
+}
+definition = ExtResource("8_q5rei")
+is_immovable = true
+is_removable = false
+
+[node name="FriendlyTransceiver2" type="Node2D" parent="." index="15" unique_id=618292362]
+position = Vector2(427, 102)
+script = ExtResource("2")
+attribute_overrides = {
+&"frequency": 1000.0
+}
+definition = ExtResource("8_q5rei")
+is_immovable = true
+is_removable = false
