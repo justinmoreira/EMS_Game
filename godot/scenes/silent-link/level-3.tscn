@@ -49,17 +49,17 @@ size_flags_vertical = 1
 position = Vector2(1260, 320)
 script = ExtResource("2")
 attribute_overrides = {
-&"tuning_frequency": 2000.0
+&"tuning_frequency": 1000.0
 }
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
 
 [node name="EnemySensor2" type="Node2D" parent="." index="4" unique_id=2024476142]
-position = Vector2(940, 740)
+position = Vector2(1523, 174)
 script = ExtResource("2")
 attribute_overrides = {
-&"tuning_frequency": 100.0
+&"tuning_frequency": 500.0
 }
 definition = ExtResource("6_mnoak")
 is_immovable = true

@@ -418,7 +418,7 @@ func _check_detection_from_sim(detect_results: Array) -> void:
 		# Only an ENEMY sensor detecting one of OUR units counts as "caught"
 		if not sensor.is_in_group("enemy_units"):
 			continue
-		if target.is_in_group("enemy_units"):
+		if target.is_in_group("enemy_units") or not target.is_in_group("transceivers"):
 			continue
 		if result.get("fully_detected", false):
 			_player_detected = true
