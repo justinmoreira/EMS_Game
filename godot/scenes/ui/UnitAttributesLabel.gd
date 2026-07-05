@@ -121,7 +121,6 @@ const _SHORT_LABELS := {
 	&"jammer_bandwidth": "BW",
 	&"sensor_bandwidth": "BW",
 	&"sensitivity": "Sens",
-	&"is_scanning": "Scan",
 	&"height": "H"
 }
 

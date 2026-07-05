@@ -43,13 +43,6 @@ kind = 4
 enum_options = PackedStringArray("Narrow", "Medium", "Wide")
 default_value = 1
 
-[sub_resource type="Resource" id="a_scanning"]
-script = ExtResource("spec")
-id = &"is_scanning"
-display_name = "Scanning"
-kind = 3
-default_value = true
-
 [resource]
 script = ExtResource("def")
 id = &"sensor"
@@ -59,4 +52,4 @@ letter = "S"
 color = Color(0.878, 0.6, 1, 1)
 sprite_path = "res://assets/sprites/sensor.png"
 animated_sprite_path = "res://assets/sprites/sensorAni.png"
-attributes = Array[ExtResource("spec")]([SubResource("a_unit_name"), SubResource("a_sensitivity"), SubResource("a_tuning"), SubResource("a_height"), SubResource("a_bandwidth"), SubResource("a_scanning")])
+attributes = Array[ExtResource("spec")]([SubResource("a_unit_name"), SubResource("a_sensitivity"), SubResource("a_tuning"), SubResource("a_height"), SubResource("a_bandwidth")])
