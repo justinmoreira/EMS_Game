@@ -42,6 +42,11 @@ enum TutorialStep {
 	CHANGE_SENSOR_TUNING_AWAY,
 	EXPLAIN_BANDWIDTH,
 	INCREASE_BANDWIDTH,
+	INTRO_SPECTRUM_ANALYZER,
+	ENABLE_SPECTRUM_ANALYZER,
+	SELECT_SENSOR_FOR_SPECTRUM,
+	START_SPECTRUM_SCAN,
+	EXPLAIN_SPECTRUM_MATCH,
 	INTRO_JAMMER,
 	PLACE_JAMMER,
 	CHANGE_JAMMER_FREQUENCY_AWAY,
@@ -309,6 +314,66 @@ static func step_data(step: int) -> Dictionary:
 		TutorialStep.INCREASE_BANDWIDTH:
 			return _step("Increase the Sensor bandwidth, then press Confirm.")
 
+		TutorialStep.INTRO_SPECTRUM_ANALYZER:
+			return _step(
+				_text(
+					[
+						"The Sensor Spectrum Analyzer graphs the signals a Sensor ",
+						"hears across the frequency range.\n\n",
+						"Peaks appear where nearby units emit. When a peak lines up ",
+						"with the Transceivers' frequency, the Sensor is picking up ",
+						"their link."
+					]
+				),
+				TutorialStep.ENABLE_SPECTRUM_ANALYZER
+			)
+
+		TutorialStep.ENABLE_SPECTRUM_ANALYZER:
+			return _step(
+				_text(
+					[
+						"Open the top-right gear menu and turn on Spectrum Analyzer.\n\n",
+						"This opens the analyzer panel beside the map."
+					]
+				)
+			)
+
+		TutorialStep.SELECT_SENSOR_FOR_SPECTRUM:
+			return _step(
+				_text(
+					[
+						"Click the Sensor on the map.\n\n",
+						"The analyzer follows the selected Sensor, so it now shows ",
+						"what this Sensor can hear."
+					]
+				)
+			)
+
+		TutorialStep.START_SPECTRUM_SCAN:
+			return _step(
+				_text(
+					[
+						"Press START in the analyzer panel.\n\n",
+						"The Sensor sweeps the frequency range and draws a live trace ",
+						"of the signal it detects."
+					]
+				)
+			)
+
+		TutorialStep.EXPLAIN_SPECTRUM_MATCH:
+			return _step(
+				_text(
+					[
+						"Watch the peak that rises near 1000 on the trace.\n\n",
+						"That bump is the Transceivers' signal. Because the Sensor ",
+						"tuning overlaps their frequency, their link stands out above ",
+						"the noise floor. If a unit's frequency moves away, the peak ",
+						"shifts or fades."
+					]
+				),
+				TutorialStep.INTRO_JAMMER
+			)
+
 		TutorialStep.INTRO_JAMMER:
 			return _step(
 				_text(
@@ -563,6 +628,8 @@ static func display_setting_key_for_step(step: int) -> String:
 			return "suggestions"
 		TutorialStep.TRY_TERRAIN_HEATMAP_TOGGLE:
 			return "terrain_heatmap"
+		TutorialStep.ENABLE_SPECTRUM_ANALYZER:
+			return "spectrum"
 		_:
 			return ""
 
@@ -577,6 +644,8 @@ static func display_setting_target_for_step(step: int) -> Variant:
 			return true
 		TutorialStep.TURN_OFF_SUGGESTIONS:
 			return false
+		TutorialStep.ENABLE_SPECTRUM_ANALYZER:
+			return true
 		_:
 			return null
 
@@ -603,6 +672,8 @@ static func display_toggle_node_names(setting_key: String) -> Array[String]:
 			return ["HeightmapShaderToggle", "ShaderToggle", "Toggle"]
 		"grid":
 			return ["GridToggle", "GRIDToggle"]
+		"spectrum":
+			return ["SpectrumToggle", "SpectrumAnalyzerToggle"]
 		_:
 			return []
 
@@ -647,6 +718,16 @@ static func display_setting_result(setting_key: String, step: int = -1) -> Dicti
 					]
 				),
 				TutorialStep.SELECT_UNIT_FOR_HEATMAP
+			)
+		"spectrum":
+			return _step(
+				_text(
+					[
+						"Good. The Spectrum Analyzer panel is open.\n\n",
+						"Now select the Sensor so the analyzer listens through it."
+					]
+				),
+				TutorialStep.SELECT_SENSOR_FOR_SPECTRUM
 			)
 		_:
 			return _step("Good. That display setting changed.")

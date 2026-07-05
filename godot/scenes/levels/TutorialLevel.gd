@@ -194,6 +194,19 @@ func _connect_tutorial_signals() -> void:
 			GameEvents.selection_changed.connect(_on_tutorial_unit_selected)
 	if not GameEvents.simulation_requested.is_connected(_on_tutorial_confirm_pressed):
 		GameEvents.simulation_requested.connect(_on_tutorial_confirm_pressed)
+	_connect_spectrum_scan_signal()
+
+
+func _connect_spectrum_scan_signal() -> void:
+	if spectrum_analyzer == null:
+		return
+	if not spectrum_analyzer.scan_started.is_connected(_on_spectrum_scan_started):
+		spectrum_analyzer.scan_started.connect(_on_spectrum_scan_started)
+
+
+func _on_spectrum_scan_started(_lo: float, _hi: float) -> void:
+	if _tutorial_step == TUTORIAL_STEP.START_SPECTRUM_SCAN:
+		_enter_step(TUTORIAL_STEP.EXPLAIN_SPECTRUM_MATCH)
 
 
 func _check_placement(unit: Node, target: Vector2) -> void:
@@ -403,8 +416,18 @@ func _apply_step_start_side_effects(step: int) -> void:
 			_lock_jammer_frequency = false
 			TutorialUtils.set_number_on_unit(_jammer, ["frequency"], TUTORIAL_FREQUENCY)
 			_run_simulation_if_possible()
+		TUTORIAL_STEP.ENABLE_SPECTRUM_ANALYZER:
+			_set_spectrum_toggle(false)
+		TUTORIAL_STEP.SELECT_SENSOR_FOR_SPECTRUM:
+			GameEvents.clear_selection()
 		_:
 			pass
+
+
+func _set_spectrum_toggle(enabled: bool) -> void:
+	var hud := TutorialUtils.find_node_by_name(get_tree().root, "HUD")
+	if hud != null and hud.has_method("set_spectrum_enabled"):
+		hud.set_spectrum_enabled(enabled)
 
 
 func _step_data(step: int) -> Dictionary:
@@ -505,23 +528,7 @@ func _on_tutorial_unit_selected(unit: Node) -> void:
 		return
 	if unit == null or not is_instance_valid(unit):
 		return
-	if _tutorial_step == TUTORIAL_STEP.SELECT_TRANSCEIVER:
-		if unit == _first_transceiver:
-			_enter_step(TUTORIAL_STEP.EXPLAIN_FREQUENCY)
-		elif TutorialUtils.is_transceiver(unit):
-			_lock_all_attributes()
-		return
-	if _tutorial_step == TUTORIAL_STEP.VIEW_UNIT_RANGE:
-		if _is_tutorial_map_unit(unit):
-			_selected_tutorial_unit = unit
-			_lock_all_attributes()
-			_say([TUTORIAL_TEXT.unit_range_selected_text()], TUTORIAL_STEP.TRY_UNIT_DETAILS_TOGGLE)
-		return
-	if _tutorial_step == TUTORIAL_STEP.SELECT_UNIT_FOR_HEATMAP:
-		if _is_tutorial_map_unit(unit):
-			_selected_tutorial_unit = unit
-			_lock_all_attributes()
-			_say([TUTORIAL_TEXT.heatmap_selected_text()], TUTORIAL_STEP.EXPLAIN_HEIGHTMAP_AND_GRID)
+	if _handle_selection_for_step(unit):
 		return
 
 	var expected_unit := _expected_edit_unit_for_current_step()
@@ -533,6 +540,40 @@ func _on_tutorial_unit_selected(unit: Node) -> void:
 	else:
 		_selected_tutorial_unit = unit
 		_lock_all_attributes()
+
+
+func _handle_selection_for_step(unit: Node) -> bool:
+	match _tutorial_step:
+		TUTORIAL_STEP.SELECT_TRANSCEIVER:
+			if unit == _first_transceiver:
+				_enter_step(TUTORIAL_STEP.EXPLAIN_FREQUENCY)
+			elif TutorialUtils.is_transceiver(unit):
+				_lock_all_attributes()
+			return true
+		TUTORIAL_STEP.VIEW_UNIT_RANGE:
+			if _is_tutorial_map_unit(unit):
+				_selected_tutorial_unit = unit
+				_lock_all_attributes()
+				_say(
+					[TUTORIAL_TEXT.unit_range_selected_text()],
+					TUTORIAL_STEP.TRY_UNIT_DETAILS_TOGGLE
+				)
+			return true
+		TUTORIAL_STEP.SELECT_UNIT_FOR_HEATMAP:
+			if _is_tutorial_map_unit(unit):
+				_selected_tutorial_unit = unit
+				_lock_all_attributes()
+				_say(
+					[TUTORIAL_TEXT.heatmap_selected_text()],
+					TUTORIAL_STEP.EXPLAIN_HEIGHTMAP_AND_GRID
+				)
+			return true
+		TUTORIAL_STEP.SELECT_SENSOR_FOR_SPECTRUM:
+			if unit == _sensor or TutorialUtils.is_sensor(unit):
+				_selected_tutorial_unit = unit
+				_enter_step(TUTORIAL_STEP.START_SPECTRUM_SCAN)
+			return true
+	return false
 
 
 func _on_tutorial_confirm_pressed() -> void:
@@ -591,7 +632,7 @@ func _on_tutorial_confirm_pressed() -> void:
 				_say([TUTORIAL_TEXT.sensor_tuning_changed_text()], TUTORIAL_STEP.EXPLAIN_BANDWIDTH)
 		TUTORIAL_STEP.INCREASE_BANDWIDTH:
 			_run_simulation_if_possible()
-			_say([TUTORIAL_TEXT.bandwidth_increased_text()], TUTORIAL_STEP.INTRO_JAMMER)
+			_say([TUTORIAL_TEXT.bandwidth_increased_text()], TUTORIAL_STEP.INTRO_SPECTRUM_ANALYZER)
 		TUTORIAL_STEP.CHANGE_JAMMER_FREQUENCY_AWAY:
 			var value := TutorialUtils.read_number_from_unit(
 				_jammer, ["frequency"], TUTORIAL_FREQUENCY
