@@ -34,7 +34,7 @@ func set_concealed(value: bool) -> void:
 
 func is_concealed() -> bool:
 	return _concealed
-	
+
 
 func set_attributes_unlocked_override(value: bool) -> void:
 	_attributes_unlocked_override = value
@@ -314,7 +314,7 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 		if not is_selectable():
 			get_tree().root.set_input_as_handled()
 			return
-			
+
 		if is_locked():
 			GameEvents.select(self)
 			get_tree().root.set_input_as_handled()

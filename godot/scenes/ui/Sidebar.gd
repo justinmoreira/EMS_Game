@@ -481,7 +481,11 @@ func _refresh_attribute_panel() -> void:
 	var lock_inputs := is_locked
 	if selected_node and "is_removable" in selected_node and not selected_node.is_removable:
 		lock_inputs = true
-	if selected_node and selected_node.has_method("attributes_unlocked_override") and selected_node.attributes_unlocked_override():
+	if (
+		selected_node
+		and selected_node.has_method("attributes_unlocked_override")
+		and selected_node.attributes_unlocked_override()
+	):
 		lock_inputs = false
 	_attr_body.modulate.a = 0.7 if lock_inputs else 1.0
 	_lock_all_attributes(lock_inputs)

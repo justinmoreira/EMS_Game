@@ -70,11 +70,11 @@ func _ready() -> void:
 
 	_transceivers = get_tree().get_nodes_in_group("transceivers")
 	_enemy_units = get_tree().get_nodes_in_group("enemy_units")
-	
+
 	for tx in _transceivers:
 		if tx.has_method("set_attributes_unlocked_override"):
 			tx.set_attributes_unlocked_override(true)
-	
+
 	for enemy in _enemy_units:
 		if enemy.has_method("set_selectable"):
 			enemy.set_selectable(false)
@@ -195,7 +195,7 @@ func _on_simulation_complete(link_results: Array, _detect_results: Array) -> voi
 	_link_established = false
 	_simulation_over = false
 	_link_success_from_sim = false
-	
+
 	_reveal_detected_jammers(_detect_results)
 
 	# 1. Global Detection Check (Hard fail - users shouldn't win if detected)
@@ -211,10 +211,10 @@ func _on_simulation_complete(link_results: Array, _detect_results: Array) -> voi
 	# 3. If a valid chain exists, they win! Extraneous blocked/jammed links are ignored.
 	if _link_success_from_sim:
 		_link_established = true
-		
+
 		# We still check jamming here purely for the stealth bonus in _calculate_score()
-		_check_jamming() 
-		
+		_check_jamming()
+
 		_finish(true)
 		return
 
@@ -229,7 +229,7 @@ func _on_simulation_complete(link_results: Array, _detect_results: Array) -> voi
 			_jammed = true
 
 	_step = Step.PLANNING
-	
+
 	if _jammed:
 		_show_hint("Chain broken by jamming! Reposition transceivers to avoid interference.")
 
@@ -254,8 +254,10 @@ func _check_chain_between_endpoints() -> bool:
 
 	# Build the list of all valid relays (player placed + the endpoints themselves)
 	var own_txs: Array = _player_units.duplicate()
-	if not own_txs.has(source): own_txs.append(source)
-	if not own_txs.has(target): own_txs.append(target)
+	if not own_txs.has(source):
+		own_txs.append(source)
+	if not own_txs.has(target):
+		own_txs.append(target)
 
 	var success := SimulationManager.LinkState.SUCCESS
 	var visited := {}
@@ -280,7 +282,7 @@ func _check_chain_between_endpoints() -> bool:
 			# A hop counts if either direction links successfully
 			var fwd: int = SimulationManager.calculate_link(u, v, jammers)
 			var rev: int = SimulationManager.calculate_link(v, u, jammers)
-			
+
 			if fwd == success or rev == success:
 				visited[v.get_instance_id()] = true
 				queue.append(v)
@@ -483,19 +485,19 @@ func _show_scoreboard() -> void:
 
 func _calculate_score() -> int:
 	var base_score := 1000
-	
+
 	# Time penalty (e.g., 5 points lost per second)
 	var time_penalty := int(_completion_time) * 5
-	
+
 	# Unit penalty (e.g., 50 points lost per unit placed)
 	var unit_penalty := _player_units.size() * 50
-	
+
 	var stealth_bonus := 0
-	
+
 	# Reward the player if they were NEVER detected across all attempts
 	if not _ever_detected:
 		stealth_bonus += 150
-		
+
 	# Reward the player if they were NEVER jammed across all attempts
 	if not _ever_jammed:
 		stealth_bonus += 100
