@@ -10,6 +10,8 @@ const SELECTION_RADIUS := 32.0
 @export var is_immovable: bool = false  # If true, this unit cannot be dragged
 @export var is_removable: bool = true  # If false, this unit cannot be removed
 var physical_state: Dictionary = {}
+var _attributes_unlocked_override: bool = false
+var _selectable_override: bool = true
 
 var _unit_visual: UnitVisual
 
@@ -32,6 +34,22 @@ func set_concealed(value: bool) -> void:
 
 func is_concealed() -> bool:
 	return _concealed
+	
+
+func set_attributes_unlocked_override(value: bool) -> void:
+	_attributes_unlocked_override = value
+
+
+func attributes_unlocked_override() -> bool:
+	return _attributes_unlocked_override
+
+
+func set_selectable(value: bool) -> void:
+	_selectable_override = value
+
+
+func is_selectable() -> bool:
+	return _selectable_override
 
 
 # Viewer-relative team (UnitVisual.Owner.MINE / ENEMY / NONE), used to suppress
@@ -293,6 +311,10 @@ func _on_selection_input(_viewport: Node, event: InputEvent, _shape_idx: int) ->
 		# Locked pieces (objective, already-submitted, opponent's, or a unit
 		# main flags immovable) can be inspected but never moved — select for
 		# the read-only panel and stop.
+		if not is_selectable():
+			get_tree().root.set_input_as_handled()
+			return
+			
 		if is_locked():
 			GameEvents.select(self)
 			get_tree().root.set_input_as_handled()

@@ -16,7 +16,6 @@ var _completion_time: float = 0.0
 var _timer_label: Label = null
 var _hud: Node = null
 var _current_level: int = 1
-var _last_hint_time: float = -10.0
 
 var _link_established := false
 var _player_detected := false
@@ -24,12 +23,16 @@ var _jammed := false
 var _simulation_over := false
 var _terrain_blocked := false
 var _link_success_from_sim := false
+var _ever_detected := false
+var _ever_jammed := false
 
 # Gameplay entities
 var _player_units: Array = []
 var _enemy_units: Array = []
 var _transceivers: Array = []
 var _allowed_units: Array[StringName] = []
+
+var _revealed_jammers := {}
 
 
 func add_to_groups_recursive(node: Node) -> void:
@@ -67,6 +70,14 @@ func _ready() -> void:
 
 	_transceivers = get_tree().get_nodes_in_group("transceivers")
 	_enemy_units = get_tree().get_nodes_in_group("enemy_units")
+	
+	for tx in _transceivers:
+		if tx.has_method("set_attributes_unlocked_override"):
+			tx.set_attributes_unlocked_override(true)
+	
+	for enemy in _enemy_units:
+		if enemy.has_method("set_selectable"):
+			enemy.set_selectable(false)
 
 	_setup_level_restrictions()
 	set_process(true)
@@ -85,7 +96,7 @@ func _exit_tree() -> void:
 
 
 func _process(_delta: float) -> void:
-	if _step == Step.PLANNING and _timer_label:
+	if _step != Step.COMPLETE and _timer_label:
 		var elapsed := Time.get_ticks_msec() / 1000.0 - _start_time
 		_timer_label.text = "Time: %.1fs" % elapsed
 
@@ -122,7 +133,6 @@ func _advance() -> void:
 			_step = Step.PLANNING
 			_start_time = Time.get_ticks_msec() / 1000.0
 			_show_timer()
-			_apply_card_restrictions()
 			_show_hint("Plan a silent link, then run simulation. Avoid detection and jamming.")
 
 		Step.PLANNING:
@@ -145,49 +155,10 @@ func _setup_level_restrictions() -> void:
 			_allowed_units = [&"transceiver", &"jammer", &"sensor"]
 
 
-func _apply_card_restrictions() -> void:
-	var sidebar := get_tree().get_first_node_in_group("ui") as Sidebar
-	if not sidebar:
-		sidebar = get_tree().root.find_child("Sidebar", true, false) as Sidebar
-	if not sidebar:
-		return
-
-	var entity_types: Array[Dictionary] = [
-		{"type": Sidebar.EntityType.TRANSCEIVER, "id": StringName("transceiver")},
-		{"type": Sidebar.EntityType.JAMMER, "id": StringName("jammer")},
-		{"type": Sidebar.EntityType.SENSOR, "id": StringName("sensor")}
-	]
-
-	for entity: Dictionary in entity_types:
-		var card = sidebar._entity_cards.get(entity["type"])
-		if not card:
-			continue
-
-		var id: StringName = entity["id"] as StringName
-		var is_allowed: bool = id in _allowed_units
-
-		card.modulate.a = 1.0 if is_allowed else 0.3
-		card.set_process_input(is_allowed)
-		card.mouse_filter = Control.MOUSE_FILTER_STOP if is_allowed else Control.MOUSE_FILTER_IGNORE
-
-		for child in card.get_children():
-			child.mouse_filter = (
-				Control.MOUSE_FILTER_PASS if is_allowed else Control.MOUSE_FILTER_IGNORE
-			)
-
-
 func _has_minimum_setup() -> bool:
 	# Require at least 2 transceivers total on map (preplaced + player placed)
 	var total_transceivers := get_tree().get_nodes_in_group("transceivers").size()
 	return total_transceivers >= 2
-
-
-func _show_hint_debounced(text: String, cooldown: float = 1.0) -> void:
-	var now := Time.get_ticks_msec() / 1000.0
-	if now - _last_hint_time < cooldown:
-		return
-	_last_hint_time = now
-	_show_hint(text)
 
 
 func _on_simulation_requested() -> void:
@@ -224,46 +195,125 @@ func _on_simulation_complete(link_results: Array, _detect_results: Array) -> voi
 	_link_established = false
 	_simulation_over = false
 	_link_success_from_sim = false
+	
+	_reveal_detected_jammers(_detect_results)
 
-	# Parse authoritative simulation outcomes
+	# 1. Global Detection Check (Hard fail - users shouldn't win if detected)
+	_check_detection()
+	if _player_detected:
+		_step = Step.PLANNING
+		_show_hint("Detected by enemy! Try a stealthier route.")
+		return
+
+	# 2. Evaluate if ANY unbroken chain of SUCCESS links exists
+	_link_success_from_sim = _check_chain_between_endpoints()
+
+	# 3. If a valid chain exists, they win! Extraneous blocked/jammed links are ignored.
+	if _link_success_from_sim:
+		_link_established = true
+		
+		# We still check jamming here purely for the stealth bonus in _calculate_score()
+		_check_jamming() 
+		
+		_finish(true)
+		return
+
+	# 4. If they didn't win (the chain is broken), parse the results to give the best hint
 	for result in link_results:
 		if not (result is Dictionary):
 			continue
-
 		var state: int = result.get("state", -1)
-
-		if state == SimulationManager.LinkState.SUCCESS:
-			_link_success_from_sim = true
-		elif state == SimulationManager.LinkState.TERRAIN_BLOCKED:
+		if state == SimulationManager.LinkState.TERRAIN_BLOCKED:
 			_terrain_blocked = true
 		elif state == SimulationManager.LinkState.FAILED_JAMMED:
 			_jammed = true
 
-	_check_jamming()
-	_check_detection()
-
-	if _terrain_blocked:
-		_step = Step.PLANNING
-		_show_hint_debounced("Link blocked by terrain! Reposition transceivers and try again.")
-		return
-
-	if not _link_success_from_sim:
-		_step = Step.PLANNING
-		_show_hint_debounced("Link not established - adjust transceiver placement/frequency.")
-		return
-
+	_step = Step.PLANNING
+	
 	if _jammed:
-		_step = Step.PLANNING
-		_show_hint_debounced("Signal jammed! Reposition and try again.")
-		return
+		_show_hint("Chain broken by jamming! Reposition transceivers to avoid interference.")
 
-	if _player_detected:
-		_step = Step.PLANNING
-		_show_hint_debounced("Detected by enemy! Try a stealthier route.")
-		return
 
-	_link_established = true
-	_finish(true)
+func _check_chain_between_endpoints() -> bool:
+	var endpoints := []
+	for u in get_tree().get_nodes_in_group("transceivers"):
+		if u.name.begins_with("Friendly"):
+			endpoints.append(u)
+
+	if endpoints.size() < 2:
+		return false
+
+	var source: Node = endpoints[0]
+	var target: Node = endpoints[1]
+
+	# Gather all enemy jammers to feed into the link physics
+	var jammers := []
+	for u in _enemy_units:
+		if u.has_method("is_jammer") and u.is_jammer():
+			jammers.append(u)
+
+	# Build the list of all valid relays (player placed + the endpoints themselves)
+	var own_txs: Array = _player_units.duplicate()
+	if not own_txs.has(source): own_txs.append(source)
+	if not own_txs.has(target): own_txs.append(target)
+
+	var success := SimulationManager.LinkState.SUCCESS
+	var visited := {}
+	var queue: Array = [source]
+	visited[source.get_instance_id()] = true
+
+	while not queue.is_empty():
+		var u = queue.pop_back()
+		if u == null or not is_instance_valid(u):
+			continue
+
+		# If we have reached the target transceiver, the chain is complete
+		if u == target:
+			return true
+
+		for v in own_txs:
+			if v == null or v == u or not is_instance_valid(v):
+				continue
+			if visited.has(v.get_instance_id()):
+				continue
+
+			# A hop counts if either direction links successfully
+			var fwd: int = SimulationManager.calculate_link(u, v, jammers)
+			var rev: int = SimulationManager.calculate_link(v, u, jammers)
+			
+			if fwd == success or rev == success:
+				visited[v.get_instance_id()] = true
+				queue.append(v)
+
+	return false
+
+
+func _reveal_detected_jammers(detect_results: Array) -> void:
+	for result in detect_results:
+		if not (result is Dictionary):
+			continue
+		if result.get("target_type", "") != "jammer":
+			continue
+		if not result.get("fully_detected", false):
+			continue
+
+		var jammer = result.get("target")
+		if jammer == null or not is_instance_valid(jammer):
+			continue
+
+		_reveal_jammer(jammer)
+
+
+func _reveal_jammer(jammer: Node) -> void:
+	var jammer_id := jammer.get_instance_id()
+	if _revealed_jammers.has(jammer_id):
+		return
+	_revealed_jammers[jammer_id] = true
+
+	if jammer.has_method("reveal"):
+		jammer.reveal()
+	elif "visible" in jammer:
+		jammer.visible = true
 
 
 func _parse_sim_results_for_flags(link_results: Array, detect_results: Array) -> void:
@@ -369,6 +419,7 @@ func _check_detection() -> void:
 		for enemy in _enemy_units:
 			if _unit_in_detection_zone(unit, enemy):
 				_player_detected = true
+				_ever_detected = true
 				return
 
 
@@ -390,6 +441,7 @@ func _check_jamming() -> void:
 					jam_radius = float(enemy.jam_radius())
 				if dist < jam_radius:
 					_jammed = true
+					_ever_jammed = true
 					return
 
 
@@ -430,20 +482,26 @@ func _show_scoreboard() -> void:
 
 
 func _calculate_score() -> int:
-	var time_penalty := int(_completion_time)
-	var frequency_penalty := 0
+	var base_score := 1000
+	
+	# Time penalty (e.g., 5 points lost per second)
+	var time_penalty := int(_completion_time) * 5
+	
+	# Unit penalty (e.g., 50 points lost per unit placed)
+	var unit_penalty := _player_units.size() * 50
+	
 	var stealth_bonus := 0
+	
+	# Reward the player if they were NEVER detected across all attempts
+	if not _ever_detected:
+		stealth_bonus += 150
+		
+	# Reward the player if they were NEVER jammed across all attempts
+	if not _ever_jammed:
+		stealth_bonus += 100
 
-	for unit in _player_units:
-		var freq: float = float(unit.get("frequency"))
-		frequency_penalty += int(abs(freq - 2.0) * 200.0)
-
-	if not _player_detected:
-		stealth_bonus += 1000
-	if not _jammed:
-		stealth_bonus += 500
-
-	return max(1000, 10000 - time_penalty * 100 - frequency_penalty + stealth_bonus)
+	# Ensure the score never drops below a minimum of 100
+	return max(100, base_score - time_penalty - unit_penalty + stealth_bonus)
 
 
 func _on_next_level_pressed() -> void:

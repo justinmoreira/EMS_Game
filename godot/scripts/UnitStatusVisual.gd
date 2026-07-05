@@ -138,7 +138,7 @@ func _on_simulation_complete(_link_results: Array, detect_results: Array) -> voi
 		var sensor := result.get("sensor") as Node2D
 		var target := result.get("target") as Node2D
 
-		if sensor == parent_unit and is_instance_valid(target):
+		if sensor == parent_unit and is_instance_valid(target) and sensor.is_in_group("player_placed"):
 			var detected: bool = result.get("detected", false)
 			var fully_detected: bool = result.get("fully_detected", false)
 

@@ -49,13 +49,23 @@ size_flags_vertical = 1
 position = Vector2(1200, 640)
 script = ExtResource("4_1ghud")
 attribute_overrides = {
-&"frequency": 600.0
+&"frequency": 1000.0
 }
 definition = ExtResource("5_sbe1m")
 is_immovable = true
 is_removable = false
 
-[node name="EnemyJammer" type="Node2D" parent="." index="4" unique_id=897180373]
+[node name="FriendlyTransceiver2" type="Node2D" parent="." index="4" unique_id=995957033]
+position = Vector2(610, 512)
+script = ExtResource("4_1ghud")
+attribute_overrides = {
+&"frequency": 1000.0
+}
+definition = ExtResource("5_sbe1m")
+is_immovable = true
+is_removable = false
+
+[node name="EnemyJammer" type="Node2D" parent="." index="5" unique_id=897180373]
 position = Vector2(750, 870)
 script = ExtResource("4_1ghud")
 attribute_overrides = {
@@ -65,7 +75,7 @@ definition = ExtResource("6_sbe1m")
 is_immovable = true
 is_removable = false
 
-[node name="EnemySensor" type="Node2D" parent="." index="5" unique_id=1803114092]
+[node name="EnemySensor" type="Node2D" parent="." index="6" unique_id=1803114092]
 position = Vector2(900, 350)
 script = ExtResource("4_1ghud")
 attribute_overrides = {
@@ -75,5 +85,5 @@ definition = ExtResource("7_14gxw")
 is_immovable = true
 is_removable = false
 
-[node name="LevelPersister" type="Node" parent="." index="6" unique_id=656022155]
+[node name="LevelPersister" type="Node" parent="." index="7" unique_id=656022155]
 script = ExtResource("8_flsvr")

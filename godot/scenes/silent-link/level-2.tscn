@@ -7,6 +7,7 @@
 [ext_resource type="Resource" uid="uid://dwr12u2th8xdx" path="res://data/units/sensor.tres" id="6_mnoak"]
 [ext_resource type="Resource" uid="uid://1480ftm8p2yd" path="res://data/units/jammer.tres" id="6_t67gm"]
 [ext_resource type="Script" uid="uid://cbbov2n7o5kqs" path="res://scripts/LevelPersister.gd" id="7_wobb0"]
+[ext_resource type="Resource" uid="uid://bg3s0poj4rx7p" path="res://data/units/transceiver.tres" id="8_or8j1"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_l1"]
 shader = ExtResource("3")
@@ -47,42 +48,62 @@ size_flags_vertical = 1
 [node name="EnemySensor" type="Node2D" parent="." index="3" unique_id=839980744]
 position = Vector2(960, 320)
 script = ExtResource("2")
+attribute_overrides = {
+&"tuning_frequency": 1600.0
+}
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
-attribute_overrides = {
-&"tuning_frequency": 300.0
-}
 
 [node name="EnemySensor2" type="Node2D" parent="." index="4" unique_id=2024476142]
 position = Vector2(1500, 960)
 script = ExtResource("2")
+attribute_overrides = {
+&"tuning_frequency": 500.0
+}
 definition = ExtResource("6_mnoak")
 is_immovable = true
 is_removable = false
-attribute_overrides = {
-&"tuning_frequency": 300.0
-}
 
 [node name="EnemyJammer" type="Node2D" parent="." index="5" unique_id=234907007]
 position = Vector2(1500, 300)
 script = ExtResource("2")
+attribute_overrides = {
+&"frequency": 800.0
+}
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
-attribute_overrides = {
-&"frequency": 500.0
-}
 
 [node name="EnemyJammer2" type="Node2D" parent="." index="6" unique_id=1888613306]
-position = Vector2(750, 750)
+position = Vector2(727, 845)
 script = ExtResource("2")
+attribute_overrides = {
+&"frequency": 1200.0
+}
 definition = ExtResource("6_t67gm")
 is_immovable = true
 is_removable = false
-attribute_overrides = {
-&"frequency": 500.0
-}
 
 [node name="LevelPersister" type="Node" parent="." index="7" unique_id=1800817402]
 script = ExtResource("7_wobb0")
+
+[node name="FriendlyTransceiver" type="Node2D" parent="." index="8" unique_id=1049930846]
+position = Vector2(1152, 764)
+script = ExtResource("2")
+attribute_overrides = {
+&"frequency": 1000.0
+}
+definition = ExtResource("8_or8j1")
+is_immovable = true
+is_removable = false
+
+[node name="FriendlyTransceiver2" type="Node2D" parent="." index="9" unique_id=1534151839]
+position = Vector2(584, 567)
+script = ExtResource("2")
+attribute_overrides = {
+&"frequency": 1000.0
+}
+definition = ExtResource("8_or8j1")
+is_immovable = true
+is_removable = false
