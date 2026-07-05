@@ -79,7 +79,6 @@ func _ready() -> void:
 		if enemy.has_method("set_selectable"):
 			enemy.set_selectable(false)
 
-	_setup_level_restrictions()
 	set_process(true)
 	_start()
 
@@ -145,16 +144,6 @@ func _advance() -> void:
 			_show_scoreboard()
 
 
-func _setup_level_restrictions() -> void:
-	match _current_level:
-		1, 2, 3:
-			_allowed_units = [&"transceiver"]
-		4, 5:
-			_allowed_units = [&"transceiver", &"sensor"]
-		_:
-			_allowed_units = [&"transceiver", &"jammer", &"sensor"]
-
-
 func _has_minimum_setup() -> bool:
 	# Require at least 2 transceivers total on map (preplaced + player placed)
 	var total_transceivers := get_tree().get_nodes_in_group("transceivers").size()
@@ -199,7 +188,7 @@ func _on_simulation_complete(link_results: Array, _detect_results: Array) -> voi
 	_reveal_detected_jammers(_detect_results)
 
 	# 1. Global Detection Check (Hard fail - users shouldn't win if detected)
-	_check_detection()
+	_check_detection_from_sim(_detect_results)
 	if _player_detected:
 		_step = Step.PLANNING
 		_show_hint("Detected by enemy! Try a stealthier route.")
@@ -416,21 +405,25 @@ func _check_link_possible() -> bool:
 	return true
 
 
-func _check_detection() -> void:
-	for unit in _player_units:
-		for enemy in _enemy_units:
-			if _unit_in_detection_zone(unit, enemy):
-				_player_detected = true
-				_ever_detected = true
-				return
-
-
-func _unit_in_detection_zone(unit: Node, enemy: Node) -> bool:
-	var dist: float = unit.global_position.distance_to(enemy.global_position)
-	var detection_radius: float = 100.0
-	if enemy.has_method("detection_radius"):
-		detection_radius = float(enemy.detection_radius())
-	return dist < detection_radius
+func _check_detection_from_sim(detect_results: Array) -> void:
+	for result in detect_results:
+		if not (result is Dictionary):
+			continue
+		var sensor = result.get("sensor")
+		var target = result.get("target")
+		if sensor == null or target == null:
+			continue
+		if not is_instance_valid(sensor) or not is_instance_valid(target):
+			continue
+		# Only an ENEMY sensor detecting one of OUR units counts as "caught"
+		if not sensor.is_in_group("enemy_units"):
+			continue
+		if target.is_in_group("enemy_units"):
+			continue
+		if result.get("fully_detected", false):
+			_player_detected = true
+			_ever_detected = true
+			return
 
 
 func _check_jamming() -> void:
