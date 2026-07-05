@@ -51,7 +51,6 @@ func set_status(new_status: int) -> void:
 		return
 
 	status = new_status
-	visible = status != Status.NONE
 	queue_redraw()
 
 
