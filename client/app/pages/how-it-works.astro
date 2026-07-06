@@ -1,0 +1,100 @@
+---
+import Base from "@/layouts/Base.astro";
+import { Content } from "../../public/how_it_works.md";
+---
+
+<Base title="How It Works | GEMS">
+    <div class="fixed inset-0 -z-10 bg-[#0a0a0a]"></div>
+
+    <main
+        class="how-it-works mx-auto h-[calc(100vh-3rem)] max-w-3xl overflow-y-auto px-6 pt-12 pb-16 text-white"
+    >
+        <Content />
+    </main>
+</Base>
+
+<style is:global>
+    .how-it-works h1 {
+        font-size: 1.875rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: #fff;
+    }
+
+    .how-it-works > p:first-of-type {
+        margin-bottom: 2rem;
+        color: #a3a3a3;
+    }
+
+    .how-it-works h2 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin-top: 2.5rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        color: #6ee7b7;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .how-it-works h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-top: 1.75rem;
+        margin-bottom: 0.5rem;
+        color: #34d399;
+    }
+
+    .how-it-works p {
+        margin-bottom: 1rem;
+        line-height: 1.7;
+        color: #d4d4d4;
+    }
+
+    .how-it-works ul {
+        margin: 0 0 1.25rem 1.25rem;
+        list-style: disc;
+        color: #d4d4d4;
+    }
+
+    .how-it-works li {
+        margin-bottom: 0.4rem;
+        line-height: 1.6;
+    }
+
+    .how-it-works li > ul {
+        margin-top: 0.4rem;
+    }
+
+    .how-it-works strong {
+        color: #fff;
+        font-weight: 600;
+    }
+
+    .how-it-works code {
+        background: rgba(255, 255, 255, 0.08);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        font-size: 0.85em;
+        color: #6ee7b7;
+    }
+
+    .how-it-works pre {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        overflow-x: auto;
+        margin-bottom: 1.5rem;
+    }
+
+    .how-it-works pre code {
+        background: none;
+        padding: 0;
+        color: #d4d4d4;
+    }
+
+    .how-it-works hr {
+        border-color: rgba(255, 255, 255, 0.1);
+        margin: 2rem 0;
+    }
+</style>

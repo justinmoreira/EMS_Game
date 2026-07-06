@@ -4,82 +4,85 @@ import { BASE_URL } from "@/utils";
 ---
 
 <nav
-  class="fixed top-0 left-0 right-0 z-50 bg-neutral-900/80 backdrop-blur-sm border-b border-neutral-700"
+    class="fixed top-0 left-0 right-0 z-50 bg-neutral-900/80 backdrop-blur-sm border-b border-neutral-700"
 >
-  <div class="relative flex items-center justify-between px-6 h-12">
-    <a href={`${BASE_URL}/`} class="gems-brand" aria-label="GEMS — home">
-      <span class="gems-dot" aria-hidden="true"></span>
-      <span class="gems-text">GEMS</span>
-    </a>
-    <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
-      <a
-        href={`${BASE_URL}/singleplayer`}
-        class="text-sm font-medium hover:text-white text-neutral-300 transition-colors"
-      >
-        Singleplayer
-      </a>
-      <a
-        href={`${BASE_URL}/multiplayer`}
-        class="text-sm font-medium hover:text-white text-neutral-300 transition-colors"
-      >
-        Multiplayer
-      </a>
+    <div class="relative flex items-center justify-between px-6 h-12">
+        <a href={`${BASE_URL}/`} class="gems-brand" aria-label="GEMS — home">
+            <span class="gems-dot" aria-hidden="true"></span>
+            <span class="gems-text">GEMS</span>
+        </a>
+        <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
+            <a
+                href={`${BASE_URL}/singleplayer`}
+                class="text-sm font-medium hover:text-white text-neutral-300 transition-colors"
+            >
+                Singleplayer
+            </a>
+            <a
+                href={`${BASE_URL}/multiplayer`}
+                class="text-sm font-medium hover:text-white text-neutral-300 transition-colors"
+            >
+                Multiplayer
+            </a>
+            <a
+                href={`${BASE_URL}/how-it-works`}
+                class="text-sm font-medium hover:text-white text-neutral-300 transition-colors"
+            >
+                How It Works
+            </a>
+        </div>
+        <span
+            id="account-placeholder"
+            class="text-sm font-medium text-neutral-300 min-w-[70px] text-right"></span>
+        <script is:inline>
+            try {
+                var n = localStorage.getItem("account_display_name");
+                if (n) document.getElementById("account-placeholder").textContent = n;
+                else document.getElementById("account-placeholder").textContent = "Account";
+            } catch {}
+        </script>
+        <AccountModal client:only="preact" transition:persist />
     </div>
-    <span
-      id="account-placeholder"
-      class="text-sm font-medium text-neutral-300 min-w-[70px] text-right"
-    ></span>
-    <script is:inline>
-      try {
-        var n = localStorage.getItem("account_display_name");
-        if (n) document.getElementById("account-placeholder").textContent = n;
-        else
-          document.getElementById("account-placeholder").textContent =
-            "Account";
-      } catch {}
-    </script>
-    <AccountModal client:only="preact" transition:persist />
-  </div>
 </nav>
 
 <style>
-  /* The single GEMS brand: green wordmark + a pulsing status dot. Moved here
+    /* The single GEMS brand: green wordmark + a pulsing status dot. Moved here
      from the in-canvas Godot sidebar so there's only one branding. Color and
      blink timing mirror the old Godot header (C_GREEN #00ff9c; dot fades to
      ~0.1 alpha over 0.8s then back over 0.4s, looping). */
-  .gems-brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .gems-text {
-    color: #00ff9c;
-    font-weight: 700;
-    font-size: 0.95rem;
-    letter-spacing: 0.06em;
-  }
-  .gems-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 9999px;
-    background: #00ff9c;
-    box-shadow: 0 0 6px #00ff9c;
-    animation: gems-blink 1.2s ease-in-out infinite;
-  }
-  @keyframes gems-blink {
-    0% {
-      opacity: 1;
+    .gems-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
-    67% {
-      opacity: 0.1;
+    .gems-text {
+        color: #00ff9c;
+        font-weight: 700;
+        font-size: 0.95rem;
+        letter-spacing: 0.06em;
     }
-    100% {
-      opacity: 1;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
     .gems-dot {
-      animation: none;
+        width: 10px;
+        height: 10px;
+        border-radius: 9999px;
+        background: #00ff9c;
+        box-shadow: 0 0 6px #00ff9c;
+        animation: gems-blink 1.2s ease-in-out infinite;
     }
-  }
+    @keyframes gems-blink {
+        0% {
+            opacity: 1;
+        }
+        67% {
+            opacity: 0.1;
+        }
+        100% {
+            opacity: 1;
+        }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .gems-dot {
+            animation: none;
+        }
+    }
 </style>
