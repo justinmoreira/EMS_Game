@@ -22,8 +22,20 @@ func _go_to_home_page() -> void:
 
 
 func _go_to_sandbox_mode() -> void:
+	if not is_inside_tree():
+		return
+	_disable_buttons()
 	get_tree().change_scene_to_file(SANDBOX_SCENE_PATH)
 
 
 func _restart_tutorial() -> void:
+	if not is_inside_tree():
+		return
+	_disable_buttons()
 	get_tree().reload_current_scene()
+
+
+func _disable_buttons() -> void:
+	return_home_button.disabled = true
+	sandbox_button.disabled = true
+	restart_button.disabled = true
