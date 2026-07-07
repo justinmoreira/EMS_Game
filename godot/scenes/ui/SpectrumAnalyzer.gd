@@ -33,7 +33,6 @@ const MAX_POWER := 8.0
 
 const HANDLE_GRAB_PX := 10.0
 
-
 const C_BG := Color(0.0, 0.0, 0.0, 0.0)
 const C_PLOT := Color(0.08, 0.08, 0.08, 1.0)
 const C_GRID := Color(0.30, 0.30, 0.30, 0.6)
@@ -425,7 +424,7 @@ func _sweep_x() -> float:
 func _draw() -> void:
 	var pr := _plot_rect()
 	draw_rect(Rect2(Vector2.ZERO, size), C_BG)
-	
+
 	var middle_section := Rect2(0.0, HEADER_H, size.x, size.y - HEADER_H - BOTTOM_LABEL_H)
 	draw_rect(middle_section, C_BOTTOM_BG)
 
@@ -441,8 +440,8 @@ func _draw() -> void:
 func _draw_border() -> void:
 	var outer := Rect2(0.0, 0.0, size.x, size.y)
 	draw_rect(outer, C_BORDER, false, BORDER_WIDTH)
-	
-	
+
+
 func _draw_scan_range_bg(pr: Rect2) -> void:
 	var x_lo := clampf(_freq_to_x(scan_lo), pr.position.x, pr.position.x + pr.size.x)
 	var x_hi := clampf(_freq_to_x(scan_hi), pr.position.x, pr.position.x + pr.size.x)
@@ -465,30 +464,15 @@ func _draw_grid(pr: Rect2) -> void:
 	while f <= FREQ_MAX:
 		var x := _freq_to_x(f)
 		draw_line(Vector2(x, pr.position.y), Vector2(x, pr.position.y + pr.size.y), C_GRID)
-		
+
 		var text := "%.0f" % f
 		var text_pos := Vector2(x - 20.0, label_y + 13.0)
-		
+
 		draw_string_outline(
-			_font, 
-			text_pos, 
-			text, 
-			HORIZONTAL_ALIGNMENT_CENTER, 
-			40.0, 
-			11, 
-			2, 
-			Color.BLACK
+			_font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, 40.0, 11, 2, Color.BLACK
 		)
-		
-		draw_string(
-			_font,
-			text_pos,
-			text,
-			HORIZONTAL_ALIGNMENT_CENTER,
-			40.0,
-			11,
-			C_LABEL
-		)
+
+		draw_string(_font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, 40.0, 11, C_LABEL)
 		f += step
 
 

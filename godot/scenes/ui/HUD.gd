@@ -265,6 +265,7 @@ func _load_settings() -> void:
 
 # Spectrum analyzer handling
 
+
 func _set_selected_sensor(unit: Node) -> void:
 	_selected_sensor = unit if _is_sensor_unit(unit) else null
 	_refresh_spectrum()
@@ -275,10 +276,8 @@ func _is_sensor_unit(unit: Node) -> bool:
 
 
 func _refresh_spectrum() -> void:
-	var should_show :bool= (
-		settings["spectrum"]
-		and _selected_sensor != null
-		and is_instance_valid(_selected_sensor)
+	var should_show: bool = (
+		settings["spectrum"] and _selected_sensor != null and is_instance_valid(_selected_sensor)
 	)
 
 	if should_show and _active_spectrum == null:
