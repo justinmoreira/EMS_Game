@@ -332,8 +332,7 @@ static func step_data(step: int) -> Dictionary:
 			return _step(
 				_text(
 					[
-						"Open the top-right gear menu and turn on Spectrum Analyzer.\n\n",
-						"This opens the analyzer panel beside the map."
+						"Open the top-right gear menu and turn on Spectrum Analyzer."
 					]
 				)
 			)
