@@ -58,9 +58,11 @@ static func is_detected(
 
 	if frequency_diff > bandwidth_half:
 		return {"detected": false, "fully_detected": false}
-
+	
+	var sens = remap(srx.sensitivity, -80.0, -70.0, 0.0, 10.0)
+	
 	var threshold = (
-		lerpf(3.0, NOISE_FLOOR, srx.sensitivity / 10.0) + bandwidth_penalty(srx.sensor_bandwidth)
+		lerpf(3.0, NOISE_FLOOR, sens / 10.0) + bandwidth_penalty(srx.sensor_bandwidth)
 	)
 
 	var h_tx: float = (
