@@ -246,6 +246,33 @@ func _show_scoreboard() -> void:
 
 	popup.continue_button.pressed.connect(_on_next_level_pressed)
 
+	var restart_button := Button.new()
+	restart_button.text = "Restart Game"
+	restart_button.custom_minimum_size = popup.continue_button.custom_minimum_size
+	restart_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	restart_button.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var parent: Node = popup.continue_button.get_parent()
+	if parent != null:
+		parent.add_child(restart_button)
+
+	restart_button.position = popup.continue_button.position + Vector2(-170, 0)
+
+	restart_button.pressed.connect(_on_restart_game_pressed)
+
+
+func _on_restart_game_pressed() -> void:
+	# Reset to level 1 and load Enemy Hunter level 1 directly
+	_current_level = 1
+
+	set_process(false)
+	set_physics_process(false)
+
+	if GameEvents.simulation_complete.is_connected(_on_simulation_complete):
+		GameEvents.simulation_complete.disconnect(_on_simulation_complete)
+
+	get_tree().change_scene_to_file("res://scenes/enemy-hunter/level-1.tscn")
+
 
 func _on_next_level_pressed() -> void:
 	_current_level += 1
