@@ -22,8 +22,21 @@ func _go_to_home_page() -> void:
 
 
 func _go_to_sandbox_mode() -> void:
-	get_tree().change_scene_to_file(SANDBOX_SCENE_PATH)
+	# In the web build the whole game lives on a single embedded canvas and the
+	# active mode is decided by SceneLoader from the URL's ?mode= query. Doing an
+	# in-engine change_scene here leaves the URL (and window.GAME_MODE / save
+	# namespace) pointing at the tutorial, so a full-page navigation — the same
+	# pattern the rest of the app uses to switch modes — is the reliable path.
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.location.href = window.location.pathname + '?mode=sandbox';")
+	else:
+		get_tree().change_scene_to_file(SANDBOX_SCENE_PATH)
 
 
 func _restart_tutorial() -> void:
-	get_tree().reload_current_scene()
+	# Re-load the tutorial fresh. On web, navigate so SceneLoader boots a clean
+	# tutorial from scratch; on desktop, reload the scene in place.
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.location.href = window.location.pathname + '?mode=tutorial';")
+	else:
+		get_tree().reload_current_scene()
