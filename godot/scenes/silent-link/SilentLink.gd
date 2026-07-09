@@ -475,19 +475,20 @@ func _show_scoreboard() -> void:
 
 	popup.continue_button.pressed.connect(_on_next_level_pressed)
 
-	var restart_button := Button.new()
-	restart_button.text = "Restart Game"
-	restart_button.custom_minimum_size = popup.continue_button.custom_minimum_size
-	restart_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	restart_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	if _current_level >= MAX_LEVEL:
+		var restart_button := Button.new()
+		restart_button.text = "Restart Game"
+		restart_button.custom_minimum_size = popup.continue_button.custom_minimum_size
+		restart_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		restart_button.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	var parent: Node = popup.continue_button.get_parent()
-	if parent != null:
-		parent.add_child(restart_button)
+		var parent: Node = popup.continue_button.get_parent()
+		if parent != null:
+			parent.add_child(restart_button)
 
-	restart_button.position = popup.continue_button.position + Vector2(-170, 0)
+		restart_button.position = popup.continue_button.position + Vector2(-170, 0)
 
-	restart_button.pressed.connect(_on_restart_game_pressed)
+		restart_button.pressed.connect(_on_restart_game_pressed)
 
 
 func _on_restart_game_pressed() -> void:
