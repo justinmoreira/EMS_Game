@@ -33,7 +33,7 @@ var _frequency_went_outside_range := false
 var _tutorial_selection_refreshing := false
 var _original_power := 10.0
 var _original_height := 10.0
-var _original_sensor_sensitivity := 10.0
+var _original_sensor_sensitivity := -70.0
 var _original_sensor_tuning := TUTORIAL_FREQUENCY
 var _current_instruction_text := ""
 var intro_popup_open := false
@@ -174,7 +174,7 @@ func restore_tutorial_state(data: Dictionary) -> void:
 	_lock_jammer_frequency = bool(data.get("lock_jammer_frequency", false))
 	_original_power = float(data.get("original_power", 10.0))
 	_original_height = float(data.get("original_height", 10.0))
-	_original_sensor_sensitivity = float(data.get("original_sensor_sensitivity", 10.0))
+	_original_sensor_sensitivity = float(data.get("original_sensor_sensitivity", -70.0))
 	_original_sensor_tuning = float(data.get("original_sensor_tuning", TUTORIAL_FREQUENCY))
 
 	var step := int(data.get("step", TUTORIAL_STEP.WELCOME))
@@ -198,10 +198,19 @@ func _connect_tutorial_signals() -> void:
 
 
 func _connect_spectrum_scan_signal() -> void:
-	if spectrum_analyzer == null:
+	var hud := TutorialUtils.find_node_by_name(get_tree().root, "HUD")
+	if hud == null:
 		return
-	if not spectrum_analyzer.scan_started.is_connected(_on_spectrum_scan_started):
-		spectrum_analyzer.scan_started.connect(_on_spectrum_scan_started)
+	if not hud.spectrum_analyzer_spawned.is_connected(_on_spectrum_analyzer_spawned):
+		hud.spectrum_analyzer_spawned.connect(_on_spectrum_analyzer_spawned)
+	var active :SpectrumAnalyzer= hud.get_active_spectrum()
+	if active != null:
+		_on_spectrum_analyzer_spawned(active)
+
+
+func _on_spectrum_analyzer_spawned(analyzer: SpectrumAnalyzer) -> void:
+	if not analyzer.scan_started.is_connected(_on_spectrum_scan_started):
+		analyzer.scan_started.connect(_on_spectrum_scan_started)
 
 
 func _on_spectrum_scan_started(_lo: float, _hi: float) -> void:
@@ -406,7 +415,7 @@ func _apply_step_start_side_effects(step: int) -> void:
 			)
 		TUTORIAL_STEP.EXPLAIN_SENSOR_SENSITIVITY:
 			_original_sensor_sensitivity = TutorialUtils.read_number_from_unit(
-				_sensor, ["sensitivity", "detection_sensitivity"], 10.0
+				_sensor, ["sensitivity", "detection_sensitivity"], -70.0
 			)
 		TUTORIAL_STEP.EXPLAIN_SENSOR_TUNING:
 			_original_sensor_tuning = TutorialUtils.read_number_from_unit(

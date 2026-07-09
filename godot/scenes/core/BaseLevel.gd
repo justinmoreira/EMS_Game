@@ -519,7 +519,7 @@ func _spawn_objective_unit(
 		uv,
 		{
 			&"unit_name": who + " TARGET",
-			&"sensitivity": 8,
+			&"sensitivity": -72,
 			&"tuning_frequency": freq,
 			&"height": 10,
 			&"sensor_bandwidth": 2,

@@ -76,7 +76,7 @@ func test_snapshot_round_trip() -> void:
 			"sensor",
 			Vector2.ZERO,
 			{
-				&"sensitivity": 8,
+				&"sensitivity": -72.0,
 				&"height": 9,
 				&"tuning_frequency": 1234.0,
 				&"sensor_bandwidth": 2,
@@ -97,7 +97,7 @@ func test_snapshot_round_trip() -> void:
 	assert_true(parsed is Dictionary, "Round-trip JSON parses back to a Dictionary.")
 	var state := UnitSnapshot.state_from_entry(parsed)
 
-	assert_eq(state.get(&"sensitivity"), 8, "sensitivity preserved (attribute).")
+	assert_eq(state.get(&"sensitivity"), -72.0, "sensitivity preserved (attribute).")
 	assert_eq(state.get(&"height"), 9, "height preserved (attribute).")
 	assert_approx(
 		float(state.get(&"tuning_frequency", 0.0)), 1234.0, 0.001, "tuning_frequency preserved."
@@ -118,7 +118,7 @@ func test_snapshot_round_trip() -> void:
 	var restored: Unit = _track(make_unit("sensor", Vector2.ZERO, {}))
 	restored.physical_state = state
 	assert_eq(
-		restored.get_value(&"sensitivity"), 8, "Rebuilt unit reads sensitivity via StringName."
+		restored.get_value(&"sensitivity"), -72.0, "Rebuilt unit reads sensitivity via StringName."
 	)
 	assert_eq(
 		restored.get_value(&"unit_name"), "My Sensor", "Rebuilt unit reads name via StringName."
