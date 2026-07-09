@@ -268,9 +268,10 @@ func _load_settings() -> void:
 
 # Spectrum analyzer handling
 
+
 func get_active_spectrum() -> SpectrumAnalyzer:
 	return _active_spectrum
-	
+
 
 func _set_selected_sensor(unit: Node) -> void:
 	_selected_sensor = unit if _is_sensor_unit(unit) else null
@@ -298,6 +299,7 @@ func _spawn_spectrum(sensor: Node) -> void:
 	_active_spectrum.configure(sensor)
 	_position_spectrum(sensor)
 	spectrum_analyzer_spawned.emit(_active_spectrum)
+
 
 func _despawn_spectrum() -> void:
 	if _active_spectrum != null and is_instance_valid(_active_spectrum):

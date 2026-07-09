@@ -203,7 +203,7 @@ func _connect_spectrum_scan_signal() -> void:
 		return
 	if not hud.spectrum_analyzer_spawned.is_connected(_on_spectrum_analyzer_spawned):
 		hud.spectrum_analyzer_spawned.connect(_on_spectrum_analyzer_spawned)
-	var active :SpectrumAnalyzer= hud.get_active_spectrum()
+	var active: SpectrumAnalyzer = hud.get_active_spectrum()
 	if active != null:
 		_on_spectrum_analyzer_spawned(active)
 
