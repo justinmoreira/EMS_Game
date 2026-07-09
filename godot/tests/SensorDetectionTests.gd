@@ -39,7 +39,7 @@ func test_sensor_detection():
 	var sensor = make_unit(
 		"sensor",
 		Vector2(1100, 1000),
-		{"sensitivity": 3, "height": 5, "tuning_frequency": 500, "sensor_bandwidth": 0}
+		{"sensitivity": -77, "height": 5, "tuning_frequency": 500, "sensor_bandwidth": 0}
 	)
 	units_folder.add_child(sensor)
 
@@ -55,7 +55,7 @@ func test_sensor_detection():
 	assert_false(detected2.fully_detected, "Detection fail case.")
 
 	transceiver1.set_value(&"power", 1)
-	sensor.set_value(&"sensitivity", 2)
+	sensor.set_value(&"sensitivity", -78)
 	var detected3 = manager.calculate_detection(sensor, transceiver1, [])
 	assert_false(detected3.fully_detected, "Detection fail case.")
 

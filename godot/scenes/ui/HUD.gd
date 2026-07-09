@@ -15,6 +15,11 @@ var settings = {
 	"grid": true
 }
 
+var _active_spectrum: SpectrumAnalyzer = null
+var _selected_sensor: Node = null
+
+const SPECTRUM_GAP := 60.0
+
 
 func _ready():
 	# Old toggles
@@ -40,8 +45,21 @@ func _ready():
 	else:
 		%GenerateTerrain.disabled = true
 
+	GameEvents.selection_changed.connect(_set_selected_sensor)
+
 	# Load saved settings
 	_load_settings()
+
+
+func _process(_delta: float) -> void:
+	if _active_spectrum == null:
+		return
+
+	if not is_instance_valid(_selected_sensor):
+		_despawn_spectrum()
+		return
+
+	_position_spectrum(_selected_sensor)
 
 
 func _input(event: InputEvent):
@@ -173,6 +191,8 @@ func _on_spectrum_toggled(is_pressed: bool):
 	if level.has_method("toggle_spectrum"):
 		level.toggle_spectrum(is_pressed)
 
+	_refresh_spectrum()
+
 
 func set_spectrum_enabled(enabled: bool) -> void:
 	settings["spectrum"] = enabled
@@ -225,6 +245,7 @@ func _load_settings() -> void:
 	%SuggestionsToggle.button_pressed = settings["suggestions"]
 	%DetectionHintsToggle.button_pressed = settings["detection_hints"]
 	%HeatmapToggle.button_pressed = settings["heatmap"]
+	%SpectrumToggle.button_pressed = settings["spectrum"]
 	%Toggle.button_pressed = settings["heightmap_shader"]
 	%GridToggle.button_pressed = settings["grid"]
 
@@ -239,3 +260,60 @@ func _load_settings() -> void:
 		level.toggle_spectrum(settings["spectrum"])
 
 	SimulationManager.simulate()
+	_refresh_spectrum()
+
+
+# Spectrum analyzer handling
+
+
+func _set_selected_sensor(unit: Node) -> void:
+	_selected_sensor = unit if _is_sensor_unit(unit) else null
+	_refresh_spectrum()
+
+
+func _is_sensor_unit(unit: Node) -> bool:
+	return unit != null and is_instance_valid(unit) and unit.is_in_group("sensors")
+
+
+func _refresh_spectrum() -> void:
+	var should_show: bool = (
+		settings["spectrum"] and _selected_sensor != null and is_instance_valid(_selected_sensor)
+	)
+
+	if should_show and _active_spectrum == null:
+		_spawn_spectrum(_selected_sensor)
+	elif not should_show and _active_spectrum != null:
+		_despawn_spectrum()
+
+
+func _spawn_spectrum(sensor: Node) -> void:
+	_active_spectrum = SpectrumAnalyzer.new()
+	add_child(_active_spectrum)
+	_active_spectrum.configure(sensor)
+	_position_spectrum(sensor)
+
+
+func _despawn_spectrum() -> void:
+	if _active_spectrum != null and is_instance_valid(_active_spectrum):
+		_active_spectrum.queue_free()
+	_active_spectrum = null
+
+
+# Position above the sensor unless there is no room
+func _position_spectrum(sensor: Node) -> void:
+	if _active_spectrum == null:
+		return
+
+	var world_pos: Vector2 = sensor.get("global_position")
+	var screen_pos: Vector2 = get_viewport().get_canvas_transform() * world_pos
+
+	var above_y := screen_pos.y - _active_spectrum.size.y - SPECTRUM_GAP
+	var visible_top := get_viewport().get_visible_rect().position.y
+
+	var target_y: float
+	if above_y < visible_top:
+		target_y = screen_pos.y + SPECTRUM_GAP
+	else:
+		target_y = above_y
+
+	_active_spectrum.position = Vector2(screen_pos.x - _active_spectrum.size.x / 2.0, target_y)

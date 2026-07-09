@@ -9,26 +9,43 @@ const FREQ_MAX := 3000.0
 const SECONDS_PER_MHZ := 0.01
 const SCAN_MIN_DURATION := 0.4
 
-const HEADER_H := 40.0
-const FOOTER_H := 10.0
-const LEFT_MARGIN := 45.0
+# ---------------------------------------------------------------------------
+# Layout: this widget is instantiated/freed on the fly and floats above (or
+# below, if there's no room above) a selected sensor, so it has to fit its
+# controls into a fixed 500x100 strip rather than the old fixed-panel HUD
+# layout. Frequency now runs along the X axis (left = low, right = high,
+# standard spectrum-analyzer convention) and power runs vertically (peaks go
+# up). The header (status/buttons) and the bottom frequency-label strip each
+# get their own reserved rows — the plot sits between them and doesn't
+# overlap either.
+# ---------------------------------------------------------------------------
+const DEFAULT_WIDTH := 500.0
+const DEFAULT_HEIGHT := 100.0
+
+const HEADER_H := 22.0
+const BOTTOM_LABEL_H := 16.0
+const SIDE_MARGIN := 20.0
 
 const TRACE_SAMPLES := 512
 const SIGMA_BASE_MHZ := 25.0
 const SIGMA_POWER := 5.0
 const MAX_POWER := 8.0
 
-const HANDLE_GRAB_PX := 12.0
+const HANDLE_GRAB_PX := 10.0
 
 const C_BG := Color(0.0, 0.0, 0.0, 0.0)
 const C_PLOT := Color(0.08, 0.08, 0.08, 1.0)
-const C_GRID := Color(0.30, 0.30, 0.30, 0.4)
-const C_SCAN_RANGE := Color(0.20, 0.40, 0.80, 0.1)
+const C_GRID := Color(0.30, 0.30, 0.30, 0.6)
+const C_SCAN_RANGE := Color(0.20, 0.40, 0.80, 0.2)
 const C_TRACE := Color(0.15, 0.60, 1.00, 0.9)
 const C_SWEEP := Color(0.80, 0.80, 0.80, 0.6)
 const C_HANDLE := Color(0.50, 0.50, 0.50, 0.8)
 const C_HANDLE_HOT := Color(0.80, 0.80, 0.80, 1.0)
-const C_LABEL := Color(0.60, 0.60, 0.60, 1.0)
+const C_LABEL := Color(1.0, 1.0, 1.0, 1.0)
+const C_HEADER_BG := Color(0.0, 0.0, 0.0, 0.45)
+const C_BORDER := Color(0.45, 0.45, 0.45, 0.9)
+const C_BOTTOM_BG := Color(0.0, 0.0, 0.0, 0.85)
+const BORDER_WIDTH := 1.5
 
 const C_BTN := Color(0.15, 0.15, 0.15, 1.0)
 const C_BTN_HOT := Color(0.25, 0.25, 0.25, 1.0)
@@ -36,8 +53,6 @@ const C_BTN_ACTIVE := Color(0.10, 0.30, 0.60, 1.0)
 const C_BTN_TEXT := Color(0.90, 0.90, 0.90, 1.0)
 const C_BTN_DISABLED := Color(0.10, 0.10, 0.10, 0.5)
 const C_TXT_DISABLED := Color(0.40, 0.40, 0.40, 0.8)
-
-const PLOT_OFFSET_Y = 100.0
 
 enum SensorState { IDLE, SCANNING, COMPLETE, PAUSED }
 
@@ -73,11 +88,20 @@ func _ready() -> void:
 	_font = ThemeDB.fallback_font
 	_spectrum.resize(TRACE_SAMPLES)
 	_spectrum.fill(0.0)
+
+	custom_minimum_size = Vector2(DEFAULT_WIDTH, DEFAULT_HEIGHT)
+	size = Vector2(DEFAULT_WIDTH, DEFAULT_HEIGHT)
+
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	set_process(true)
 
 	if _sensor != null:
 		_rebuild_sources()
+
+
+func _exit_tree() -> void:
+	# Persist scan progress
+	_save_current_state()
 
 
 func _process(delta: float) -> void:
@@ -220,10 +244,9 @@ func _rebuild_sources() -> void:
 	var srx_px: Vector2 = srx_data.px
 	var z_rx: float = srx_data.z
 
-	# Exponential gain from sens (high sens -> loud emissions take over,
-	# low sens -> quiet emissions aren't heard)
-	var sens = _safe_get(_sensor, "sensitivity", 5.0)
-	var sens_norm = clampf(sens / 10.0, 0.0, 1.0)
+	var sens = _safe_get(_sensor, "sensitivity", -75.0)
+	var remap = remap(sens, -80.0, -70.0, 0.0, 10.0)
+	var sens_norm = clampf(remap / 10.0, 0.0, 1.0)
 
 	# 0.1x -> 25x gain
 	var gain_multiplier = lerpf(0.1, 25.0, pow(sens_norm, 2.0))
@@ -345,8 +368,9 @@ func _sample_at(freq: float) -> float:
 
 
 func _noise_at(freq: float) -> float:
-	var sens = _safe_get(_sensor, "sensitivity", 5.0)
-	var sens_norm = clampf(sens / 10.0, 0.0, 1.0)
+	var sens = _safe_get(_sensor, "sensitivity", -75.0)
+	var remap = remap(sens, -80.0, -70.0, 0.0, 10.0)
+	var sens_norm = clampf(remap / 10.0, 0.0, 1.0)
 
 	var noise_floor_base = lerpf(3.0, 0.1, sens_norm)
 	var drift := sin(_noise_t * 5.0 + freq * 0.01) * 0.05
@@ -375,34 +399,34 @@ func _noise_at(freq: float) -> float:
 	return final_baseline + jammer_noise
 
 
-func _get_btn_rect() -> Rect2:
-	return Rect2(5.0, 5.0, maxf(10.0, size.x - 10.0), HEADER_H - 10.0)
-
-
 func _plot_rect() -> Rect2:
-	return Rect2(40.0, PLOT_OFFSET_Y, size.x - 50.0, size.y - PLOT_OFFSET_Y - 10.0)
+	return Rect2(
+		SIDE_MARGIN, HEADER_H, size.x - SIDE_MARGIN * 2.0, size.y - HEADER_H - BOTTOM_LABEL_H
+	)
 
 
-func _freq_to_y(f: float) -> float:
+func _freq_to_x(f: float) -> float:
 	var pr = _plot_rect()
 	var t = (f - FREQ_MIN) / (FREQ_MAX - FREQ_MIN)
-	return pr.position.y + pr.size.y - (t * pr.size.y)
+	return pr.position.x + t * pr.size.x
 
 
-func _y_to_freq(y: float) -> float:
+func _x_to_freq(x: float) -> float:
 	var pr = _plot_rect()
-	var t = (pr.position.y + pr.size.y - y) / pr.size.y
+	var t = (x - pr.position.x) / pr.size.x
 	return clampf(FREQ_MIN + t * (FREQ_MAX - FREQ_MIN), FREQ_MIN, FREQ_MAX)
 
 
-func _sweep_y() -> float:
-	return lerpf(_freq_to_y(scan_lo), _freq_to_y(scan_hi), _progress)
+func _sweep_x() -> float:
+	return lerpf(_freq_to_x(scan_lo), _freq_to_x(scan_hi), _progress)
 
 
 func _draw() -> void:
 	var pr := _plot_rect()
 	draw_rect(Rect2(Vector2.ZERO, size), C_BG)
-	draw_rect(pr, C_PLOT)
+
+	var middle_section := Rect2(0.0, HEADER_H, size.x, size.y - HEADER_H - BOTTOM_LABEL_H)
+	draw_rect(middle_section, C_BOTTOM_BG)
 
 	_draw_scan_range_bg(pr)
 	_draw_grid(pr)
@@ -410,27 +434,45 @@ func _draw() -> void:
 	_draw_sweep_cursor(pr)
 	_draw_handles(pr)
 	_draw_header()
+	_draw_border()
+
+
+func _draw_border() -> void:
+	var outer := Rect2(0.0, 0.0, size.x, size.y)
+	draw_rect(outer, C_BORDER, false, BORDER_WIDTH)
 
 
 func _draw_scan_range_bg(pr: Rect2) -> void:
-	var y_hi := clampf(_freq_to_y(scan_hi), pr.position.y, pr.position.y + pr.size.y)
-	var y_lo := clampf(_freq_to_y(scan_lo), pr.position.y, pr.position.y + pr.size.y)
-	draw_rect(Rect2(pr.position.x, y_hi, pr.size.x, y_lo - y_hi), C_SCAN_RANGE)
+	var x_lo := clampf(_freq_to_x(scan_lo), pr.position.x, pr.position.x + pr.size.x)
+	var x_hi := clampf(_freq_to_x(scan_hi), pr.position.x, pr.position.x + pr.size.x)
+	draw_rect(Rect2(x_lo, pr.position.y, x_hi - x_lo, pr.size.y), C_SCAN_RANGE)
 
 
 func _draw_grid(pr: Rect2) -> void:
+	# Coarse horizontal reference lines (power divisions).
 	for i in 4:
-		var x := pr.position.x + pr.size.x * float(i) / 3.0
-		draw_line(Vector2(x, pr.position.y), Vector2(x, pr.position.y + pr.size.y), C_GRID)
+		var y := pr.position.y + pr.size.y * float(i) / 3.0
+		draw_line(Vector2(pr.position.x, y), Vector2(pr.position.x + pr.size.x, y), C_GRID)
 
-	var step := _nice_step((FREQ_MAX - FREQ_MIN) / 10.0)
+	# Backing bar behind the frequency-axis label strip, expanded to full width
+	var label_y := pr.position.y + pr.size.y
+	draw_rect(Rect2(0.0, label_y, size.x, BOTTOM_LABEL_H), C_BOTTOM_BG)
+
+	# Vertical frequency gridlines + labels along the bottom.
+	var step := _nice_step((FREQ_MAX - FREQ_MIN) / 6.0)
 	var f: float = ceil(FREQ_MIN / step) * step
 	while f <= FREQ_MAX:
-		var y := _freq_to_y(f)
-		draw_line(Vector2(pr.position.x, y), Vector2(pr.position.x + pr.size.x, y), C_GRID)
-		draw_string(
-			_font, Vector2(5.0, y + 4.0), "%.0f" % f, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, C_LABEL
+		var x := _freq_to_x(f)
+		draw_line(Vector2(x, pr.position.y), Vector2(x, pr.position.y + pr.size.y), C_GRID)
+
+		var text := "%.0f" % f
+		var text_pos := Vector2(x - 20.0, label_y + 13.0)
+
+		draw_string_outline(
+			_font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, 40.0, 11, 2, Color.BLACK
 		)
+
+		draw_string(_font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, 40.0, 11, C_LABEL)
 		f += step
 
 
@@ -442,14 +484,14 @@ func _draw_spectrum(pr: Rect2) -> void:
 		return
 
 	var trace := PackedVector2Array()
-	var y_start := _freq_to_y(scan_lo)
-	var y_end := _freq_to_y(scan_hi)
-	var y_span := y_end - y_start
+	var x_start := _freq_to_x(scan_lo)
+	var x_end := _freq_to_x(scan_hi)
+	var x_span := x_end - x_start
 
 	for s in revealed:
 		var norm := clampf(_spectrum[s] / MAX_POWER, 0.0, 1.0)
-		var y := y_start + float(s) / float(TRACE_SAMPLES - 1) * y_span
-		var x := pr.position.x + (norm * pr.size.x)
+		var x := x_start + float(s) / float(TRACE_SAMPLES - 1) * x_span
+		var y := pr.position.y + pr.size.y - (norm * pr.size.y)
 		trace.append(Vector2(x, y))
 
 	for i in range(trace.size() - 1):
@@ -459,28 +501,28 @@ func _draw_spectrum(pr: Rect2) -> void:
 func _draw_sweep_cursor(pr: Rect2) -> void:
 	if _state not in [SensorState.SCANNING, SensorState.PAUSED]:
 		return
-	var sy := _sweep_y()
-	draw_line(Vector2(pr.position.x, sy), Vector2(pr.position.x + pr.size.x, sy), C_SWEEP, 2.0)
+	var sx := _sweep_x()
+	draw_line(Vector2(sx, pr.position.y), Vector2(sx, pr.position.y + pr.size.y), C_SWEEP, 2.0)
 
 
 func _draw_handles(pr: Rect2) -> void:
-	var left := pr.position.x
-	var right := pr.position.x + pr.size.x
-	_draw_one_handle(_freq_to_y(scan_lo), left, right, true, _hover_lo or _drag_lo)
-	_draw_one_handle(_freq_to_y(scan_hi), left, right, false, _hover_hi or _drag_hi)
+	var top := pr.position.y
+	var bottom := pr.position.y + pr.size.y
+	_draw_one_handle(_freq_to_x(scan_lo), top, bottom, true, _hover_lo or _drag_lo)
+	_draw_one_handle(_freq_to_x(scan_hi), top, bottom, false, _hover_hi or _drag_hi)
 
 
-func _draw_one_handle(y: float, left: float, right: float, is_lo: bool, hot: bool) -> void:
+func _draw_one_handle(x: float, top: float, bottom: float, is_lo: bool, hot: bool) -> void:
 	var col := C_HANDLE_HOT if hot else C_HANDLE
-	draw_line(Vector2(left, y), Vector2(right, y), col, 1.5)
+	draw_line(Vector2(x, top), Vector2(x, bottom), col, 1.5)
 
-	var dir := -1.0 if is_lo else 1.0
+	var dir := 1.0 if is_lo else -1.0
 	draw_polygon(
 		PackedVector2Array(
 			[
-				Vector2(left + 5.0, y),
-				Vector2(left + 13.0, y + dir * 9.0),
-				Vector2(left + 21.0, y),
+				Vector2(x, top + 5.0),
+				Vector2(x + dir * 9.0, top + 13.0),
+				Vector2(x, top + 21.0),
 			]
 		),
 		PackedColorArray([col])
@@ -488,59 +530,45 @@ func _draw_one_handle(y: float, left: float, right: float, is_lo: bool, hot: boo
 
 
 func _get_btn_left_rect() -> Rect2:
-	return Rect2(size.x - 150.0, 5.0, 70.0, HEADER_H - 10.0)
+	return Rect2(size.x - 136.0, 2.0, 62.0, HEADER_H - 4.0)
 
 
 func _get_btn_right_rect() -> Rect2:
-	return Rect2(size.x - 75.0, 5.0, 70.0, HEADER_H - 10.0)
+	return Rect2(size.x - 68.0, 2.0, 62.0, HEADER_H - 4.0)
 
 
 func _draw_header() -> void:
 	var can_scan := _sensor != null
-	var status_y: float
-	var line_y: float
-	var btn_1_rect := Rect2()
-	var btn_2_rect := Rect2()
 
-	if can_scan:
-		status_y = 14.0
-		line_y = 28.0
+	draw_rect(Rect2(0.0, 0.0, size.x, HEADER_H), C_BOTTOM_BG)
 
-		btn_1_rect = Rect2(10.0, 34.0, 130.0, 25.0)
-		btn_2_rect = Rect2(10.0, 64.0, 130.0, 25.0)
-	else:
-		status_y = 82.0
-
-	var status_text = "STATUS: NO SENSOR"
-
+	var status_text := "STATUS: NO SENSOR"
 	if can_scan:
 		match _state:
 			SensorState.IDLE:
 				status_text = "STATUS: READY"
-
 			SensorState.SCANNING:
 				status_text = "SCANNING: %d%%" % int(_progress * 100.0)
-
 			SensorState.PAUSED:
 				status_text = "PAUSED: %d%%" % int(_progress * 100.0)
-
 			SensorState.COMPLETE:
 				status_text = "STATUS: COMPLETE"
 
 	draw_string(
 		_font,
-		Vector2(10.0, status_y),
+		Vector2(8.0, HEADER_H - 6.0),
 		status_text,
 		HORIZONTAL_ALIGNMENT_LEFT,
-		130.0,
-		12,
+		280.0,
+		11,
 		Color.WHITE
 	)
 
 	if not can_scan:
 		return
 
-	draw_line(Vector2(5.0, line_y), Vector2(145.0, line_y), Color(0.5, 0.5, 0.5, 0.5), 1.0)
+	var btn_1_rect := _get_btn_left_rect()
+	var btn_2_rect := _get_btn_right_rect()
 
 	if _state == SensorState.IDLE:
 		_draw_button(btn_1_rect, "START", true, _btn_hover_left, _btn_down_left, false)
@@ -558,7 +586,13 @@ func _draw_header() -> void:
 
 
 func _draw_button(
-	rect: Rect2, text: String, enabled: bool, hover: bool, pressed: bool, active: bool
+	rect: Rect2,
+	text: String,
+	enabled: bool,
+	hover: bool,
+	pressed: bool,
+	active: bool,
+	font_size: int = 10
 ) -> void:
 	var btn_col: Color
 	var text_col: Color
@@ -581,26 +615,26 @@ func _draw_button(
 
 	draw_rect(rect, btn_col)
 
-	var str_size = _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12)
+	var str_size = _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 	var tx = rect.position.x + (rect.size.x - str_size.x) / 2.0
 	var ty = rect.position.y + (rect.size.y + str_size.y) / 2.0 - 2.0
-	draw_string(_font, Vector2(tx, ty), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, text_col)
+	draw_string(_font, Vector2(tx, ty), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 
 
 func _gui_input(event: InputEvent) -> void:
 	var pr := _plot_rect()
-	var lo_y := _freq_to_y(scan_lo)
-	var hi_y := _freq_to_y(scan_hi)
+	var lo_x := _freq_to_x(scan_lo)
+	var hi_x := _freq_to_x(scan_hi)
 
-	var btn_rect_1 = Rect2(10.0, 34.0, 130.0, 25.0)
-	var btn_rect_2 = Rect2(10.0, 64.0, 130.0, 25.0)
+	var btn_rect_1 := _get_btn_left_rect()
+	var btn_rect_2 := _get_btn_right_rect()
 
 	if event is InputEventMouseMotion:
-		var my: float = event.position.y
+		var mx: float = event.position.x
 		var in_plot := pr.has_point(event.position)
 
-		_hover_lo = in_plot and abs(my - lo_y) <= HANDLE_GRAB_PX and not _drag_hi
-		_hover_hi = in_plot and abs(my - hi_y) <= HANDLE_GRAB_PX and not _drag_lo
+		_hover_lo = in_plot and abs(mx - lo_x) <= HANDLE_GRAB_PX and not _drag_hi
+		_hover_hi = in_plot and abs(mx - hi_x) <= HANDLE_GRAB_PX and not _drag_lo
 
 		var hover_left = _btn_hover_left
 		var hover_right = _btn_hover_right
@@ -612,12 +646,12 @@ func _gui_input(event: InputEvent) -> void:
 			queue_redraw()
 
 		if _drag_lo:
-			scan_lo = clampf(_y_to_freq(my), FREQ_MIN, scan_hi - 10.0)
+			scan_lo = clampf(_x_to_freq(mx), FREQ_MIN, scan_hi - 10.0)
 			if _state != SensorState.IDLE:
 				_reset_scan()
 			accept_event()
 		elif _drag_hi:
-			scan_hi = clampf(_y_to_freq(my), scan_lo + 10.0, FREQ_MAX)
+			scan_hi = clampf(_x_to_freq(mx), scan_lo + 10.0, FREQ_MAX)
 			if _state != SensorState.IDLE:
 				_reset_scan()
 			accept_event()
@@ -645,11 +679,11 @@ func _gui_input(event: InputEvent) -> void:
 				accept_event()
 
 			elif pr.has_point(event.position):
-				var my: float = event.position.y
-				if abs(my - lo_y) <= HANDLE_GRAB_PX and not _drag_hi:
+				var mx: float = event.position.x
+				if abs(mx - lo_x) <= HANDLE_GRAB_PX and not _drag_hi:
 					_drag_lo = true
 					accept_event()
-				elif abs(my - hi_y) <= HANDLE_GRAB_PX and not _drag_lo:
+				elif abs(mx - hi_x) <= HANDLE_GRAB_PX and not _drag_lo:
 					_drag_hi = true
 					accept_event()
 		else:

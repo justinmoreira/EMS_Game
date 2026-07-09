@@ -2,7 +2,6 @@
 
 [ext_resource type="Texture2D" uid="uid://bmseim85i45ar" path="res://assets/gear_icon.png" id="2_atyv1"]
 [ext_resource type="Script" uid="uid://crq4tqakx02qk" path="res://scenes/ui/HUD.gd" id="2_settings_icon"]
-[ext_resource type="Script" uid="uid://d2hf4t1142y50" path="res://scenes/ui/SpectrumAnalyzer.gd" id="3_6ll6g"]
 [ext_resource type="Script" uid="uid://brfh7fxjtomko" path="res://scenes/ui/ConnectionLegend.gd" id="4_ig75s"]
 
 [node name="HUD" type="CanvasLayer" unique_id=437482512]
@@ -131,23 +130,6 @@ text = "RANGE"
 [node name="Panel_Margin_VBox#HeatmapToggle" type="CheckButton" parent="." unique_id=1141549058]
 unique_name_in_owner = true
 text = "TERRAIN HEATMAP"
-
-[node name="SpectrumAnalyzer" type="Control" parent="." unique_id=2018716424]
-unique_name_in_owner = true
-visible = false
-layout_mode = 3
-anchors_preset = 6
-anchor_left = 1.0
-anchor_top = 0.5
-anchor_right = 1.0
-anchor_bottom = 0.5
-offset_left = -250.0
-offset_top = -300.0
-offset_right = -100.0
-offset_bottom = 300.0
-grow_horizontal = 0
-grow_vertical = 2
-script = ExtResource("3_6ll6g")
 
 [node name="Control" type="Control" parent="." unique_id=868366993]
 layout_mode = 3

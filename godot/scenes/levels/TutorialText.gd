@@ -329,14 +329,7 @@ static func step_data(step: int) -> Dictionary:
 			)
 
 		TutorialStep.ENABLE_SPECTRUM_ANALYZER:
-			return _step(
-				_text(
-					[
-						"Open the top-right gear menu and turn on Spectrum Analyzer.\n\n",
-						"This opens the analyzer panel beside the map."
-					]
-				)
-			)
+			return _step(_text(["Open the top-right gear menu and turn on Spectrum Analyzer."]))
 
 		TutorialStep.SELECT_SENSOR_FOR_SPECTRUM:
 			return _step(

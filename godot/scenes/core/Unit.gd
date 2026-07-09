@@ -243,11 +243,12 @@ func update_ranges() -> void:
 		_unit_visual.remove_ring("strong_range")
 
 	elif is_sensor:
-		var sensitivity: float = get_value(&"sensitivity", 3.0)
+		var sens = get_value(&"sensitivity", -75.0)
+		var remapped = remap(sens, -80.0, -70.0, 0.0, 10.0)
 		var tuning_frequency: float = get_value(&"tuning_frequency", 1000.0)
 		var bw_idx: int = get_value(&"sensor_bandwidth", 1)
 		var threshold := (
-			lerpf(3.0, PhysicsEngine.NOISE_FLOOR, sensitivity / 10.0)
+			lerpf(3.0, PhysicsEngine.NOISE_FLOOR, remapped / 10.0)
 			+ PhysicsEngine.bandwidth_penalty(bw_idx)
 		)
 
