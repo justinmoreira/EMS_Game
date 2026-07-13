@@ -34,6 +34,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      collab_rooms: {
+        Row: {
+          created_at: string
+          guest_id: string | null
+          host_id: string | null
+          id: string
+          invite_code: string | null
+          name: string
+          seed: number
+          state_json: Json
+          status: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          created_at?: string
+          guest_id?: string | null
+          host_id?: string | null
+          id: string
+          invite_code?: string | null
+          name?: string
+          seed: number
+          state_json?: Json
+          status?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          created_at?: string
+          guest_id?: string | null
+          host_id?: string | null
+          id?: string
+          invite_code?: string | null
+          name?: string
+          seed?: number
+          state_json?: Json
+          status?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: []
+      }
       keep_alive: {
         Row: {
           id: number
@@ -257,6 +299,7 @@ export type Database = {
         Args: { p_match_id: string; p_winner_id: string }
         Returns: undefined
       }
+      join_collab: { Args: { p_id_or_code: string }; Returns: string }
       join_match: { Args: { p_id_or_code: string }; Returns: string }
     }
     Enums: {

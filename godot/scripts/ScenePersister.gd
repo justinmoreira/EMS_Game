@@ -28,11 +28,12 @@ func _ready() -> void:
 	if _level == null:
 		push_error("ScenePersister expects a BaseLevel parent; got %s" % get_parent())
 		return
-	# Multiplayer matches sync their board through match_actions and must never
-	# touch the local sandbox save slots — otherwise a live match would clobber
-	# (or be seeded by) the player's sandbox autosave. Skip persistence entirely
-	# in MP; this is inherited by every persister subclass.
-	if _is_multiplayer():
+	# Multiplayer matches sync their board through match_actions, and co-op rooms
+	# sync theirs through CoopSync (broadcast ops + the shared collab_rooms
+	# snapshot). Neither must touch the local sandbox save slots — otherwise a
+	# live session would clobber (or be seeded by) the player's sandbox autosave.
+	# Skip local persistence entirely in both; inherited by every subclass.
+	if _is_multiplayer() or _is_coop():
 		return
 	GameEvents.units_changed.connect(_queue_save)
 	_restore()
@@ -45,6 +46,14 @@ func _is_multiplayer() -> bool:
 		return false
 	var v: Variant = JavaScriptBridge.eval("window.GAME_MODE")
 	return v is String and (v as String) == "multiplayer"
+
+
+# True only inside a collaborative sandbox room (window.GAME_MODE == "coop").
+func _is_coop() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	var v: Variant = JavaScriptBridge.eval("window.GAME_MODE")
+	return v is String and (v as String) == "coop"
 
 
 func _queue_save() -> void:

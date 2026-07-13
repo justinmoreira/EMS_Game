@@ -66,7 +66,7 @@ func _ready() -> void:
 	# game mode too — otherwise the "Welcome to Sandbox Mode" intro wrongly
 	# pops up over a live MP match. (Tactical labels are drawn by
 	# _regenerate_terrain's deferred call, so no direct labelling needed here.)
-	if get_script() == Sandbox and not _is_multiplayer():
+	if get_script() == Sandbox and not _is_multiplayer() and not _is_coop():
 		open_popup()
 
 	var hud = find_child("HUD", true, false)
@@ -97,33 +97,40 @@ func _init_terrain() -> void:
 	# from the shared match record (window.MULTIPLAYER_MATCH.seed) and overrides
 	# any restored/random seed. Sandbox/tutorial keep a restored seed (set by the
 	# persister before this runs) or fall back to a fresh random one.
-	var mp_seed := _multiplayer_terrain_seed()
-	if mp_seed >= 0:
-		_terrain_seed = mp_seed
+	var shared_seed := _shared_terrain_seed()
+	if shared_seed >= 0:
+		_terrain_seed = shared_seed
 	elif _terrain_seed == 0:
 		_terrain_seed = randi()
 	_regenerate_terrain()
 
 
-# Shared terrain seed from the match record in a multiplayer match, or -1 when
-# not multiplayer (sandbox/tutorial/desktop). The Astro bootstrap on
-# /multiplayer/play sets window.MULTIPLAYER_MATCH before startGame(), so the
-# value is in place by the time _ready() runs here.
-func _multiplayer_terrain_seed() -> int:
+# Shared terrain seed for the networked modes so both clients render identical
+# terrain: from window.MULTIPLAYER_MATCH.seed in a match, or window.COLLAB_ROOM
+# .seed in a co-op room. Returns -1 for singleplayer sandbox/tutorial/desktop,
+# where a restored or fresh random seed is used instead. The Astro bootstrap on
+# /multiplayer/play and /coop/play sets the relevant global before startGame(),
+# so the value is in place by the time _ready() runs here.
+func _shared_terrain_seed() -> int:
 	if not OS.has_feature("web"):
 		return -1
 	var mode: Variant = JavaScriptBridge.eval("window.GAME_MODE")
-	if not (mode is String) or (mode as String) != "multiplayer":
+	if not (mode is String):
+		return -1
+	var expr := ""
+	if (mode as String) == "multiplayer":
+		expr = "window.MULTIPLAYER_MATCH ? window.MULTIPLAYER_MATCH.seed : null"
+	elif (mode as String) == "coop":
+		expr = "window.COLLAB_ROOM ? window.COLLAB_ROOM.seed : null"
+	else:
 		return -1
 	# JS numbers arrive as a Variant float/int; a typeof() check is more robust
-	# than `is float` against the null returned before MULTIPLAYER_MATCH is set.
-	var v: Variant = JavaScriptBridge.eval(
-		"window.MULTIPLAYER_MATCH ? window.MULTIPLAYER_MATCH.seed : null"
-	)
+	# than `is float` against the null returned before the global is set.
+	var v: Variant = JavaScriptBridge.eval(expr)
 	var t := typeof(v)
 	if t == TYPE_FLOAT or t == TYPE_INT:
 		return int(v)
-	push_warning("[Sandbox] MP mode but no seed on window.MULTIPLAYER_MATCH")
+	push_warning("[Sandbox] networked mode but no shared seed yet")
 	return -1
 
 

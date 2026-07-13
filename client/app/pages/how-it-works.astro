@@ -6,14 +6,41 @@ import { Content } from "../../public/how_it_works.md";
 <Base title="How It Works | GEMS">
     <div class="fixed inset-0 -z-10 bg-[#0a0a0a]"></div>
 
-    <main
-        class="how-it-works mx-auto h-[calc(100vh-3rem)] max-w-3xl overflow-y-auto px-6 pt-12 pb-16 text-white"
-    >
-        <Content />
+    <!-- The scroll container is full-width so its scrollbar sits at the far
+         right of the viewport; the readable column is centered inside it. -->
+    <main class="doc-scroll h-[calc(100vh-3rem)] overflow-y-auto text-white">
+        <div class="how-it-works mx-auto max-w-3xl px-6 pt-12 pb-16">
+            <Content />
+        </div>
     </main>
 </Base>
 
 <style is:global>
+    /* Dark, themed scrollbar for the scroll container (replaces the light
+       native one). Firefox uses scrollbar-width/color; Chromium/WebKit use
+       the ::-webkit-scrollbar pseudo-elements. Neutral thumb that warms to the
+       site's emerald accent on hover; transparent track so it blends in. */
+    .doc-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+    }
+    .doc-scroll::-webkit-scrollbar {
+        width: 10px;
+    }
+    .doc-scroll::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .doc-scroll::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.18);
+        border-radius: 9999px;
+        /* Inset the thumb with a transparent border so it reads as a slim pill. */
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+    .doc-scroll::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(52, 211, 153, 0.6);
+    }
+
     .how-it-works h1 {
         font-size: 1.875rem;
         font-weight: 700;

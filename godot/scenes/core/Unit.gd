@@ -84,6 +84,15 @@ func _ready() -> void:
 	if get_value(&"unit_name", "") == "":
 		set_value(&"unit_name", UnitNameManager.get_next_name(definition.id))
 
+	# Stable, client-agnostic id used by the co-op sync to address this unit
+	# across both players' scenes (place/move/edit/delete are keyed on it). It
+	# rides in physical_state, so it survives serialize/deserialize and is
+	# already present on units spawned from a peer's snapshot — only mint one
+	# when absent (locally placed units). Harmless in sandbox/MP (just an
+	# extra state key that nothing reads).
+	if get_value(&"uid", "") == "":
+		set_value(&"uid", "%x-%x" % [randi(), randi()])
+
 	GameEvents.units_changed.emit()
 	_spawn_visual()
 	_setup_selection_area()

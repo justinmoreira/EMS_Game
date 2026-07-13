@@ -113,6 +113,9 @@ func _ready():
 	# Defer MP setup one frame so the terrain/layout from subclass _ready()
 	# (Sandbox) is in place before we position the seed-placed objective.
 	_mp_setup.call_deferred()
+	# Co-op sandbox: attach the realtime sync layer, also deferred so terrain is
+	# ready before it restores/positions units. No-op unless GAME_MODE == "coop".
+	_coop_setup.call_deferred()
 
 
 func get_game_mode_name() -> String:
@@ -259,6 +262,27 @@ func _is_multiplayer() -> bool:
 		return false
 	var v: Variant = JavaScriptBridge.eval("window.GAME_MODE")
 	return v is String and (v as String) == "multiplayer"
+
+
+# ── Co-op sandbox ────────────────────────────────────────────────────
+# A collaborative room shares this Sandbox scene between two players. Unlike a
+# match there's no objective/turn/fog — CoopSync just mirrors unit edits both
+# ways. Gated on GAME_MODE so it can't touch singleplayer or MP.
+var _coop_sync: Node = null
+
+
+func _is_coop() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	var v: Variant = JavaScriptBridge.eval("window.GAME_MODE")
+	return v is String and (v as String) == "coop"
+
+
+func _coop_setup() -> void:
+	if not _is_coop() or _coop_sync != null:
+		return
+	_coop_sync = (preload("res://scripts/CoopSync.gd") as GDScript).new()
+	add_child(_coop_sync)
 
 
 func _mp_setup() -> void:

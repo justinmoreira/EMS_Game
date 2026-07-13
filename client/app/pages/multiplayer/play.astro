@@ -112,8 +112,17 @@ import { BASE_URL } from "@/utils";
 
     const canvas = document.getElementById("canvas");
     function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight - 48;
+      // Render at the device's TRUE pixel resolution, not CSS pixels. This
+      // canvas uses canvasResizePolicy:0 (Godot doesn't manage its size), so
+      // without multiplying by devicePixelRatio the WebGL backing store stays
+      // at CSS size and the browser upscales it on any HiDPI / OS-scaled /
+      // browser-zoomed display — a uniform blur that reads as "text looks fuzzy
+      // but lines look sharp". The element is still presented at CSS size via
+      // its w-screen / h-[calc(...)] classes, so layout and pointer mapping are
+      // unchanged; only the render resolution rises. No-op on a dpr=1 display.
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(window.innerWidth * dpr);
+      canvas.height = Math.round((window.innerHeight - 48) * dpr);
     }
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
