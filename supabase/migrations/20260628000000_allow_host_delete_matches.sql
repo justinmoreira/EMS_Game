@@ -10,6 +10,7 @@
 -- policy's `auth.uid() = host_id` check). match_actions / match_results cascade
 -- via their FKs, so deleting the match cleans up its children.
 
+drop policy if exists "Hosts can delete their matches" on "public"."matches";
 create policy "Hosts can delete their matches"
   on "public"."matches" as permissive for delete to authenticated
   using (auth.uid() = host_id);
