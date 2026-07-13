@@ -42,6 +42,26 @@ var _diff_pending: bool = false
 var _restored: bool = false
 
 
+# Attach a CoopSync child to `level` iff we're in a co-op room. Lives here (not
+# in BaseLevel) so the already-huge scene script carries no coop logic. Called
+# deferred from BaseLevel._ready so terrain is ready before CoopSync restores.
+static func attach_if_coop(level: Node) -> void:
+	if not is_coop_mode() or level.has_node("CoopSync"):
+		return
+	var sync := CoopSync.new()
+	sync.name = "CoopSync"
+	level.add_child(sync)
+
+
+# True inside a collaborative sandbox room (window.GAME_MODE == "coop"). Also
+# read by Sandbox.gd to suppress the singleplayer intro popup.
+static func is_coop_mode() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	var v: Variant = JavaScriptBridge.eval("window.GAME_MODE")
+	return v is String and (v as String) == "coop"
+
+
 func _ready() -> void:
 	_level = get_parent() as BaseLevel
 	if _level == null:

@@ -66,7 +66,7 @@ func _ready() -> void:
 	# game mode too — otherwise the "Welcome to Sandbox Mode" intro wrongly
 	# pops up over a live MP match. (Tactical labels are drawn by
 	# _regenerate_terrain's deferred call, so no direct labelling needed here.)
-	if get_script() == Sandbox and not _is_multiplayer() and not _is_coop():
+	if get_script() == Sandbox and not _is_multiplayer() and not CoopSync.is_coop_mode():
 		open_popup()
 
 	var hud = find_child("HUD", true, false)

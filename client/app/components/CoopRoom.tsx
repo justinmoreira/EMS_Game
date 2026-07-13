@@ -94,6 +94,11 @@ export default function CoopRoom() {
       setError("No room id in the URL.");
       return;
     }
+    // We have a signed-in user and a room id: clear any stale error (e.g. the
+    // "Sign in…" prompt shown before auth resolved) and show loading while we
+    // fetch, so the banner disappears the moment the user signs in.
+    setError("");
+    setLoading(true);
     let cancelled = false;
     (async () => {
       let { data } = await supabase
