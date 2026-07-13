@@ -110,9 +110,9 @@ func _ready():
 
 	toggle_suggestions(suggestions_enabled)
 
-	# Defer MP setup one frame so the terrain/layout from subclass _ready()
-	# (Sandbox) is in place before we position the seed-placed objective.
+	# Deferred so Sandbox terrain is ready first; both no-op off-mode (mp / coop).
 	_mp_setup.call_deferred()
+	CoopSync.attach_if_coop.call_deferred(self)
 
 
 func get_game_mode_name() -> String:

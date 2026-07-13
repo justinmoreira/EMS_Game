@@ -121,3 +121,43 @@ window.mpSubmitBoard = function (boardJson) {
     console.error('[bridge] mpSubmitBoard: submitMpAction threw:', e);
   }
 };
+
+// ── Co-op sandbox bridge ────────────────────────────────────────────────
+// A collaborative sandbox room shares one live scene between two players.
+// Godot drives three interactions from _ready onward, so the symbols must
+// exist the moment this file loads (before Preact hydrates). CoopRoom.tsx
+// wires the real implementations (window.__coop*) once the room row is
+// fetched; these trampolines forward to them and no-op safely until then.
+//
+//   getCoopSnapshot()      Godot pulls the durable shared board on restore.
+//                          CoopRoom.tsx stashes it on window.COLLAB_SNAPSHOT
+//                          (the collab_rooms.state_json string) before boot.
+//   coopSendOp(opJson)     Godot pushes ONE local per-unit op (upsert/delete
+//                          /lock by stable uid) out to the partner.
+//   coopSaveSnapshot(json) Godot pushes the full merged board for durable
+//                          persistence (host election happens in CoopRoom).
+window.getCoopSnapshot = function () {
+  try {
+    return window.COLLAB_SNAPSHOT || '';
+  } catch (_e) {
+    return '';
+  }
+};
+
+window.coopSendOp = function (opJson) {
+  if (typeof window.__coopBroadcastOp !== 'function') return;
+  try {
+    window.__coopBroadcastOp(opJson);
+  } catch (e) {
+    console.error('[bridge] coopSendOp threw:', e);
+  }
+};
+
+window.coopSaveSnapshot = function (json) {
+  if (typeof window.__coopPersistSnapshot !== 'function') return;
+  try {
+    window.__coopPersistSnapshot(json);
+  } catch (e) {
+    console.error('[bridge] coopSaveSnapshot threw:', e);
+  }
+};
