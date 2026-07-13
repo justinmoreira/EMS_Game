@@ -273,8 +273,8 @@ export default function CoopRoom() {
   if (dismissed) return null;
 
   return (
-    <div class="fixed inset-x-0 top-14 z-50 flex justify-center px-4">
-      <div class="flex items-center gap-3 rounded-xl border border-white/10 bg-black/70 px-4 py-2 text-sm text-white shadow-lg backdrop-blur">
+    <div class="fixed inset-x-0 top-14 z-50 flex justify-center px-4 pointer-events-none">
+      <div class="flex items-center gap-3 rounded-xl border border-white/10 bg-black/70 px-4 py-2 text-sm text-white shadow-lg backdrop-blur pointer-events-auto">
         <span class="font-medium">{room.name}</span>
         <span class="h-4 w-px bg-white/15" />
         {!hasPartner ? (
