@@ -2,3 +2,4 @@
 - Improved offline and potential sync bugs
 - Redesign Game UI either into react / more modern game design
   - Improve godot-react bridge/framework, currently very manual implementation
+- Potential for three.js or 3d environment simulation

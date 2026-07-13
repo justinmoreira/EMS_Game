@@ -144,7 +144,9 @@ func _broadcast_diff() -> void:
 func _push_snapshot() -> void:
 	var snapshot := {"units": _level.serialize_units(), "extra": {}}
 	var snap_literal := JSON.stringify(JSON.stringify(snapshot))
-	JavaScriptBridge.eval("window.coopSaveSnapshot && window.coopSaveSnapshot(" + snap_literal + ")")
+	JavaScriptBridge.eval(
+		"window.coopSaveSnapshot && window.coopSaveSnapshot(" + snap_literal + ")"
+	)
 
 
 func _send_op(op: Dictionary) -> void:
