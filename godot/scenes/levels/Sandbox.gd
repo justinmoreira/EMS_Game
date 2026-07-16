@@ -50,17 +50,17 @@ func _ready() -> void:
 	_init_terrain()
 
 	# Terrain colors
-	contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))  # green
-	contour_rect.material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0))  # tan
-	contour_rect.material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0))  # snow
-
+	contour_rect.material.set_shader_parameter("color_low", Color(0.20, 0.60, 0.20, 1.0))  # green
+	contour_rect.material.set_shader_parameter("color_mid", Color(0.74, 0.63, 0.48, 1.0))  # tan
+	contour_rect.material.set_shader_parameter("color_high", Color(0.95, 0.95, 0.94, 1.0))  # snow
 	# Water
-	contour_rect.material.set_shader_parameter("water_color", Color(0.10, 0.30, 0.85, 1.0))
+	contour_rect.material.set_shader_parameter("water_color", Color(0.17, 0.43, 0.65, 1.0))
 	contour_rect.material.set_shader_parameter("sea_level", 100.0)
 
 	# Height scaling
 	contour_rect.material.set_shader_parameter("max_height", 500.0)
 	contour_rect.material.set_shader_parameter("mid_point", 0.6)
+	contour_rect.material.set_shader_parameter("high_point", 0.75)
 
 	# The multiplayer match reuses this Sandbox scene/script, so guard on the
 	# game mode too — otherwise the "Welcome to Sandbox Mode" intro wrongly
@@ -449,10 +449,10 @@ func toggle_shader(enabled: bool) -> void:
 		shader_material.set_shader_parameter("gray_mode_color", Color(0.5, 0.5, 0.5, 1.0))
 	else:
 		shader_material.set_shader_parameter("gray_mode", false)
-		shader_material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))
-		shader_material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0))
-		shader_material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0))
-		shader_material.set_shader_parameter("water_color", Color(0.10, 0.30, 0.85, 1.0))
+		shader_material.set_shader_parameter("color_low", Color(0.20, 0.60, 0.20, 1.0))
+		shader_material.set_shader_parameter("color_mid", Color(0.74, 0.63, 0.48, 1.0))
+		shader_material.set_shader_parameter("color_high", Color(0.95, 0.95, 0.94, 1.0))
+		shader_material.set_shader_parameter("water_color", Color(0.17, 0.43, 0.65, 1.0))
 
 	for child in get_children():
 		if child.has_method("set_shader_enabled"):
