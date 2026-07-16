@@ -1,25 +1,74 @@
 ---
 import Base from "@/layouts/Base.astro";
-import { Content } from "../../public/how_it_works.md";
+import { Content, getHeadings } from "../../public/how_it_works.md";
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface TocItem extends Heading {
+  children: Heading[];
+}
+
+const toc: TocItem[] = getHeadings()
+  .filter((h) => h.depth === 2 || h.depth === 3)
+  .reduce((acc: TocItem[], heading: Heading) => {
+    if (heading.depth === 2) {
+      acc.push({ ...heading, children: [] });
+    } else if (heading.depth === 3 && acc.length > 0) {
+      acc[acc.length - 1].children.push(heading);
+    }
+    return acc;
+  }, []);
 ---
 
 <Base title="How It Works | GEMS">
     <div class="fixed inset-0 -z-10 bg-[#0a0a0a]"></div>
 
-    <!-- The scroll container is full-width so its scrollbar sits at the far
-         right of the viewport; the readable column is centered inside it. -->
-    <main class="doc-scroll h-[calc(100vh-3rem)] overflow-y-auto text-white">
-        <div class="how-it-works mx-auto max-w-3xl px-6 pt-12 pb-16">
-            <Content />
+    <div class="h-[calc(100vh-3rem)] overflow-y-auto">
+        <div class="flex justify-center px-4 pt-12 pb-16">
+            <div class="flex gap-8 w-full max-w-6xl">
+                <aside class="hidden lg:block w-72 shrink-0 self-start">
+                    <nav
+                        class="sticky top-12 space-y-2 text-sm bg-[#1a1a1a] border border-white/10 rounded-lg p-6"
+                    >
+                        {
+                            toc.map(item => (
+                                <div class="mb-6 last:mb-0">
+                                    <a
+                                        href={`#${item.slug}`}
+                                        class="block text-emerald-400 hover:text-emerald-300 transition py-1 font-semibold"
+                                    >
+                                        {item.text}
+                                    </a>
+                                    {item.children.length > 0 && (
+                                        <div class="pl-4 space-y-1 mt-2">
+                                            {item.children.map(child => (
+                                                <a
+                                                    href={`#${child.slug}`}
+                                                    class="block text-gray-400 hover:text-gray-300 transition text-xs py-0.5"
+                                                >
+                                                    {child.text}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        }
+                    </nav>
+                </aside>
+                <main class="how-it-works text-white w-full max-w-3xl flex-1">
+                    <Content />
+                </main>
+            </div>
         </div>
-    </main>
+    </div>
 </Base>
 
 <style is:global>
-    /* Dark, themed scrollbar for the scroll container (replaces the light
-       native one). Firefox uses scrollbar-width/color; Chromium/WebKit use
-       the ::-webkit-scrollbar pseudo-elements. Neutral thumb that warms to the
-       site's emerald accent on hover; transparent track so it blends in. */
     .doc-scroll {
         scrollbar-width: thin;
         scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
@@ -33,7 +82,6 @@ import { Content } from "../../public/how_it_works.md";
     .doc-scroll::-webkit-scrollbar-thumb {
         background-color: rgba(255, 255, 255, 0.18);
         border-radius: 9999px;
-        /* Inset the thumb with a transparent border so it reads as a slim pill. */
         border: 2px solid transparent;
         background-clip: padding-box;
     }
@@ -42,7 +90,7 @@ import { Content } from "../../public/how_it_works.md";
     }
 
     .how-it-works h1 {
-        font-size: 1.875rem;
+        font-size: 2.5rem;
         font-weight: 700;
         margin-bottom: 0.5rem;
         color: #fff;
@@ -123,5 +171,10 @@ import { Content } from "../../public/how_it_works.md";
     .how-it-works hr {
         border-color: rgba(255, 255, 255, 0.1);
         margin: 2rem 0;
+    }
+
+    .how-it-works h2,
+    .how-it-works h3 {
+        scroll-margin-top: 4rem;
     }
 </style>
