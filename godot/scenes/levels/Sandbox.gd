@@ -364,6 +364,7 @@ func _deconflict(descs: Array[Dictionary]) -> Array[Dictionary]:
 func _spawn_label(desc: Dictionary) -> void:
 	var lbl := Label.new()
 	lbl.text = "%dm" % [int(desc["val_h"])]
+	lbl.z_index = 0
 
 	lbl.add_theme_color_override("font_color", desc["color"])
 	lbl.add_theme_color_override("font_outline_color", Color.BLACK)
