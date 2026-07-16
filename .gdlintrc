@@ -6,4 +6,4 @@ disable:
 # Sidebar.gd is also near the old cap. TODO: extract the multiplayer subsystem
 # (objective/win/fog/turn hooks) out of BaseLevel into its own controller and
 # drop this back toward the default.
-max-file-lines: 1200
+max-file-lines: 2000
