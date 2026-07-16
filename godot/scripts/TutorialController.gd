@@ -3,8 +3,8 @@ extends CanvasLayer
 # Tutorial state machine. Lives as an autoload so it survives level swaps and
 # doesn't need a scene-tree CanvasLayer in BaseLevel. Renders its popups directly.
 
-const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/SandboxIntroPopup.tscn")
-const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/TutorialHintPopup.tscn")
+const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/IntroPopup.tscn")
+const TUTORIAL_HINT_POPUP := preload("res://scenes/ui/HintPopup.tscn")
 
 enum Step { WELCOME, PLACE_TRANSCEIVER, DONE }
 

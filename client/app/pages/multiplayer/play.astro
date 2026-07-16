@@ -1,0 +1,223 @@
+---
+import MultiplayerMatch from "@/components/MultiplayerMatch";
+import Base from "@/layouts/Base.astro";
+import { BASE_URL } from "@/utils";
+---
+
+<Base title="Multiplayer Match | EMS Sim">
+  <Fragment slot="head">
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
+  </Fragment>
+
+  <!-- Mode flag — read by Sidebar.gd (via JavaScriptBridge.eval) before
+       it lays out the SAVES/RESET buttons. Set BEFORE the engine boots. -->
+  <script is:inline>
+    window.GAME_MODE = "multiplayer";
+  </script>
+
+  <script is:inline src={`${BASE_URL}/godot-bridge.js`}></script>
+
+  <!-- "Waiting for second player" overlay sits on top until match.status='active' -->
+  <MultiplayerMatch client:only="preact" />
+
+  <!-- Game canvas (mirrors /play; sandbox-saved sync and SavesPicker
+       are intentionally omitted — multiplayer state lives in the matches
+       + match_actions tables). -->
+  <canvas
+    id="canvas"
+    class="block w-screen h-[calc(100vh-3rem)] touch-none outline-none"
+  ></canvas>
+  <style>
+    #custom-loader {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      gap: 40px;
+    }
+
+    .spinner {
+      width: 180px;
+      height: 180px;
+      animation: spin 3s linear infinite;
+    }
+
+    /* Different speeds/directions */
+    .spinner1 {
+      animation-duration: 2.5s;
+    }
+
+    .spinner2 {
+      animation-duration: 4s;
+      animation-direction: reverse;
+    }
+
+    .spinner3 {
+      animation-duration: 3s;
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    #status-progress {
+      display: none !important;
+    }
+  </style>
+
+  <!-- Godot loading overlay -->
+  <div
+    id="status"
+    class="fixed inset-0 top-12 bg-neutral-900 flex flex-col items-center justify-center"
+  >
+    <div id="custom-loader">
+      <img
+        class="spinner spinner1"
+        src={`${BASE_URL}/unit-images/transceiver.png`}
+        alt=""
+      />
+      <img
+        class="spinner spinner2"
+        src={`${BASE_URL}/unit-images/jammer.png`}
+        alt=""
+      />
+      <img
+        class="spinner spinner3"
+        src={`${BASE_URL}/unit-images/sensor.png`}
+        alt=""
+      />
+    </div>
+
+    <progress id="status-progress" class="w-1/2 hidden"></progress>
+    <div id="status-notice"></div>
+  </div>
+
+  <script is:inline src={`${BASE_URL}/godot/index.js`}></script>
+
+  <script is:inline define:vars={{ BASE_URL }}>
+    const GODOT_CONFIG = {
+      args: [],
+      canvasResizePolicy: 0,
+      ensureCrossOriginIsolationHeaders: true,
+      executable: BASE_URL + "/godot/index",
+      focusCanvas: true,
+      gdextensionLibs: [],
+    };
+
+    const canvas = document.getElementById("canvas");
+    function resizeCanvas() {
+      // Render at the device's TRUE pixel resolution, not CSS pixels. This
+      // canvas uses canvasResizePolicy:0 (Godot doesn't manage its size), so
+      // without multiplying by devicePixelRatio the WebGL backing store stays
+      // at CSS size and the browser upscales it on any HiDPI / OS-scaled /
+      // browser-zoomed display — a uniform blur that reads as "text looks fuzzy
+      // but lines look sharp". The element is still presented at CSS size via
+      // its w-screen / h-[calc(...)] classes, so layout and pointer mapping are
+      // unchanged; only the render resolution rises. No-op on a dpr=1 display.
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(window.innerWidth * dpr);
+      canvas.height = Math.round((window.innerHeight - 48) * dpr);
+    }
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    const engine = new Engine(GODOT_CONFIG);
+
+    (function () {
+      const statusOverlay = document.getElementById("status");
+      const statusProgress = document.getElementById("status-progress");
+      const statusNotice = document.getElementById("status-notice");
+
+      let initializing = true;
+      let statusMode = "";
+
+      function setStatusMode(mode) {
+        if (statusMode === mode || !initializing) return;
+        if (mode === "hidden") {
+          statusOverlay.remove();
+          initializing = false;
+          return;
+        }
+        statusOverlay.style.visibility = "visible";
+        statusProgress.style.display = mode === "progress" ? "block" : "none";
+        statusNotice.style.display = mode === "notice" ? "block" : "none";
+        statusMode = mode;
+      }
+
+      function displayFailureNotice(err) {
+        console.error(err);
+        const msg =
+          err instanceof Error
+            ? err.message
+            : typeof err === "string"
+              ? err
+              : "An unknown error occurred.";
+        statusNotice.textContent = msg;
+        statusNotice.style.display = "block";
+        statusOverlay.style.visibility = "visible";
+        initializing = false;
+      }
+
+      const missing = Engine.getMissingFeatures({ threads: false });
+      if (missing.length !== 0) {
+        displayFailureNotice(
+          "Missing browser features:\n" + missing.join("\n"),
+        );
+      } else {
+        setStatusMode("progress");
+        // Block the engine until MultiplayerMatch has fetched the match
+        // row and published `window.MULTIPLAYER_MATCH` — otherwise
+        // ContourDemo's `_ready()` races the supabase fetch and seeds
+        // FastNoiseLite with `randi()` on whichever client wins, breaking
+        // shared terrain. 15s ceiling (dev cold-load is slower than I
+        // estimated when sizing this at 5s — Preact bundle + supabase
+        // round-trip on a cache miss can push past that). Logs the
+        // outcome so we can see whether the seed actually made it across.
+        console.log(
+          "[mp/play] bootstrap waiting for window.MULTIPLAYER_MATCH...",
+        );
+        function waitForMatch() {
+          return new Promise(function (resolve) {
+            var attempts = 0;
+            (function poll() {
+              if (window.MULTIPLAYER_MATCH) return resolve(true);
+              if (attempts++ >= 150) return resolve(false);
+              setTimeout(poll, 100);
+            })();
+          });
+        }
+        waitForMatch().then(function (gotMatch) {
+          if (gotMatch) {
+            console.log(
+              "[mp/play] match landed before boot, seed =",
+              window.MULTIPLAYER_MATCH && window.MULTIPLAYER_MATCH.seed,
+            );
+          } else {
+            console.warn(
+              "[mp/play] match did NOT land within 15s — engine will boot with randi() seed; terrains will diverge",
+            );
+          }
+          engine
+            .startGame({
+              onProgress: function (current, total) {
+                if (current > 0 && total > 0) {
+                  statusProgress.value = current;
+                  statusProgress.max = total;
+                } else {
+                  statusProgress.removeAttribute("value");
+                  statusProgress.removeAttribute("max");
+                }
+              },
+            })
+            .then(() => setStatusMode("hidden"), displayFailureNotice);
+        });
+      }
+    })();
+  </script>
+</Base>

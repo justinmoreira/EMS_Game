@@ -11,18 +11,21 @@ config_version=5
 [application]
 
 config/name="GEMS"
-run/main_scene="res://scenes/levels/ContourDemo.tscn"
+run/main_scene="res://scenes/levels/Sandbox.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
+SceneLoader="*res://scripts/SceneLoader.gd"
 SimulationManager="*res://scripts/SimulationManager.gd"
 GameEvents="*res://scripts/GameEvents.gd"
 UnitNameManager="*res://scripts/UnitNameManager.gd"
 TutorialController="*res://scripts/TutorialController.gd"
 LinkRenderer="*res://scripts/LinkRenderer.gd"
 StatusBadgeRenderer="*res://scripts/StatusBadgeRenderer.gd"
+MessageRelay="*res://scripts/MessageRelay.gd"
+MessageRenderer="*res://scripts/MessageRenderer.gd"
 
 [display]
 
@@ -30,6 +33,23 @@ window/size/viewport_width=1920
 window/size/viewport_height=1080
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+
+[gui]
+
+; Default-font crispness. Text was blurring because the built-in bitmap font
+; gets SCALED — by the canvas_items stretch (whole scene -> browser canvas) and
+; by unit visuals scaling with zoom (1/zoom). Fixes, strongest first:
+;   * MSDF: render the default font as a multi-channel signed distance field so
+;     glyphs stay sharp at ANY scale (up or down) instead of resampling a bitmap.
+;   * mipmaps: clean minification when zoomed out (kills shimmer/blur on scale-down).
+;   * grayscale antialiasing: smooth edges. (LCD-subpixel = enum 2 is technically
+;     "more" AA, but it assumes a fixed RGB subpixel layout and fringes on a
+;     scaled web canvas — grayscale + MSDF is the crispest here.)
+;   * hinting None: hinting snaps glyphs to the pixel grid, which fights scaling.
+theme/default_font_multichannel_signed_distance_field=true
+theme/default_font_generate_mipmaps=true
+theme/default_font_antialiasing=1
+theme/default_font_hinting=0
 
 [physics]
 

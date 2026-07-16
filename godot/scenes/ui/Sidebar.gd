@@ -17,6 +17,11 @@ const SENSOR_DEF: UnitDefinition = preload("res://data/units/sensor.tres")
 # opaque on a CanvasLayer above the map, so any minor overhang is hidden.
 const SIDEBAR_WIDTH := 300.0
 
+# Fixed height of the ATTRIBUTES title row. Tall enough for the DELETE/CONFIRM
+# buttons so the row (and everything below it) doesn't shift when they toggle
+# on selecting a placed unit.
+const ATTR_HEADER_ROW_HEIGHT := 34.0
+
 # ── Colors ────────────────────────────────────
 const C_BG_DARK := Color("0d0f14")
 const C_BG_MID := Color("13161e")
@@ -53,19 +58,23 @@ var _attr_placeholder: Label
 var _entity_cards: Dictionary = {}  # EntityType -> Control
 var _attr_content: VBoxContainer
 var _tutorial_active: bool = false
+var _placement_locked: bool = false
+var _tutorial_allowed_ids: Array = []
+var _tutorial_allowed_attributes: Array = []
 
 
 func _ready() -> void:
 	GameEvents.units_changed.connect(_update_reset_button)
 	GameEvents.tutorial_filter_sidebar.connect(_on_tutorial_filter)
+	GameEvents.mp_placement_locked.connect(_on_mp_placement_locked)
+	GameEvents.tutorial_filter_attributes.connect(_on_tutorial_filter_attributes)
 	GameEvents.selection_changed.connect(_on_selection_changed)
-	resized.connect(func(): GameEvents.sidebar_resized.emit(size.x))
+	resized.connect(func(): GameEvents.sidebar_resized.emit(SIDEBAR_WIDTH))
 	_build_sidebar()
 	_refresh_attribute_panel()
 
 	# Publish initial size so listeners (BaseLevel) get a value before any resize.
 	GameEvents.sidebar_resized.emit.call_deferred(size.x)
-	_build_sidebar()
 	_refresh_attribute_panel()
 
 	# Publish the fixed design width to listeners (BaseLevel). Constant, not the
@@ -93,21 +102,23 @@ func _entity_type_for_def_id(id: StringName) -> EntityType:
 
 
 func select_entity(type: EntityType, display_name: String = "", node: Node = null) -> void:
-	# If switching to a different entity type, clear old pending attributes
+	# In tutorial mode, only block sidebar card selection for disallowed types.
+	# Do not block already placed units. The attribute panel must still refresh
+	# when the user clicks a placed unit on the map.
+	if _tutorial_active and node == null and type != EntityType.NONE:
+		if not _is_entity_type_allowed(type):
+			return
+
 	if type != EntityType.NONE and type != pending_entity_type:
 		pending_attributes.clear()
 
-	if _tutorial_active:
-		return
 	selected_entity = type
 	selected_entity_name = display_name
 	selected_node = node
 
-	# If selecting a new entity type from sidebar without a placed unit
 	if node == null and type != EntityType.NONE:
 		pending_entity_type = type
 	else:
-		# Selecting a placed unit, clear pending
 		pending_entity_type = EntityType.NONE
 		pending_attributes.clear()
 
@@ -140,21 +151,43 @@ func _populate_header(panel: PanelContainer) -> void:
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_child(hbox)
 
-	var dot := ColorRect.new()
-	dot.color = C_GREEN
-	dot.custom_minimum_size = Vector2(15, 15)
-	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	hbox.add_child(dot)
-	_animate_blink(dot)
-
-	hbox.add_child(_make_label("GEMS", C_GREEN, 25))
-
+	# GEMS branding lives only in the HTML navbar now (NavBar.astro) — the green
+	# pulsing dot + wordmark moved there so the canvas isn't a second branding.
+	# This header keeps just the action buttons.
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(spacer)
 
+	# Multiplayer pages set `window.GAME_MODE = "multiplayer"` before the
+	# engine boots, which we read here to relabel the header buttons:
+	# SAVES → SUBMIT and RESET → UNDO. The click handlers stay the same
+	# for now; only the labels swap.
+	var is_mp := _get_game_mode() == "multiplayer"
+
+	var level := get_tree().current_scene
+	var is_sb: bool = level.get_game_mode_name() == "sandbox"
+
+	# SAVES / SUBMIT — only meaningful on web export (where JS bridge exists).
+	if OS.has_feature("web") and (is_mp or is_sb):
+		var saves_btn := Button.new()
+		saves_btn.text = "SUBMIT" if is_mp else "SAVES"
+		saves_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		saves_btn.add_theme_font_size_override("font_size", 13)
+		saves_btn.add_theme_color_override("font_color", C_BG_DARK)
+		saves_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var saves_style := StyleBoxFlat.new()
+		saves_style.bg_color = C_BLUE
+		saves_style.corner_radius_top_left = 3
+		saves_style.corner_radius_top_right = 3
+		saves_style.corner_radius_bottom_left = 3
+		saves_style.corner_radius_bottom_right = 3
+		saves_style.set_content_margin_all(8)
+		saves_btn.add_theme_stylebox_override("normal", saves_style)
+		saves_btn.pressed.connect(_on_saves_pressed)
+		hbox.add_child(saves_btn)
+
 	var reset_btn := Button.new()
-	reset_btn.text = "RESET"
+	reset_btn.text = "UNDO" if is_mp else "RESET"
 	reset_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	reset_btn.add_theme_font_size_override("font_size", 13)
 	reset_btn.add_theme_color_override("font_color", C_BG_DARK)
@@ -176,11 +209,41 @@ func _populate_header(panel: PanelContainer) -> void:
 	_update_reset_button()
 
 
+func _on_saves_pressed() -> void:
+	# Same button, two behaviors based on the page that booted us:
+	#   • Sandbox → opens the SavesPicker Preact island (window.openSavesPicker)
+	#   • Multiplayer → emit mp_submit_requested; BaseLevel handles the
+	#     serialize-and-bridge (it owns the unit list, Sidebar doesn't).
+	if not OS.has_feature("web"):
+		return
+	var mode := _get_game_mode()
+	print("[Sidebar] header button pressed (mode=", mode, ")")
+	if mode == "multiplayer":
+		GameEvents.mp_submit_requested.emit()
+	else:
+		JavaScriptBridge.eval("window.openSavesPicker && window.openSavesPicker()")
+
+
+# Mirrors the JS-side `window.GAME_MODE` set by each game page (sandbox.astro,
+# multiplayer/play.astro) before the engine boots. Defaults to "sandbox" so
+# non-web builds and any page that forgets to set the flag behave like the
+# single-player path.
+func _get_game_mode() -> String:
+	if not OS.has_feature("web"):
+		return "sandbox"
+	var v: Variant = JavaScriptBridge.eval("window.GAME_MODE")
+	if v is String and (v as String).length() > 0:
+		return v as String
+	return "sandbox"
+
+
 func _populate_tray(panel: PanelContainer) -> void:
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_MID, 14))
+	# Hug content height so the tray only takes what the cards + hint need; the
+	# attribute panel below gets the freed vertical space.
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 	var vbox := VBoxContainer.new()
-	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_theme_constant_override("separation", 8)
 	panel.add_child(vbox)
@@ -188,10 +251,10 @@ func _populate_tray(panel: PanelContainer) -> void:
 	vbox.add_child(_make_label("ENTITIES", C_DIM, 15))
 
 	var stack := VBoxContainer.new()
-	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 8)
 	vbox.add_child(stack)
+
 	var tx_card := _build_entity_card(
 		"Transceiver",
 		"T",
@@ -273,21 +336,29 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 
 	var attr_header_row := HBoxContainer.new()
 	attr_header_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Reserve the DELETE/CONFIRM button height always, so the row doesn't grow
+	# (and shove "ATTRIBUTES"/the panel down) when those buttons toggle on
+	# selecting a live unit.
+	attr_header_row.custom_minimum_size.y = ATTR_HEADER_ROW_HEIGHT
+	attr_header_row.add_theme_constant_override("separation", 8)
 	_attr_content.add_child(attr_header_row)
 
-	attr_header_row.add_child(_make_label("ATTRIBUTES", C_DIM, 15))
+	var attr_title := _make_label("ATTRIBUTES", C_DIM, 15)
+	attr_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	attr_header_row.add_child(attr_title)
 
-	var button_row := HBoxContainer.new()
-	button_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button_row.add_theme_constant_override("separation", 10)
-	_attr_content.add_child(button_row)
+	# Spacer pushes action buttons to the right of the title row so the
+	# layout is stable whether or not those buttons are visible — no
+	# separate row appears/disappears on selection change.
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	attr_header_row.add_child(spacer)
 
 	var delete_btn := Button.new()
-	delete_btn.text = "DELETE UNIT"
+	delete_btn.text = "DELETE"
 	delete_btn.add_theme_font_size_override("font_size", 12)
 	delete_btn.add_theme_color_override("font_color", C_BG_DARK)
 	delete_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	delete_btn.custom_minimum_size = Vector2(120, 0)
 
 	var del_style := StyleBoxFlat.new()
 	del_style.bg_color = C_RED
@@ -296,24 +367,20 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	del_style.corner_radius_bottom_left = 3
 	del_style.corner_radius_bottom_right = 3
 	del_style.set_content_margin_all(8)
-
 	delete_btn.add_theme_stylebox_override("normal", del_style)
+	delete_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	delete_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	delete_btn.pressed.connect(_on_delete_pressed)
 	delete_btn.visible = false
 
-	button_row.add_child(delete_btn)
+	attr_header_row.add_child(delete_btn)
 	_delete_btn = delete_btn
-
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button_row.add_child(spacer)
 
 	var confirm_btn := Button.new()
 	confirm_btn.text = "CONFIRM"
 	confirm_btn.add_theme_font_size_override("font_size", 12)
 	confirm_btn.add_theme_color_override("font_color", C_BG_DARK)
 	confirm_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	confirm_btn.custom_minimum_size = Vector2(120, 0)
 
 	var cfm_style := StyleBoxFlat.new()
 	cfm_style.bg_color = C_GREEN
@@ -322,12 +389,13 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	cfm_style.corner_radius_bottom_left = 3
 	cfm_style.corner_radius_bottom_right = 3
 	cfm_style.set_content_margin_all(8)
-
 	confirm_btn.add_theme_stylebox_override("normal", cfm_style)
+	confirm_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	confirm_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	confirm_btn.pressed.connect(_on_confirm_pressed)
 	confirm_btn.visible = false
 
-	button_row.add_child(confirm_btn)
+	attr_header_row.add_child(confirm_btn)
 	_confirm_btn = confirm_btn
 
 	_attr_header = _make_label("", C_TEXT, 20)
@@ -350,8 +418,9 @@ func _populate_attr_section(panel: PanelContainer) -> void:
 	_attr_placeholder.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_attr_placeholder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_attr_placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	_attr_content.add_child(_attr_placeholder)
+	# Attach the placeholder OUTSIDE _attr_content so toggling its visibility
+	# doesn't reflow the attribute panel layout when a unit gets selected.
+	panel.add_child(_attr_placeholder)
 
 
 func _style_divider(sep: HSeparator) -> void:
@@ -378,6 +447,18 @@ func _refresh_attribute_panel() -> void:
 	_attr_placeholder.visible = false
 	_attr_header.visible = true
 
+	# Locked pieces (the objective, already-submitted pieces, the opponent's)
+	# are inspectable but not editable: hide the action buttons, disable inputs.
+	var is_locked := (
+		selected_node is Unit
+		and (selected_node as Unit).has_method("is_locked")
+		and (selected_node as Unit).is_locked()
+	)
+	if _delete_btn:
+		_delete_btn.visible = _delete_btn.visible and not is_locked
+	if _confirm_btn:
+		_confirm_btn.visible = _confirm_btn.visible and not is_locked
+
 	var def := _definition_for(selected_entity)
 	if def == null:
 		return
@@ -388,6 +469,54 @@ func _refresh_attribute_panel() -> void:
 
 	for spec in def.attributes:
 		_add_attribute_input(spec, def)
+
+	# Transceivers get a "Send Message" button that visualizes frequency-
+	# dependent transmission delay. Only meaningful for placed, editable units.
+	if selected_node is Unit and def.id == &"transceiver" and not is_locked:
+		_add_send_message_button(def.color)
+
+	# Lock the attribute inputs when the piece can't be edited: my is_locked
+	# (objective / submitted / opponent's / immovable) OR main's non-removable
+	# flag.
+	var lock_inputs := is_locked
+	if selected_node and "is_removable" in selected_node and not selected_node.is_removable:
+		lock_inputs = true
+	if (
+		selected_node
+		and selected_node.has_method("attributes_unlocked_override")
+		and selected_node.attributes_unlocked_override()
+	):
+		lock_inputs = false
+	_attr_body.modulate.a = 0.7 if lock_inputs else 1.0
+	_lock_all_attributes(lock_inputs)
+
+	# Reapply the stored tutorial filter after every row rebuild.
+	# queue_free() is deferred, so we defer this too to run after the
+	# new rows are fully added to the scene tree.
+	if not _tutorial_allowed_attributes.is_empty():
+		call_deferred("_reapply_current_tutorial_attribute_filter")
+
+
+func _add_send_message_button(accent: Color) -> void:
+	var btn := Button.new()
+	btn.text = "SEND MESSAGE"
+	btn.add_theme_font_size_override("font_size", 13)
+	btn.add_theme_color_override("font_color", C_BG_DARK)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var style := StyleBoxFlat.new()
+	style.bg_color = accent
+	style.corner_radius_top_left = 3
+	style.corner_radius_top_right = 3
+	style.corner_radius_bottom_left = 3
+	style.corner_radius_bottom_right = 3
+	style.set_content_margin_all(8)
+	btn.add_theme_stylebox_override("normal", style)
+	btn.pressed.connect(func(): GameEvents.message_send_requested.emit(selected_node))
+	_attr_body.add_child(btn)
+
+
+func _reapply_current_tutorial_attribute_filter() -> void:
+	_on_tutorial_filter_attributes(_tutorial_allowed_attributes.duplicate())
 
 
 func _definition_for(t: EntityType) -> UnitDefinition:
@@ -404,6 +533,8 @@ func _definition_for(t: EntityType) -> UnitDefinition:
 func _add_attribute_input(spec: AttributeSpec, def: UnitDefinition) -> void:
 	var accent := def.color
 	var current = _read_attribute(spec, def)
+	var attribute_key := String(spec.id)
+
 	match spec.kind:
 		AttributeSpec.Kind.INT:
 			_add_slider(
@@ -414,7 +545,8 @@ func _add_attribute_input(spec: AttributeSpec, def: UnitDefinition) -> void:
 				spec.unit,
 				accent,
 				func(v): _write_attribute(spec.id, int(v)),
-				true
+				true,
+				attribute_key
 			)
 		AttributeSpec.Kind.FLOAT:
 			_add_slider(
@@ -425,7 +557,8 @@ func _add_attribute_input(spec: AttributeSpec, def: UnitDefinition) -> void:
 				spec.unit,
 				accent,
 				func(v): _write_attribute(spec.id, v),
-				false
+				false,
+				attribute_key
 			)
 		AttributeSpec.Kind.ENUM:
 			_add_dropdown(
@@ -433,15 +566,24 @@ func _add_attribute_input(spec: AttributeSpec, def: UnitDefinition) -> void:
 				Array(spec.enum_options),
 				int(current),
 				accent,
-				func(v): _write_attribute(spec.id, v)
+				func(v): _write_attribute(spec.id, v),
+				attribute_key
 			)
 		AttributeSpec.Kind.BOOL:
 			_add_toggle(
-				spec.display_name, bool(current), accent, func(v): _write_attribute(spec.id, v)
+				spec.display_name,
+				bool(current),
+				accent,
+				func(v): _write_attribute(spec.id, v),
+				attribute_key
 			)
 		AttributeSpec.Kind.STRING:
 			_add_text_input(
-				spec.display_name, str(current), accent, func(v): _write_attribute(spec.id, v)
+				spec.display_name,
+				str(current),
+				accent,
+				func(v): _write_attribute(spec.id, v),
+				attribute_key
 			)
 
 
@@ -478,9 +620,10 @@ func _add_slider(
 	unit: String,
 	accent: Color,
 	on_change: Callable,
-	integers: bool = false
+	integers: bool = false,
+	attribute_key: String = ""
 ) -> void:
-	var vbox := _make_row_container()
+	var vbox := _make_row_container(attribute_key)
 
 	var top := HBoxContainer.new()
 	top.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -495,8 +638,9 @@ func _add_slider(
 	spin.step = 1.0 if integers else 0.1
 	spin.rounded = integers
 	spin.suffix = unit
-	spin.size_flags_horizontal = Control.SIZE_SHRINK_END
-	spin.custom_minimum_size = Vector2(140, 0)
+	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Min keeps the +/− arrows usable; otherwise scales with row width.
+	spin.custom_minimum_size = Vector2(70, 0)
 	spin.add_theme_font_size_override("font_size", 13)
 	spin.add_theme_color_override("font_color", accent)
 	top.add_child(spin)
@@ -536,9 +680,14 @@ func _add_slider(
 
 
 func _add_dropdown(
-	label: String, options: Array, current_idx: int, accent: Color, on_change: Callable
+	label: String,
+	options: Array,
+	current_idx: int,
+	accent: Color,
+	on_change: Callable,
+	attribute_key: String = ""
 ) -> void:
-	var vbox := _make_row_container()
+	var vbox := _make_row_container(attribute_key)
 	var hbox := HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_theme_constant_override("separation", 8)
@@ -546,19 +695,23 @@ func _add_dropdown(
 	hbox.add_child(_make_label(label, C_DIM, 13, true))
 
 	var dd := OptionButton.new()
-	dd.size_flags_horizontal = Control.SIZE_SHRINK_END
-	dd.custom_minimum_size = Vector2(110, 0)
+	dd.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dd.custom_minimum_size = Vector2(70, 0)
 	dd.add_theme_font_size_override("font_size", 13)
 	dd.add_theme_color_override("font_color", accent)
+
 	for opt in options:
 		dd.add_item(opt)
+
 	dd.select(current_idx)
 	dd.item_selected.connect(func(idx): on_change.call(idx))
 	hbox.add_child(dd)
 
 
-func _add_toggle(label: String, current: bool, accent: Color, on_change: Callable) -> void:
-	var vbox := _make_row_container()
+func _add_toggle(
+	label: String, current: bool, accent: Color, on_change: Callable, attribute_key: String = ""
+) -> void:
+	var vbox := _make_row_container(attribute_key)
 	var hbox := HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_theme_constant_override("separation", 8)
@@ -572,8 +725,12 @@ func _add_toggle(label: String, current: bool, accent: Color, on_change: Callabl
 	hbox.add_child(toggle)
 
 
-func _make_row_container() -> VBoxContainer:
+func _make_row_container(attribute_key: String = "") -> VBoxContainer:
 	var panel := PanelContainer.new()
+
+	if attribute_key != "":
+		panel.name = attribute_key
+
 	panel.add_theme_stylebox_override("panel", _flat_style(C_BG_LIGHT, 10))
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_attr_body.add_child(panel)
@@ -582,10 +739,17 @@ func _make_row_container() -> VBoxContainer:
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_theme_constant_override("separation", 8)
 	panel.add_child(vbox)
+
 	return vbox
 
 
 func _on_reset_pressed() -> void:
+	# In multiplayer this button is "UNDO": pull back the current turn's
+	# unsubmitted placement immediately — no confirmation dialog.
+	if _get_game_mode() == "multiplayer":
+		GameEvents.reset_requested.emit()
+		return
+
 	var dialog := ConfirmationDialog.new()
 	dialog.title = "Reset Scene"
 	dialog.dialog_text = "Remove all units from the scene?"
@@ -627,22 +791,34 @@ func _on_confirm_pressed() -> void:
 	if not selected_node:
 		return
 
-	# Round-6 routes attribute writes through _write_attribute, which goes
-	# straight to selected_node.set_value when a Unit is selected. So pending
-	# is normally empty here; flush stragglers just in case.
+	# Drop any LineEdit focus so its focus_exited fires (flushes the typed
+	# value through _write_attribute) and the keyboard isn't trapped after
+	# the user commits. Selection stays — Confirm is "apply + sim", not
+	# "apply + close" (that was the older qol-bugs behavior — see commit
+	# history if you want to revert).
+	get_viewport().gui_release_focus()
+
+	# _write_attribute writes through to selected_node.set_value when a Unit
+	# is selected, so pending is normally empty here; flush stragglers just
+	# in case.
 	if selected_node is Unit:
 		for id in pending_attributes:
 			selected_node.set_value(id, pending_attributes[id])
 	pending_attributes.clear()
 
-	# clear_selection routes through GameEvents → BaseLevel handles the
-	# visual unhighlight; no direct Visual node poke here.
-	GameEvents.clear_selection()
-	select_entity(EntityType.NONE)
+	GameEvents.confirm_pressed.emit(selected_node)
+	GameEvents.units_changed.emit()
 	GameEvents.simulation_requested.emit()
 
 
 func _update_reset_button() -> void:
+	if not is_inside_tree():
+		return
+
+	var tree := get_tree()
+	if tree == null:
+		return
+
 	var has_units = (
 		get_tree().get_nodes_in_group("transceivers").size() > 0
 		or get_tree().get_nodes_in_group("jammers").size() > 0
@@ -660,8 +836,10 @@ func _on_simulate_pressed() -> void:
 	GameEvents.simulation_requested.emit()
 
 
-func _add_text_input(label: String, current: String, accent: Color, on_change: Callable) -> void:
-	var vbox := _make_row_container()
+func _add_text_input(
+	label: String, current: String, accent: Color, on_change: Callable, attribute_key: String = ""
+) -> void:
+	var vbox := _make_row_container(attribute_key)
 	var hbox := HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_theme_constant_override("separation", 8)
@@ -671,7 +849,7 @@ func _add_text_input(label: String, current: String, accent: Color, on_change: C
 	var input := LineEdit.new()
 	input.text = current
 	input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	input.custom_minimum_size = Vector2(140, 0)
+	input.custom_minimum_size = Vector2(60, 0)
 	input.add_theme_font_size_override("font_size", 13)
 	input.add_theme_color_override("font_color", accent)
 	input.text_submitted.connect(func(v): on_change.call(v))
@@ -682,6 +860,8 @@ func _add_text_input(label: String, current: String, accent: Color, on_change: C
 # ════════════════════════════════════════════
 #  STYLE HELPERS
 # ════════════════════════════════════════════
+
+
 func _flat_style(bg: Color, padding: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
@@ -706,11 +886,12 @@ func _apply_style(
 	control.add_theme_stylebox_override("panel", s)
 
 
-## Shorthand label factory
+## Shorthand label factory. No fixed minimum width — text intrinsic-sizes itself
+## so rows stay narrower than the sidebar's content area. Set `expand=true` for
+## row labels that should grab leftover horizontal space.
 func _make_label(text: String, color: Color, txt_size: int, expand: bool = false) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.custom_minimum_size.x = 120
 	lbl.add_theme_color_override("font_color", color)
 	lbl.add_theme_font_size_override("font_size", txt_size)
 	if expand:
@@ -719,32 +900,102 @@ func _make_label(text: String, color: Color, txt_size: int, expand: bool = false
 
 
 func _on_tutorial_filter(allowed_ids: Array) -> void:
-	# allowed_ids contains StringName definition.id values (e.g. &"transceiver").
+	# Supports the newer UnitDefinition ids, such as &"transceiver", while also
+	# accepting the older EntityType enum values from EMS-183 if TutorialLevel
+	# still emits those.
+	_tutorial_allowed_ids = allowed_ids
 	_tutorial_active = not allowed_ids.is_empty()
-	_attr_content.modulate.a = 0.3 if _tutorial_active else 1.0
-	_set_interactivity(_attr_content, not _tutorial_active)
+
 	for type in _entity_cards:
 		var card = _entity_cards[type]
-		var def := _definition_for(type)
-		var enabled = not _tutorial_active or (def and def.id in allowed_ids)
-		card.modulate.a = 1.0 if enabled else 0.3
-		card.set_process_input(enabled)
-		card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
-		for child in card.get_children():
+		_set_card_enabled(card, not _tutorial_active or _is_entity_type_allowed(type))
+
+
+# Multiplayer one-per-turn cap: grey the whole entity tray while the player
+# has already placed their unit for this turn (re-enabled on turn advance).
+func _on_mp_placement_locked(locked: bool) -> void:
+	_placement_locked = locked
+	for type in _entity_cards:
+		_set_card_enabled(_entity_cards[type], not locked)
+
+
+# Shared card enable/disable — used by both the tutorial filter and the MP
+# placement cap, with the full input gating main applied inline.
+func _set_card_enabled(card, enabled: bool) -> void:
+	card.modulate.a = 1.0 if enabled else 0.3
+	card.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+	card.set_process_input(enabled)
+	card.set_process_unhandled_input(enabled)
+	card.set_process_unhandled_key_input(enabled)
+	for child in card.get_children():
+		if child is Control:
 			child.mouse_filter = (
 				Control.MOUSE_FILTER_PASS if enabled else Control.MOUSE_FILTER_IGNORE
 			)
 
 
+func _is_entity_type_allowed(type: EntityType) -> bool:
+	if _tutorial_allowed_ids.is_empty():
+		return true
+
+	var def := _definition_for(type)
+	if def and def.id in _tutorial_allowed_ids:
+		return true
+	if def and String(def.id) in _tutorial_allowed_ids:
+		return true
+	if type in _tutorial_allowed_ids:
+		return true
+
+	return false
+
+
+func _on_tutorial_filter_attributes(allowed_attributes: Array) -> void:
+	_tutorial_allowed_attributes = allowed_attributes
+
+	if _attr_body == null:
+		return
+
+	var lock_all := false
+	for allowed_attribute in allowed_attributes:
+		var allowed_text := str(allowed_attribute).to_lower()
+		if allowed_text == "__lock_all__":
+			lock_all = true
+			break
+
+	var lock_attributes := lock_all or not allowed_attributes.is_empty()
+
+	for row in _attr_body.get_children():
+		if not row is Control:
+			continue
+
+		var row_name := row.name.to_lower()
+		var enabled := not lock_attributes
+
+		if lock_all:
+			enabled = false
+		else:
+			for allowed_attribute in allowed_attributes:
+				var allowed_text := str(allowed_attribute).to_lower()
+
+				if row_name == allowed_text or row_name.contains(allowed_text):
+					enabled = true
+					break
+
+		row.modulate.a = 1.0 if enabled else 0.35
+		_set_interactivity(row, enabled)
+
+
+func _lock_all_attributes(is_locked: bool) -> void:
+	_attr_content.modulate.a = 0.3 if is_locked else 1.0
+	_set_interactivity(_attr_content, not is_locked)
+	_attr_content.mouse_default_cursor_shape = (
+		Control.CURSOR_FORBIDDEN if is_locked else Control.CURSOR_ARROW
+	)
+
+
 func _set_interactivity(node: Control, enabled: bool) -> void:
 	node.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+
 	for child in node.get_children():
 		if child is Control:
 			_set_interactivity(child, enabled)
-
-
-func _animate_blink(node: ColorRect) -> void:
-	var tween := create_tween()
-	tween.set_loops()
-	tween.tween_property(node, "modulate:a", 0.1, 0.8)
-	tween.tween_property(node, "modulate:a", 1.0, 0.4)

@@ -1,5 +1,7 @@
-class_name ContourGen
+class_name Sandbox
 extends BaseLevel
+
+const SANDBOX_INTRO_POPUP := preload("res://scenes/ui/IntroPopup.tscn")
 
 # ── Labelling knobs ───────────────────────────────────────────────────────────
 ## Minimum grid-cell radius between any two labels of the same type.
@@ -26,6 +28,9 @@ var grid_w: int = 150
 var grid_h: int = 150
 var height_grid: Array = []
 var map_size_km: float
+var _terrain_seed: int = 0
+
+var _sandbox_popup_open := false
 
 @onready var contour_rect: TextureRect = $BackgroundTexture
 @onready var map_container = $BackgroundTexture
@@ -44,11 +49,7 @@ func _ready() -> void:
 
 	super._ready()
 
-	height_grid = _generate_terrain(grid_w, grid_h)
-	set_terrain_data(height_grid, map_container.global_position, map_container.size)
-
-	var tex := _create_height_texture(height_grid, grid_w, grid_h)
-	contour_rect.material.set_shader_parameter("height_map", tex)
+	_init_terrain()
 
 	# Terrain colors
 	contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))  # green
@@ -63,15 +64,140 @@ func _ready() -> void:
 	contour_rect.material.set_shader_parameter("max_height", 500.0)
 	contour_rect.material.set_shader_parameter("mid_point", 0.6)
 
-	_label_tactical_points(height_grid, grid_w, grid_h)
+	# The multiplayer match reuses this Sandbox scene/script, so guard on the
+	# game mode too — otherwise the "Welcome to Sandbox Mode" intro wrongly
+	# pops up over a live MP match. (Tactical labels are drawn by
+	# _regenerate_terrain's deferred call, so no direct labelling needed here.)
+	if get_script() == Sandbox and not _is_multiplayer() and not CoopSync.is_coop_mode():
+		open_popup()
+
+	var hud = find_child("HUD", true, false)
+	if _is_multiplayer() or get_game_mode_name() == "silent-link":
+		if is_instance_valid(hud):
+			var successful_links_only = hud.find_child("SuccessfulLinesToggle", true, false)
+			if successful_links_only and "button_pressed" in successful_links_only:
+				successful_links_only.button_pressed = true
+			var focused_lines_off = hud.find_child("FocusedLinkLinesToggle", true, false)
+			if focused_lines_off and "button_pressed" in focused_lines_off:
+				focused_lines_off.button_pressed = false
+	else:
+		if is_instance_valid(hud):
+			var successful_links_only = hud.find_child("SuccessfulLinesToggle", true, false)
+			if successful_links_only and "button_pressed" in successful_links_only:
+				successful_links_only.button_pressed = false
+			var focused_lines_off = hud.find_child("FocusedLinkLinesToggle", true, false)
+			if focused_lines_off and "button_pressed" in focused_lines_off:
+				focused_lines_off.button_pressed = true
+
+
+func get_game_mode_name() -> String:
+	return "sandbox"
+
+
+func _init_terrain() -> void:
+	# Multiplayer: both clients must render identical terrain, so the seed comes
+	# from the shared match record (window.MULTIPLAYER_MATCH.seed) and overrides
+	# any restored/random seed. Sandbox/tutorial keep a restored seed (set by the
+	# persister before this runs) or fall back to a fresh random one.
+	var shared_seed := _shared_terrain_seed()
+	if shared_seed >= 0:
+		_terrain_seed = shared_seed
+	elif _terrain_seed == 0:
+		_terrain_seed = randi()
+	_regenerate_terrain()
+
+
+# Shared terrain seed for the networked modes so both clients render identical
+# terrain: from window.MULTIPLAYER_MATCH.seed in a match, or window.COLLAB_ROOM
+# .seed in a co-op room. Returns -1 for singleplayer sandbox/tutorial/desktop,
+# where a restored or fresh random seed is used instead. The Astro bootstrap on
+# /multiplayer/play and /coop/play sets the relevant global before startGame(),
+# so the value is in place by the time _ready() runs here.
+func _shared_terrain_seed() -> int:
+	if not OS.has_feature("web"):
+		return -1
+	var mode: Variant = JavaScriptBridge.eval("window.GAME_MODE")
+	if not (mode is String):
+		return -1
+	var expr := ""
+	if (mode as String) == "multiplayer":
+		expr = "window.MULTIPLAYER_MATCH ? window.MULTIPLAYER_MATCH.seed : null"
+	elif (mode as String) == "coop":
+		expr = "window.COLLAB_ROOM ? window.COLLAB_ROOM.seed : null"
+	else:
+		return -1
+	# JS numbers arrive as a Variant float/int; a typeof() check is more robust
+	# than `is float` against the null returned before the global is set.
+	var v: Variant = JavaScriptBridge.eval(expr)
+	var t := typeof(v)
+	if t == TYPE_FLOAT or t == TYPE_INT:
+		return int(v)
+	push_warning("[Sandbox] networked mode but no shared seed yet")
+	return -1
+
+
+func _regenerate_terrain() -> void:
+	height_grid = _generate_terrain(grid_w, grid_h, _terrain_seed)
+	set_terrain_data(height_grid)
+
+	_update_terrain_transform()
+
+	var tex := _create_height_texture(height_grid, grid_w, grid_h)
+	contour_rect.material.set_shader_parameter("height_map", tex)
+
+	call_deferred("_label_tactical_points", height_grid, grid_w, grid_h)
+
+
+func get_terrain_seed() -> int:
+	return _terrain_seed
+
+
+func set_terrain_seed(value: int) -> void:
+	_terrain_seed = value
+	_regenerate_terrain()
+
+
+func open_popup() -> void:
+	if _sandbox_popup_open:
+		return
+	_sandbox_popup_open = true
+
+	var popup := SANDBOX_INTRO_POPUP.instantiate()
+	popup.title_string = "Sandbox Mode"
+	popup.body_string = (
+		"Welcome to Sandbox Mode.\n\n"
+		+ "Sandbox Mode is a free-play environment where you can experiment "
+		+ "with electromagnetic warfare systems.\n\n"
+		+ "Place transceivers, jammers, and sensors anywhere on the map and "
+		+ "adjust their settings to see how they interact.\n\n"
+		+ "Game Units:\n"
+		+ "[i]• Transceivers - Send/receive signals\n"
+		+ "• Jammers - Disrupt signals\n"
+		+ "• Sensors - Detect signals\n\n[/i]"
+		+ "Goal: Experiment and learn how different settings affect "
+		+ "communication, interference, and detection."
+	)
+	popup.button_string = "Continue"
+
+	var cl := CanvasLayer.new()
+	cl.layer = 100
+	add_child(cl)
+	cl.add_child(popup)
+
+	if popup.has_signal("continued"):
+		popup.continued.connect(_on_sandbox_popup_closed)
+
+
+func _on_sandbox_popup_closed() -> void:
+	_sandbox_popup_open = false
 
 
 # ── Terrain generation ────────────────────────────────────────────────────────
 
 
-func _generate_terrain(w: int, h: int) -> Array:
+func _generate_terrain(w: int, h: int, seed: int) -> Array:
 	var noise := FastNoiseLite.new()
-	noise.seed = randi()
+	noise.seed = seed
 	noise.frequency = 0.025
 	noise.fractal_octaves = 3
 
@@ -89,6 +215,8 @@ func _generate_terrain(w: int, h: int) -> Array:
 
 
 func _label_tactical_points(grid: Array, w: int, h: int) -> void:
+	_clear_labels()
+
 	# Step 1 – collect raw candidates
 	var peak_candidates: Array[Dictionary] = []
 	var valley_candidates: Array[Dictionary] = []
@@ -169,9 +297,14 @@ func _label_tactical_points(grid: Array, w: int, h: int) -> void:
 	var kept := _deconflict(label_descs)
 
 	# Step 5 – spawn
-	await get_tree().process_frame
 	for desc in kept:
 		_spawn_label(desc)
+
+
+func _clear_labels() -> void:
+	for child in get_children():
+		if child is Label:
+			child.queue_free()
 
 
 # ── Non-maximum suppression ───────────────────────────────────────────────────
@@ -262,7 +395,16 @@ func update_shader() -> void:
 	# manual offset/aspect compensation here is no longer needed — and was the
 	# source of zoom-drift between units and terrain.
 	super.update_shader()
+	_update_terrain_transform()
 	_reposition_labels()
+
+
+func _update_terrain_transform() -> void:
+	if grid_w == 0 or grid_h == 0:
+		return
+	map_origin = world_uv_to_terrain_px(Vector2.ZERO)
+	var far_corner: Vector2 = world_uv_to_terrain_px(Vector2.ONE)
+	map_scale = (far_corner - map_origin) / Vector2(float(grid_w), float(grid_h))
 
 
 func _reposition_labels() -> void:
@@ -290,23 +432,51 @@ func _create_height_texture(grid: Array, w: int, h: int) -> ImageTexture:
 
 
 func toggle_shader(enabled: bool) -> void:
+	if contour_rect == null or not is_instance_valid(contour_rect):
+		push_warning("toggle_shader skipped: contour_rect is missing.")
+		return
+
+	if contour_rect.material == null:
+		push_warning("toggle_shader skipped: contour_rect has no material.")
+		return
+
+	if not contour_rect.material is ShaderMaterial:
+		push_warning("toggle_shader skipped: contour_rect material is not a ShaderMaterial.")
+		return
+
+	var shader_material := contour_rect.material as ShaderMaterial
+
 	if not enabled:
-		contour_rect.material.set_shader_parameter("gray_mode", true)
-		contour_rect.material.set_shader_parameter("gray_mode_color", Color(0.5, 0.5, 0.5, 1.0))
+		shader_material.set_shader_parameter("gray_mode", true)
+		shader_material.set_shader_parameter("gray_mode_color", Color(0.5, 0.5, 0.5, 1.0))
 	else:
-		contour_rect.material.set_shader_parameter("gray_mode", false)
-		contour_rect.material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))
-		contour_rect.material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0))
-		contour_rect.material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0))
-		contour_rect.material.set_shader_parameter("water_color", Color(0.10, 0.30, 0.85, 1.0))
+		shader_material.set_shader_parameter("gray_mode", false)
+		shader_material.set_shader_parameter("color_low", Color(0.10, 0.60, 0.20, 1.0))
+		shader_material.set_shader_parameter("color_mid", Color(0.76, 0.70, 0.50, 1.0))
+		shader_material.set_shader_parameter("color_high", Color(1.00, 1.00, 1.00, 1.0))
+		shader_material.set_shader_parameter("water_color", Color(0.10, 0.30, 0.85, 1.0))
 
 	for child in get_children():
-		if child is Label:
-			child.visible = enabled
+		if child.has_method("set_shader_enabled"):
+			child.set_shader_enabled(enabled)
 
 
 func toggle_grid(enabled: bool) -> void:
-	contour_rect.material.set_shader_parameter("line_thickness", 1.0 if enabled else 0.0)
+	if contour_rect == null or not is_instance_valid(contour_rect):
+		push_warning("toggle_grid skipped: contour_rect is missing.")
+		return
+
+	if contour_rect.material == null:
+		push_warning("toggle_grid skipped: contour_rect has no material.")
+		return
+
+	if not contour_rect.material is ShaderMaterial:
+		push_warning("toggle_grid skipped: contour_rect material is not a ShaderMaterial.")
+		return
+
+	var shader_material := contour_rect.material as ShaderMaterial
+	shader_material.set_shader_parameter("line_thickness", 1.0 if enabled else 0.0)
+
 	for child in get_children():
 		if child is Label:
 			child.visible = enabled
@@ -318,13 +488,9 @@ func world_pos_to_grid(world_pos: Vector2) -> Vector2:
 	"""Convert a world pixel position to grid indices (x, y), clamped to the grid.
 	Returns a Vector2 with integer components.
 	"""
-	if grid_w == 0 or grid_h == 0 or map_scale.x == 0:
-		return Vector2(0, 0)
-	var local = world_pos - map_origin
-	var xi: int = int(local.x / map_scale.x)
-	var yi: int = int(local.y / map_scale.y)
-	xi = clamp(xi, 0, grid_w - 1)
-	yi = clamp(yi, 0, grid_h - 1)
+	var uv: Vector2 = screen_to_world_uv(world_pos)  # BaseLevel's live transform
+	var xi: int = clamp(int(uv.x * float(grid_w)), 0, grid_w - 1)
+	var yi: int = clamp(int(uv.y * float(grid_h)), 0, grid_h - 1)
 	return Vector2(xi, yi)
 
 
@@ -332,7 +498,7 @@ func get_ground_height_at_pos(world_pos: Vector2) -> float:
 	"""Return terrain elevation (meters) at the given world pixel position.
 	If terrain not initialized, returns 0.0.
 	"""
-	if grid_w == 0 or grid_h == 0 or map_scale.x == 0:
+	if grid_w == 0 or grid_h == 0:
 		return 0.0
 	var idx = world_pos_to_grid(world_pos)
 	return float(height_grid[int(idx.x)][int(idx.y)])
@@ -347,12 +513,11 @@ func get_unit_total_height(unit: Node) -> float:
 
 	var ground := 0.0
 
-	if unit.has_meta("world_uv"):
-		var uv: Vector2 = unit.get_meta("world_uv")
+	var uv = unit.get_value(&"world_uv", null) if unit.has_method("get_value") else null
 
-		var gx: float = clamp(int(uv.x * float(grid_w)), 0, grid_w - 1)
-		var gy: float = clamp(int(uv.y * float(grid_h)), 0, grid_h - 1)
-
+	if uv != null:
+		var gx: int = clamp(int(uv.x * float(grid_w)), 0, grid_w - 1)
+		var gy: int = clamp(int(uv.y * float(grid_h)), 0, grid_h - 1)
 		ground = float(height_grid[gx][gy])
 	else:
 		var terrain_px: Vector2 = unit.global_position
@@ -362,20 +527,8 @@ func get_unit_total_height(unit: Node) -> float:
 	return ground + antenna_h
 
 
-func set_terrain_data(grid: Array, origin: Vector2, map_size: Vector2) -> void:
+func set_terrain_data(grid: Array) -> void:
 	height_grid = grid
 	grid_w = grid.size()
 	grid_h = grid.size() if grid.size() > 0 else 0
 	map_size_km = float(grid_w * CELL_SIZE) / 100.0
-
-	#TODO: Fix later
-	map_size = Vector2(1080, 1080)
-
-	var current_container_size: Vector2 = map_container.size
-
-	var map_square_dimension: float = current_container_size.y
-
-	map_scale.x = map_square_dimension / float(grid_w)
-	map_scale.y = map_square_dimension / float(grid_h)
-
-	map_origin = origin + Vector2(570.0, 0.0)

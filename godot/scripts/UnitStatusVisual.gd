@@ -17,15 +17,33 @@ var status: int = Status.NONE
 var pulse_time: float = 0.0
 var status_font: Font
 
+var _detection_visual: DetectionVisual = null
+
 
 func _ready() -> void:
 	z_index = 250
 	top_level = false
 	set_process(true)
-	visible = false
+	visible = true
 
 	# Use Godot's fallback font so text can draw without needing a custom font file.
 	status_font = ThemeDB.fallback_font
+
+	if GameEvents.has_signal("simulation_complete"):
+		GameEvents.simulation_complete.connect(_on_simulation_complete)
+
+	if GameEvents.has_signal("detection_hints_toggled"):
+		GameEvents.detection_hints_toggled.connect(_on_detection_hints_toggled)
+
+
+func _on_detection_hints_toggled(enabled: bool) -> void:
+	if is_instance_valid(_detection_visual):
+		_detection_visual.visible = enabled
+
+
+func _exit_tree() -> void:
+	if GameEvents.simulation_complete.is_connected(_on_simulation_complete):
+		GameEvents.simulation_complete.disconnect(_on_simulation_complete)
 
 
 func set_status(new_status: int) -> void:
@@ -33,7 +51,6 @@ func set_status(new_status: int) -> void:
 		return
 
 	status = new_status
-	visible = status != Status.NONE
 	queue_redraw()
 
 
@@ -93,3 +110,59 @@ func _draw_status_label(text: String, color: Color) -> void:
 	var text_pos := Vector2(-text_size.x * 0.5, LABEL_Y_OFFSET)
 
 	draw_string(status_font, text_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_FONT_SIZE, color)
+
+
+func _on_simulation_complete(_link_results: Array, detect_results: Array) -> void:
+	var level = get_tree().current_scene
+	var hints_allowed: bool = (
+		level.get("detection_hints_enabled") if "detection_hints_enabled" in level else true
+	)
+
+	var parent_unit := get_parent() as Node2D
+	if not is_instance_valid(parent_unit):
+		return
+
+	if not hints_allowed:
+		if is_instance_valid(_detection_visual):
+			_detection_visual.queue_free()
+			_detection_visual = null
+		return
+
+	var hinted_this_sim: Array[int] = []
+
+	for result in detect_results:
+		if not result is Dictionary:
+			continue
+
+		var sensor := result.get("sensor") as Node2D
+		var target := result.get("target") as Node2D
+
+		if (
+			sensor == parent_unit
+			and is_instance_valid(target)
+			and sensor.is_in_group("player_placed")
+		):
+			var detected: bool = result.get("detected", false)
+			var fully_detected: bool = result.get("fully_detected", false)
+
+			if detected and not fully_detected:
+				var tx_id := target.get_instance_id()
+				hinted_this_sim.append(tx_id)
+
+				if not is_instance_valid(_detection_visual):
+					_detection_visual = DetectionVisual.new()
+					add_child(_detection_visual)
+
+					_detection_visual.top_level = true
+					_detection_visual.global_position = Vector2.ZERO
+
+				_detection_visual.set_hint(
+					parent_unit.global_position, target.global_position, tx_id
+				)
+
+	if is_instance_valid(_detection_visual):
+		_detection_visual.retain_only(hinted_this_sim)
+
+		if hinted_this_sim.is_empty():
+			_detection_visual.queue_free()
+			_detection_visual = null

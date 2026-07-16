@@ -1,0 +1,127 @@
+---
+import Base from "@/layouts/Base.astro";
+import { Content } from "../../public/how_it_works.md";
+---
+
+<Base title="How It Works | GEMS">
+    <div class="fixed inset-0 -z-10 bg-[#0a0a0a]"></div>
+
+    <!-- The scroll container is full-width so its scrollbar sits at the far
+         right of the viewport; the readable column is centered inside it. -->
+    <main class="doc-scroll h-[calc(100vh-3rem)] overflow-y-auto text-white">
+        <div class="how-it-works mx-auto max-w-3xl px-6 pt-12 pb-16">
+            <Content />
+        </div>
+    </main>
+</Base>
+
+<style is:global>
+    /* Dark, themed scrollbar for the scroll container (replaces the light
+       native one). Firefox uses scrollbar-width/color; Chromium/WebKit use
+       the ::-webkit-scrollbar pseudo-elements. Neutral thumb that warms to the
+       site's emerald accent on hover; transparent track so it blends in. */
+    .doc-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+    }
+    .doc-scroll::-webkit-scrollbar {
+        width: 10px;
+    }
+    .doc-scroll::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .doc-scroll::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.18);
+        border-radius: 9999px;
+        /* Inset the thumb with a transparent border so it reads as a slim pill. */
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+    .doc-scroll::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(52, 211, 153, 0.6);
+    }
+
+    .how-it-works h1 {
+        font-size: 1.875rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: #fff;
+    }
+
+    .how-it-works > p:first-of-type {
+        margin-bottom: 2rem;
+        color: #a3a3a3;
+    }
+
+    .how-it-works h2 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin-top: 2.5rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        color: #6ee7b7;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .how-it-works h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-top: 1.75rem;
+        margin-bottom: 0.5rem;
+        color: #34d399;
+    }
+
+    .how-it-works p {
+        margin-bottom: 1rem;
+        line-height: 1.7;
+        color: #d4d4d4;
+    }
+
+    .how-it-works ul {
+        margin: 0 0 1.25rem 1.25rem;
+        list-style: disc;
+        color: #d4d4d4;
+    }
+
+    .how-it-works li {
+        margin-bottom: 0.4rem;
+        line-height: 1.6;
+    }
+
+    .how-it-works li > ul {
+        margin-top: 0.4rem;
+    }
+
+    .how-it-works strong {
+        color: #fff;
+        font-weight: 600;
+    }
+
+    .how-it-works code {
+        background: rgba(255, 255, 255, 0.08);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        font-size: 0.85em;
+        color: #6ee7b7;
+    }
+
+    .how-it-works pre {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        overflow-x: auto;
+        margin-bottom: 1.5rem;
+    }
+
+    .how-it-works pre code {
+        background: none;
+        padding: 0;
+        color: #d4d4d4;
+    }
+
+    .how-it-works hr {
+        border-color: rgba(255, 255, 255, 0.1);
+        margin: 2rem 0;
+    }
+</style>

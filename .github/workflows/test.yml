@@ -141,12 +141,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create auth schema stub
+      - name: Create auth schema + Supabase role stubs
         run: |
+          # Stub the roles `supabase db diff` emits GRANTs against. They don't
+          # need any privileges here — they just need to exist so the grant
+          # statements in auto-generated migrations parse cleanly.
           PGPASSWORD=postgres psql -h localhost -U postgres -d test -c "
             CREATE SCHEMA IF NOT EXISTS auth;
-            CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
+            CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), email text);
             CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS \$\$ SELECT gen_random_uuid() \$\$ LANGUAGE sql;
+            DO \$\$ BEGIN
+              CREATE ROLE anon NOLOGIN;
+            EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;
+            DO \$\$ BEGIN
+              CREATE ROLE authenticated NOLOGIN;
+            EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;
+            DO \$\$ BEGIN
+              CREATE ROLE service_role NOLOGIN;
+            EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;
+            DO \$\$ BEGIN
+              CREATE ROLE supabase_auth_admin NOLOGIN;
+            EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;
           "
 
       - name: Apply migrations

@@ -6,8 +6,13 @@ import { setProgress, syncStatus } from "@/lib/progress";
 import { supabase } from "@/lib/supabase";
 import { BASE_URL } from "@/utils";
 
-function LoginForm() {
-  const [mode, setMode] = useState<"login" | "signup">("login");
+function LoginForm({
+  mode,
+  setMode,
+}: {
+  mode: "login" | "signup";
+  setMode: (m: "login" | "signup") => void;
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -17,6 +22,8 @@ function LoginForm() {
   );
   const [resending, setResending] = useState(false);
   const [resendInfo, setResendInfo] = useState("");
+  const [forgot, setForgot] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const emailRedirectTo = `${window.location.origin}${BASE_URL}/`;
 
@@ -38,11 +45,37 @@ function LoginForm() {
       });
       if (authError) {
         setError(authError.message);
+      } else if (data.user && data.user.identities?.length === 0) {
+        // With email-confirmation on, Supabase returns an obfuscated user
+        // (no identities) instead of an error when the address is already
+        // registered, to avoid leaking which emails exist. Surface it as a
+        // clear "already exists" rather than a bogus "check your email".
+        setError("An account with this email already exists. Sign in instead.");
       } else if (data.user && !data.session) {
         setPendingConfirmation(email);
       }
     }
     setSubmitting(false);
+  };
+
+  const handleReset = async (e: Event) => {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      email,
+      { redirectTo: `${window.location.origin}${BASE_URL}/reset-password` },
+    );
+    if (resetError) setError(resetError.message);
+    else setResetSent(true);
+    setSubmitting(false);
+  };
+
+  const backToLogin = () => {
+    setForgot(false);
+    setResetSent(false);
+    setError("");
+    setMode("login");
   };
 
   const handleResend = async () => {
@@ -96,6 +129,60 @@ function LoginForm() {
     );
   }
 
+  if (forgot) {
+    if (resetSent) {
+      return (
+        <div class="flex flex-col gap-4 w-full text-center">
+          <div class="mx-auto w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xl">
+            @
+          </div>
+          <p class="text-white font-medium">Check your email</p>
+          <p class="text-sm text-neutral-400">
+            If an account exists for <span class="text-white">{email}</span>, we
+            sent a link to reset your password.
+          </p>
+          <button
+            type="button"
+            onClick={backToLogin}
+            class="text-sm text-neutral-400 hover:text-white transition-colors"
+          >
+            Back to sign in
+          </button>
+        </div>
+      );
+    }
+    return (
+      <form onSubmit={handleReset} class="flex flex-col gap-4 w-full">
+        <p class="text-sm text-neutral-400">
+          Enter your email and we'll send you a link to reset your password.
+        </p>
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
+          class="px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
+          required
+        />
+        {error && <p class="text-red-400 text-sm">{error}</p>}
+        <button
+          type="submit"
+          disabled={submitting}
+          class="px-4 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-black font-semibold rounded-lg transition-colors"
+        >
+          {submitting ? "..." : "Send reset link"}
+        </button>
+        <button
+          type="button"
+          onClick={backToLogin}
+          class="text-sm text-neutral-400 hover:text-white transition-colors"
+        >
+          Back to sign in
+        </button>
+      </form>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} class="flex flex-col gap-4 w-full">
       <input
@@ -132,6 +219,18 @@ function LoginForm() {
           ? "Don't have an account? Sign up"
           : "Already have an account? Sign in"}
       </button>
+      {mode === "login" && (
+        <button
+          type="button"
+          onClick={() => {
+            setForgot(true);
+            setError("");
+          }}
+          class="text-sm text-neutral-400 hover:text-white transition-colors"
+        >
+          Forgot password?
+        </button>
+      )}
     </form>
   );
 }
@@ -232,10 +331,18 @@ function getCachedName(): string {
 export default function AccountModal() {
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
+  const [mode, setMode] = useState<"login" | "signup">("login");
   useEffect(() => {
     setReady(true);
     const el = document.getElementById("account-placeholder");
     if (el) el.style.display = "none";
+  }, []);
+  // Other components (e.g. the in-game saves picker when the user isn't
+  // signed in) can prompt sign-in by dispatching `open-auth-modal`.
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("open-auth-modal", onOpen);
+    return () => window.removeEventListener("open-auth-modal", onOpen);
   }, []);
   useEffect(() => {
     if (!open) return;
@@ -287,14 +394,14 @@ export default function AccountModal() {
                 &times;
               </button>
               <h2 class="text-xl font-bold mb-6">
-                {user ? "Account" : "Sign In"}
+                {user ? "Account" : mode === "signup" ? "Sign Up" : "Sign In"}
               </h2>
               {authLoading.value ? (
                 <div class="text-neutral-500">Loading...</div>
               ) : user ? (
                 <ProfileView user={user} />
               ) : (
-                <LoginForm />
+                <LoginForm mode={mode} setMode={setMode} />
               )}
               <button
                 type="button"
