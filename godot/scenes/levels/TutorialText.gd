@@ -498,8 +498,11 @@ static func step_data(step: int) -> Dictionary:
 					[
 						"Heightmap Shader changes how the terrain elevation is rendered, ",
 						"which can make hills and low areas easier to see.\n\n",
-						"GRID shows or hides the map grid overlay, which helps with ",
-						"spacing and placement. You do not need to toggle these now."
+						"Map Contour Lines shows or hides the terrain elevation contour ",
+						"lines and height labels.\n\n",
+						"Map Grid overlays an MGRS-style coordinate grid on the map. ",
+						"Finer grid squares fade in as you zoom in. ",
+						"You do not need to toggle these now."
 					]
 				),
 				TutorialStep.DISPLAY_SETTINGS_COMPLETE
@@ -663,8 +666,12 @@ static func display_toggle_node_names(setting_key: String) -> Array[String]:
 			]
 		"heightmap_shader":
 			return ["HeightmapShaderToggle", "ShaderToggle", "Toggle"]
-		"grid":
-			return ["GridToggle", "GRIDToggle"]
+		"contour_lines":
+			return ["ContourLinesToggle", "GridToggle"]
+		"map_grid":
+			return ["MapGridToggle"]
+		"map_grid_labels":
+			return ["GridLabelsToggle", "MapGridLabelsToggle"]
 		"spectrum":
 			return ["SpectrumToggle", "SpectrumAnalyzerToggle"]
 		_:

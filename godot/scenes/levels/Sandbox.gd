@@ -426,7 +426,7 @@ func _create_height_texture(grid: Array, w: int, h: int) -> ImageTexture:
 	return ImageTexture.create_from_image(img)
 
 
-# ── Shader / grid toggles ─────────────────────────────────────────────────────
+# ── Shader / contour toggles ──────────────────────────────────────────────────
 
 
 func toggle_shader(enabled: bool) -> void:
@@ -459,17 +459,17 @@ func toggle_shader(enabled: bool) -> void:
 			child.set_shader_enabled(enabled)
 
 
-func toggle_grid(enabled: bool) -> void:
+func toggle_contour_lines(enabled: bool) -> void:
 	if contour_rect == null or not is_instance_valid(contour_rect):
-		push_warning("toggle_grid skipped: contour_rect is missing.")
+		push_warning("toggle_contour_lines skipped: contour_rect is missing.")
 		return
 
 	if contour_rect.material == null:
-		push_warning("toggle_grid skipped: contour_rect has no material.")
+		push_warning("toggle_contour_lines skipped: contour_rect has no material.")
 		return
 
 	if not contour_rect.material is ShaderMaterial:
-		push_warning("toggle_grid skipped: contour_rect material is not a ShaderMaterial.")
+		push_warning("toggle_contour_lines skipped: contour_rect material is not a ShaderMaterial.")
 		return
 
 	var shader_material := contour_rect.material as ShaderMaterial

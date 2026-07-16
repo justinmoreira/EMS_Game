@@ -111,11 +111,22 @@ layout_mode = 2
 button_pressed = true
 text = "Heightmap Shader"
 
-[node name="GridToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer/LegacyToggles" unique_id=2147092773]
+[node name="ContourLinesToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer/LegacyToggles" unique_id=2147092773]
 unique_name_in_owner = true
 layout_mode = 2
 button_pressed = true
-text = "GRID"
+text = "Map Contour Lines"
+
+[node name="MapGridToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer/LegacyToggles" unique_id=1837465920]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Map Grid"
+
+[node name="GridLabelsToggle" type="CheckButton" parent="SettingsPopup/SettingsContainer/LegacyToggles" unique_id=1837465921]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Map Grid Labels"
 
 [node name="GenerateTerrain" type="Button" parent="SettingsPopup/SettingsContainer" unique_id=2068174089]
 unique_name_in_owner = true

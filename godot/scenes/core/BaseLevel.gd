@@ -6,9 +6,12 @@ const TOGGLE_UNIT_ATTRIBUTES_KEY := KEY_H
 const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd")
 const ERROR_POPUP := preload("res://scenes/ui/HintPopup.tscn")
 const SUGGESTIONS_PANEL_SCENE := preload("res://scenes/ui/SuggestionsDialog.tscn")
+const MAP_GRID_OVERLAY_SCRIPT := preload("res://scenes/core/components/MapGridOverlay.gd")
 
 const MAP_SIZE = Vector2(1080, 1080)
 const MAP_ORIGIN = Vector2(570, 0)
+# Nominal tactical size of the full map (world_uv 0..1 spans this).
+const MAP_SIZE_KM := 15.0
 
 # definition.id → unit scene to instantiate when reconstructing the level
 # from a snapshot. Lookup table for serialize/deserialize_units below.
@@ -47,6 +50,13 @@ var sidebar_width: float = 0.0
 var _last_highlighted: Unit = null
 var unit_attributes_visible: bool = false
 var terrain_heatmap_enabled: bool = false
+
+# MGRS-style coordinate grid overlay ("Map Grid" in Display Settings). The
+# enabled flags are tracked separately because the HUD restores saved settings
+# before this level's _ready has built the overlay node.
+var map_grid_enabled: bool = true
+var map_grid_labels_enabled: bool = false
+var map_grid_overlay: MAP_GRID_OVERLAY_SCRIPT = null
 
 @onready var background := $BackgroundTexture
 
@@ -103,6 +113,8 @@ func _ready():
 
 				# Inject it into the Unit's physical_state dictionary
 				child.set_value(&"world_uv", Vector2(u, v))
+
+	_setup_map_grid_overlay()
 
 	_on_window_resized()
 
@@ -690,12 +702,39 @@ func update_shader() -> void:
 		background.material.set_shader_parameter("zoom", zoom)
 		background.material.set_shader_parameter("offset", offset)
 		background.material.set_shader_parameter("aspect_ratio", aspect)
+	if map_grid_overlay:
+		map_grid_overlay.sync()
 	_reposition_units()
 
 
 func toggle_shader(enabled: bool) -> void:
 	if background and background.material:
 		background.material.set_shader_parameter("sensitivity", 1.0 if enabled else 0.0)
+
+
+func _setup_map_grid_overlay() -> void:
+	map_grid_overlay = MAP_GRID_OVERLAY_SCRIPT.new()
+	map_grid_overlay.name = "MapGridOverlay"
+	add_child(map_grid_overlay)
+	# Right above the terrain, below units and their labels.
+	if background:
+		move_child(map_grid_overlay, background.get_index() + 1)
+	map_grid_overlay.setup(self)
+	map_grid_overlay.set_labels_enabled(map_grid_labels_enabled)
+	map_grid_overlay.visible = map_grid_enabled
+
+
+func toggle_map_grid(enabled: bool) -> void:
+	map_grid_enabled = enabled
+	if map_grid_overlay:
+		map_grid_overlay.visible = enabled
+		map_grid_overlay.sync()
+
+
+func toggle_map_grid_labels(enabled: bool) -> void:
+	map_grid_labels_enabled = enabled
+	if map_grid_overlay:
+		map_grid_overlay.set_labels_enabled(enabled)
 
 
 func _reposition_units() -> void:

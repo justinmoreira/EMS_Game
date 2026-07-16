@@ -12,7 +12,9 @@ var settings = {
 	"heatmap": false,
 	"spectrum": false,
 	"heightmap_shader": true,
-	"grid": true
+	"contour_lines": true,
+	"map_grid": true,
+	"map_grid_labels": false
 }
 
 var _active_spectrum: SpectrumAnalyzer = null
@@ -27,7 +29,9 @@ const SPECTRUM_GAP := 60.0
 func _ready():
 	# Old toggles
 	%Toggle.toggled.connect(_on_shader_toggled)
-	%GridToggle.toggled.connect(_on_grid_toggled)
+	%ContourLinesToggle.toggled.connect(_on_contour_lines_toggled)
+	%MapGridToggle.toggled.connect(_on_map_grid_toggled)
+	%GridLabelsToggle.toggled.connect(_on_map_grid_labels_toggled)
 
 	# Connect settings button
 	%SettingsButton.pressed.connect(_on_settings_button_pressed)
@@ -116,12 +120,34 @@ func _on_shader_toggled(is_pressed: bool):
 		level.toggle_shader(is_pressed)
 
 
-func _on_grid_toggled(is_pressed: bool):
-	settings["grid"] = is_pressed
+func _on_contour_lines_toggled(is_pressed: bool):
+	settings["contour_lines"] = is_pressed
 	_save_settings()
 	var level = get_tree().current_scene
-	if level.has_method("toggle_grid"):
-		level.toggle_grid(is_pressed)
+	if level and level.has_method("toggle_contour_lines"):
+		level.toggle_contour_lines(is_pressed)
+
+
+func _on_map_grid_toggled(is_pressed: bool):
+	settings["map_grid"] = is_pressed
+	_save_settings()
+	var level = get_tree().current_scene
+	if level and level.has_method("toggle_map_grid"):
+		level.toggle_map_grid(is_pressed)
+
+	# Gray out the labels toggle when the grid is off entirely (same pattern
+	# as link lines / focused link lines).
+	if not is_pressed and settings["map_grid_labels"]:
+		%GridLabelsToggle.button_pressed = false
+	%GridLabelsToggle.disabled = not is_pressed
+
+
+func _on_map_grid_labels_toggled(is_pressed: bool):
+	settings["map_grid_labels"] = is_pressed
+	_save_settings()
+	var level = get_tree().current_scene
+	if level and level.has_method("toggle_map_grid_labels"):
+		level.toggle_map_grid_labels(is_pressed)
 
 
 func _on_link_lines_toggled(is_pressed: bool):
@@ -250,7 +276,10 @@ func _load_settings() -> void:
 	%HeatmapToggle.button_pressed = settings["heatmap"]
 	%SpectrumToggle.button_pressed = settings["spectrum"]
 	%Toggle.button_pressed = settings["heightmap_shader"]
-	%GridToggle.button_pressed = settings["grid"]
+	%ContourLinesToggle.button_pressed = settings["contour_lines"]
+	%MapGridToggle.button_pressed = settings["map_grid"]
+	%GridLabelsToggle.button_pressed = settings["map_grid_labels"]
+	%GridLabelsToggle.disabled = not settings["map_grid"]
 
 	if LinkRenderer:
 		LinkRenderer.links_visible = settings["link_lines"]
