@@ -81,6 +81,14 @@ signal detection_hints_toggled(enabled: bool)
 @warning_ignore("unused_signal")
 signal links_clear_requested
 
+# On-map unit dragging: started fires when a press crosses the click
+# threshold, ended on release, cancel, or focus loss. EdgeFogOverlay wires
+# these to its keepout hatching.
+@warning_ignore("unused_signal")
+signal unit_drag_started(unit: Node)
+@warning_ignore("unused_signal")
+signal unit_drag_ended(unit: Node)
+
 # Sidebar publishes its width on resize so BaseLevel can update layout
 # without a global find_child reach.
 @warning_ignore("unused_signal")

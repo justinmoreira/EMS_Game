@@ -38,6 +38,41 @@ uniform float water_shallow_light : hint_range(0.0, 1.0) = 0.25;
 uniform float water_depth_range = 35.0;
 uniform float terrace_shading : hint_range(0.0, 0.5) = 0.1;
 
+// ── Fake terrain past the border ────────────────────
+// Beyond world_uv 0..1, value-noise fbm continues the landscape under the
+// EdgeFog overlay
+uniform float fake_terrain_scale = 3.75; // noise cycles per map width
+uniform float fake_height_min = 0.0;
+uniform float fake_height_max = 500.0;
+uniform float fake_blend_dist = 0.06; // real→fake crossfade width past the border
+
+// Desaturation, contour-line fade, and blur all ride one ramp past the border
+uniform float fake_desat_start = -0.05;
+uniform float fake_desat_end = 0.26;
+uniform float fake_desat_max : hint_range(0.0, 1.0) = 0.7;
+uniform float fake_line_fade_max : hint_range(0.0, 1.0) = 0.85;
+// false = hard-cut contour lines at the border instead of fading them out
+uniform bool fake_contour_lines = false;
+// Blur tap radius at full ramp (uv) and how much hillshade relief flattens
+uniform float fake_blur_radius = 0.1;
+uniform float fake_relief_fade : hint_range(0.0, 1.0) = 0.8;
+
+#include "res://shaders/ValueNoise.gdshaderinc"
+
+float fake_height(vec2 uv) {
+	// Renormalize fbm (amplitudes sum to 0.875) to ~0..1 before remapping
+	float n = fbm(uv * fake_terrain_scale + vec2(37.0, 61.0)) / 0.875;
+	return mix(fake_height_min, fake_height_max, clamp(n, 0.0, 1.0));
+}
+
+// Composite height field
+float terrain_height(vec2 raw_uv) {
+	float real_h = texture(height_map, clamp(raw_uv, vec2(0.0), vec2(1.0))).r;
+	vec2 over = max(-raw_uv, raw_uv - vec2(1.0));
+	float d = max(max(over.x, over.y), 0.0);
+	return mix(real_h, fake_height(raw_uv), smoothstep(0.0, fake_blend_dist, d));
+}
+
 vec3 land_color(float land_t) {
 	vec3 c = color_low.rgb;
 	c = mix(c, color_low.rgb * 1.3,
@@ -62,14 +97,24 @@ void fragment() {
 
     // Apply zoom and pan offset
     vec2 raw_map_uv = uv * zoom + vec2(0.5) + offset;
-    bool in_bounds = raw_map_uv.x >= 0.0 && raw_map_uv.x <= 1.0
-                  && raw_map_uv.y >= 0.0 && raw_map_uv.y <= 1.0;
 
-    // Clamp for the texture sample only; out-of-bounds is overwritten with the
-    // void color at the end so the clamped edge row never smears outward.
-    vec2 map_uv = clamp(raw_map_uv, vec2(0.0), vec2(1.0));
+    // Ramp progress past the border (blur, line fade, and desaturation)
+    vec2 over = max(-raw_map_uv, raw_map_uv - 1.0);
+    float edge_sd = max(over.x, over.y);
+    float edge_t = smoothstep(fake_desat_start, fake_desat_end, edge_sd);
 
-    float h = texture(height_map, map_uv).r;
+    // Blur of heightfield
+    float blur_r = edge_t * fake_blur_radius;
+    float diag_r = blur_r * 0.7071;
+    float h = (terrain_height(raw_map_uv)
+        + terrain_height(raw_map_uv + vec2(blur_r, 0.0))
+        + terrain_height(raw_map_uv - vec2(blur_r, 0.0))
+        + terrain_height(raw_map_uv + vec2(0.0, blur_r))
+        + terrain_height(raw_map_uv - vec2(0.0, blur_r))
+        + terrain_height(raw_map_uv + vec2(diag_r, diag_r))
+        + terrain_height(raw_map_uv - vec2(diag_r, diag_r))
+        + terrain_height(raw_map_uv + vec2(diag_r, -diag_r))
+        + terrain_height(raw_map_uv - vec2(diag_r, -diag_r))) / 9.0;
 
     // Contour-band coordinate, computed unconditionally so fwidth()
     // stays outside divergent control flow
@@ -95,11 +140,12 @@ void fragment() {
 
         // Hill Shading
         vec2 texel = 1.0 / vec2(textureSize(height_map, 0));
-        float h_l = texture(height_map, clamp(map_uv - vec2(texel.x, 0.0), vec2(0.0), vec2(1.0))).r;
-        float h_r = texture(height_map, clamp(map_uv + vec2(texel.x, 0.0), vec2(0.0), vec2(1.0))).r;
-        float h_t = texture(height_map, clamp(map_uv - vec2(0.0, texel.y), vec2(0.0), vec2(1.0))).r;
-        float h_b = texture(height_map, clamp(map_uv + vec2(0.0, texel.y), vec2(0.0), vec2(1.0))).r;
+        float h_l = terrain_height(raw_map_uv - vec2(texel.x, 0.0));
+        float h_r = terrain_height(raw_map_uv + vec2(texel.x, 0.0));
+        float h_t = terrain_height(raw_map_uv - vec2(0.0, texel.y));
+        float h_b = terrain_height(raw_map_uv + vec2(0.0, texel.y));
         vec2 grad = vec2(h_r - h_l, h_b - h_t) * 0.5;
+        grad *= 1.0 - edge_t * fake_relief_fade;
 
         vec3 normal = normalize(vec3(-grad * hillshade_slope_scale, 1.0));
         vec3 light = normalize(light_dir);
@@ -118,13 +164,16 @@ void fragment() {
     // CONTOUR LINES
     float f  = abs(fract(band - 0.5) - 0.5);
     float g  = smoothstep(band_df * line_thickness, 0.0, f);
+    g *= 1.0 - edge_t * fake_line_fade_max;
+    if (!fake_contour_lines) {
+        // Soft cut at the border so the last real row doesn't alias
+        g *= 1.0 - smoothstep(0.0, 0.004, edge_sd);
+    }
     vec3 final_color = mix(base_color, line_color.rgb, g);
 
-    // Void outside the map — matches the app background (#0a0a0a) instead of
-    // smearing the clamped edge pixels when panned/zoomed past the heightmap.
-    if (!in_bounds) {
-        final_color = vec3(0.039);
-    }
+    // Desaturate in step with the fog
+    float luma = dot(final_color, vec3(0.2126, 0.7152, 0.0722));
+    final_color = mix(final_color, vec3(luma), edge_t * fake_desat_max);
 
     COLOR = vec4(final_color, 1.0);
 }

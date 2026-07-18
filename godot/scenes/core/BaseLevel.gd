@@ -7,6 +7,7 @@ const ATTRIBUTE_LABEL_SCRIPT := preload("res://scenes/ui/UnitAttributesLabel.gd"
 const ERROR_POPUP := preload("res://scenes/ui/HintPopup.tscn")
 const SUGGESTIONS_PANEL_SCENE := preload("res://scenes/ui/SuggestionsDialog.tscn")
 const MAP_GRID_OVERLAY_SCRIPT := preload("res://scenes/core/components/MapGridOverlay.gd")
+const EDGE_FOG_OVERLAY_SCRIPT := preload("res://scenes/core/components/EdgeFogOverlay.gd")
 
 const MAP_SIZE = Vector2(1080, 1080)
 const MAP_ORIGIN = Vector2(570, 0)
@@ -57,6 +58,9 @@ var terrain_heatmap_enabled: bool = false
 var map_grid_enabled: bool = true
 var map_grid_labels_enabled: bool = false
 var map_grid_overlay: MAP_GRID_OVERLAY_SCRIPT = null
+
+# Fog veil past the map border — always on, independent of the grid toggle
+var edge_fog_overlay: EDGE_FOG_OVERLAY_SCRIPT = null
 
 @onready var background := $BackgroundTexture
 
@@ -115,6 +119,7 @@ func _ready():
 				child.set_value(&"world_uv", Vector2(u, v))
 
 	_setup_map_grid_overlay()
+	_setup_edge_fog_overlay()
 
 	_on_window_resized()
 
@@ -704,6 +709,8 @@ func update_shader() -> void:
 		background.material.set_shader_parameter("aspect_ratio", aspect)
 	if map_grid_overlay:
 		map_grid_overlay.sync()
+	if edge_fog_overlay:
+		edge_fog_overlay.sync()
 	_reposition_units()
 
 
@@ -722,6 +729,15 @@ func _setup_map_grid_overlay() -> void:
 	map_grid_overlay.setup(self)
 	map_grid_overlay.set_labels_enabled(map_grid_labels_enabled)
 	map_grid_overlay.visible = map_grid_enabled
+
+
+func _setup_edge_fog_overlay() -> void:
+	edge_fog_overlay = EDGE_FOG_OVERLAY_SCRIPT.new()
+	edge_fog_overlay.name = "EdgeFogOverlay"
+	add_child(edge_fog_overlay)
+	if map_grid_overlay:
+		move_child(edge_fog_overlay, map_grid_overlay.get_index() + 1)
+	edge_fog_overlay.setup(self)
 
 
 func toggle_map_grid(enabled: bool) -> void:

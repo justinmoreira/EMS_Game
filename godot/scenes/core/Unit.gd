@@ -356,6 +356,7 @@ func _input(event: InputEvent) -> void:
 			set_value(&"world_uv", bl.screen_to_world_uv(_drag_start_unit_pos))
 		_is_being_dragged = false
 		if _drag_links_cleared:
+			GameEvents.unit_drag_ended.emit(self)
 			GameEvents.simulation_requested.emit()
 		get_tree().root.set_input_as_handled()
 		return
@@ -369,6 +370,7 @@ func _input(event: InputEvent) -> void:
 		# Either way, end with this unit selected so its panel shows what you
 		# just clicked / placed / moved.
 		if _drag_links_cleared:
+			GameEvents.unit_drag_ended.emit(self)
 			GameEvents.simulation_requested.emit()
 			GameEvents.units_changed.emit()
 		GameEvents.select(self)
@@ -408,6 +410,7 @@ func _input(event: InputEvent) -> void:
 		# existing visuals stay intact.
 		if not _drag_links_cleared and _drag_distance >= CLICK_DRAG_THRESHOLD_PX:
 			GameEvents.links_clear_requested.emit()
+			GameEvents.unit_drag_started.emit(self)
 			_drag_links_cleared = true
 
 		get_tree().root.set_input_as_handled()
@@ -417,3 +420,5 @@ func _process(_delta: float) -> void:
 	# Defensive drag-end if we miss the release event (e.g., focus loss).
 	if _is_being_dragged and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_is_being_dragged = false
+		if _drag_links_cleared:
+			GameEvents.unit_drag_ended.emit(self)
