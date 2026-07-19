@@ -82,6 +82,11 @@ var _revealed_enemy_keys: Dictionary = {}
 # round (after submit), never live while you're still positioning it. Set just
 # before the post-turn-advance merge sim; the fog handler reveals only then.
 var _fog_reveal_pending: bool = false
+# Detection badges (the purple "Detected" sweep) are committed-state only in a
+# match: they animate on a resolved board (both players submitted → next turn),
+# never on the live planning sims that fire while you drag/place/edit. True for
+# exactly the committed sim; cleared once it resolves.
+var _mp_committed_view: bool = false
 
 
 func _ready():
@@ -200,6 +205,7 @@ func apply_opponent_board(snapshot: Array, owner_id: String) -> void:
 	# submitted sensors reveal what they detect, then re-sim. Live placement sims
 	# leave _fog_reveal_pending false, so a planned sensor never reveals an enemy.
 	_fog_reveal_pending = true
+	_mp_committed_view = true
 	GameEvents.simulation_requested.emit()
 	_evaluate_win_condition()
 
@@ -276,6 +282,7 @@ func _mp_setup() -> void:
 	# concealed (only revealed on a committed detection). Treat the initial board
 	# as committed so a rejoin reveals anything your submitted sensors detect.
 	_fog_reveal_pending = true
+	_mp_committed_view = true
 	GameEvents.simulation_requested.emit()
 
 
@@ -380,6 +387,10 @@ func _on_sim_complete_fog(_link_results: Array, detect_results: Array) -> void:
 	# committing. Concealment (_apply_fog) still re-applies on every sim.
 	if _fog_reveal_pending:
 		_fog_reveal_pending = false
+		# Detection badges stay lit for THIS committed sim (every listener in the
+		# cascade still reads _mp_committed_view == true), then drop back to the
+		# planning veil next frame so later live sims don't animate detection.
+		set_deferred("_mp_committed_view", false)
 		for r in detect_results:
 			if not bool(r.get("fully_detected", false)):
 				continue
@@ -393,6 +404,14 @@ func _on_sim_complete_fog(_link_results: Array, detect_results: Array) -> void:
 				continue
 			_revealed_enemy_keys[_enemy_key(target)] = true
 	_apply_fog()
+
+
+# Whether the purple "Detected" badge may animate right now. In a match it shows
+# only on a committed/merged board (both players submitted → next turn), never on
+# the live planning sims. Always true outside multiplayer so sandbox/tutorial
+# detection stays live.
+func detection_badges_allowed() -> bool:
+	return not _mp_active or _mp_committed_view
 
 
 # Registers window.godotOnTurnAdvance(turn) so MultiplayerMatch.tsx can notify
@@ -501,8 +520,9 @@ func _spawn_objective_unit(
 	var mine := is_host_line == host_is_me
 	var glow := UnitVisual.Owner.MINE if mine else UnitVisual.Owner.ENEMY
 	var who := "YOUR" if mine else "ENEMY"
+	var unit: Unit
 	if is_source:
-		return _spawn_immutable_unit(
+		unit = _spawn_immutable_unit(
 			&"transceiver",
 			uv,
 			{
@@ -514,19 +534,27 @@ func _spawn_objective_unit(
 				&"glow_kind": glow,
 			}
 		)
-	return _spawn_immutable_unit(
-		&"sensor",
-		uv,
-		{
-			&"unit_name": who + " TARGET",
-			&"sensitivity": -72,
-			&"tuning_frequency": freq,
-			&"height": 10,
-			&"sensor_bandwidth": 2,
-			&"is_scanning": true,
-			&"glow_kind": glow,
-		}
-	)
+	else:
+		unit = _spawn_immutable_unit(
+			&"sensor",
+			uv,
+			{
+				&"unit_name": who + " TARGET",
+				&"sensitivity": -72,
+				&"tuning_frequency": freq,
+				&"height": 10,
+				&"sensor_bandwidth": 2,
+				&"is_scanning": true,
+				&"glow_kind": glow,
+			}
+		)
+	# Your own objective (SOURCE and TARGET) is attribute-editable the whole
+	# match; it stays immutable otherwise (never moved or deleted) — only its
+	# attribute panel unlocks. Local-only: the objective is never serialized, so
+	# retuning it changes YOUR simulation, not the shared board.
+	if mine and unit:
+		unit.set_attributes_unlocked_override(true)
+	return unit
 
 
 func _spawn_immutable_unit(type_id: StringName, world_uv: Vector2, attrs: Dictionary) -> Unit:

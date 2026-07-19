@@ -41,7 +41,27 @@ func set_attributes_unlocked_override(value: bool) -> void:
 
 
 func attributes_unlocked_override() -> bool:
-	return _attributes_unlocked_override
+	if _attributes_unlocked_override:
+		return true
+	# Multiplayer 1v1: your own units stay attribute-editable for the WHOLE
+	# match — even after SUBMIT stamps them `locked` — so you can retune any
+	# unit, on any turn, as many as you want. This only frees the attribute
+	# panel: the one-per-turn PLACEMENT cap and the movement lock on submitted
+	# pieces (both driven by is_locked) are untouched, and opponent units
+	# (owner != you) stay read-only.
+	return _owns_locally()
+
+
+# True only for the local player's own unit inside a multiplayer match: there
+# is a local id AND this unit is stamped with it. Immutable objective units
+# carry no owner_player_id, so they're excluded (they stay locked). Returns
+# false in sandbox / coop / singleplayer, where nothing has an owner id.
+func _owns_locally() -> bool:
+	var local_id := _local_mp_player_id()
+	if local_id == "":
+		return false
+	var owner_v: Variant = physical_state.get(&"owner_player_id", null)
+	return owner_v is String and String(owner_v) == local_id
 
 
 func set_selectable(value: bool) -> void:

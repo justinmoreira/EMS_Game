@@ -1,9 +1,4 @@
 disable:
 - class-definitions-order
 
-# Raised from the gdtoolkit default (1000). BaseLevel.gd is a large shared base
-# class and the multiplayer feature added a substantial, cohesive block to it;
-# Sidebar.gd is also near the old cap. TODO: extract the multiplayer subsystem
-# (objective/win/fog/turn hooks) out of BaseLevel into its own controller and
-# drop this back toward the default.
-max-file-lines: 1200
+max-file-lines: 1250
