@@ -455,10 +455,20 @@ func _refresh_attribute_panel() -> void:
 		and (selected_node as Unit).has_method("is_locked")
 		and (selected_node as Unit).is_locked()
 	)
+
+	# A locked piece whose attributes are unlocked (your own units in a 1v1
+	# match, editable the whole game) still needs CONFIRM so the retune applies
+	# and re-sims. DELETE stays hidden — removing a committed piece is a
+	# placement action, not an attribute edit.
+	var attrs_unlocked: bool = (
+		selected_node != null
+		and selected_node.has_method("attributes_unlocked_override")
+		and selected_node.attributes_unlocked_override()
+	)
 	if _delete_btn:
 		_delete_btn.visible = _delete_btn.visible and not is_locked
 	if _confirm_btn:
-		_confirm_btn.visible = _confirm_btn.visible and not is_locked
+		_confirm_btn.visible = _confirm_btn.visible and (not is_locked or attrs_unlocked)
 
 	var def := _definition_for(selected_entity)
 	if def == null:
@@ -473,7 +483,7 @@ func _refresh_attribute_panel() -> void:
 
 	# Transceivers get a "Send Message" button that visualizes frequency-
 	# dependent transmission delay. Only meaningful for placed, editable units.
-	if selected_node is Unit and def.id == &"transceiver" and not is_locked:
+	if selected_node is Unit and def.id == &"transceiver" and (not is_locked or attrs_unlocked):
 		_add_send_message_button(def.color)
 
 	# Lock the attribute inputs when the piece can't be edited: my is_locked
@@ -482,11 +492,7 @@ func _refresh_attribute_panel() -> void:
 	var lock_inputs := is_locked
 	if selected_node and "is_removable" in selected_node and not selected_node.is_removable:
 		lock_inputs = true
-	if (
-		selected_node
-		and selected_node.has_method("attributes_unlocked_override")
-		and selected_node.attributes_unlocked_override()
-	):
+	if attrs_unlocked:
 		lock_inputs = false
 	_attr_body.modulate.a = 0.7 if lock_inputs else 1.0
 	_lock_all_attributes(lock_inputs)

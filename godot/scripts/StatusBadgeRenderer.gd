@@ -32,9 +32,20 @@ func _get_or_create_status_visual(unit: Node) -> UnitStatusVisual:
 
 
 func _compute_status(unit: Unit, link_results: Array, detect_results: Array) -> int:
+	# In a multiplayer match the purple "Detected" badge only animates on a
+	# committed board (both players submitted → next turn), never on live
+	# planning sims. The level owns that gate; default to allowed elsewhere.
+	var level := get_tree().current_scene
+	var detect_allowed: bool = (
+		not (level and level.has_method("detection_badges_allowed"))
+		or level.detection_badges_allowed()
+	)
+
 	for d in detect_results:
 		if d.target == unit and d.fully_detected:
-			return UnitStatusVisual.Status.DETECTED
+			if detect_allowed:
+				return UnitStatusVisual.Status.DETECTED
+			break
 
 	for r in link_results:
 		if r.target == unit and r.state == SimulationManager.LinkState.FAILED_JAMMED:
