@@ -67,7 +67,7 @@ func _rebuild() -> void:
 		var state: int = data.get("final_state", data.state)
 		var name: String = other.get_value(&"unit_name", "?")
 		var status: String = STATE_LABELS.get(state, "Unknown")
-		var line := "→ %s: %s" % [name, status]
+		var line := "%s: %s" % [name, status]
 		if SUGGESTIONS.has(state):
 			line += "\n" + SUGGESTIONS[state]
 		lines.append(line)
