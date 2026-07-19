@@ -282,11 +282,27 @@ function toSlot(r: SandboxStateRecord): SandboxSlot {
 
 // ── Lifecycle ───────────────────────────────────────────────────────────
 
+const LAST_USER_KEY = "sandbox_last_promoted_user";
+
+function alreadyPromotedFor(userId: string): boolean {
+  return isBrowser && localStorage.getItem(LAST_USER_KEY) === userId;
+}
+
+function markPromotedFor(userId: string) {
+  if (isBrowser) localStorage.setItem(LAST_USER_KEY, userId);
+}
+
 if (isBrowser) {
   // On sign-in: rescue any anon work (so it doesn't get clobbered by the
   // user's cloud `current` during syncAll's pull phase), then sync.
   authUser.subscribe((user) => {
     if (!user) return;
+    if (alreadyPromotedFor(user.id)) {
+      // Not a fresh sign-in on this device — nothing to rescue, just sync.
+      void syncAll();
+      return;
+    }
+    markPromotedFor(user.id);
     void promoteAnonOnSignIn().then(() => syncAll());
   });
   window.addEventListener("online", () => syncAll());
@@ -296,6 +312,7 @@ if (isBrowser) {
   window.addEventListener("auth-signed-out", () => {
     void db.sandboxStates.clear();
     currentSandbox.value = "";
+    localStorage.removeItem(LAST_USER_KEY);
   });
 
   // Observe godot-bridge.js's saves and fan out to Dexie + Supabase. The
